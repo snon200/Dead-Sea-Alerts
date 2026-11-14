@@ -15,7 +15,7 @@ The interface has three regions:
 - **Zone details:** a collapsible panel with the selected zone's measurements, infrastructure context, displacement trend, and data provenance. Use the arrow at the panel edge to collapse or reopen it. Only categories with mapped features are listed; an empty-state message appears if none are found. Measurement inputs are collapsed by default and include a brief explanation; information buttons explain the individual metrics and inputs.
 - On narrow screens, opening one panel closes the other so their controls remain accessible.
 
-On load, the dashboard requests `GET /api/v1/zones` and displays loading, empty and error states. If the request fails, reload the page to retry. API results support Polygon and MultiPolygon geometry, missing measurements and dated cumulative series; zone names currently use IDs. The basemap is separate from the overlays. Results are exploratory and are not an operational hazard assessment.
+On load, the dashboard requests `GET /api/v1/zones` and displays loading, empty and error states. The API export includes only detections from the latest acquisition interval, with the full displacement history for each retained footprint; earlier detections remain in the pipeline outputs. If the request fails, reload the page to retry. API results support Polygon and MultiPolygon geometry, missing measurements and dated cumulative series; zone names currently use IDs. The basemap is separate from the overlays. Results are exploratory and are not an operational hazard assessment.
 
 Measurements and coordinates are rounded to two decimal places for display. Coordinates marked with `~` are approximate; map geometry and feature locations retain their original precision.
 

@@ -68,7 +68,8 @@ class ZoneServiceTests(unittest.TestCase):
         ]]}
         self.poly = transform_geom("EPSG:32636", "EPSG:4326", geom_projected)
         self.feature = {"type": "Feature", "id": "anomaly-run-specific", "geometry": self.poly,
-                        "properties": {"source_run": self.run, "priority": "urgent_review"}}
+                        "properties": {"source_run": self.run, "priority": "urgent_review",
+                                       "last_observed": "2026-07-15"}}
         self.write_detector([self.feature])
 
         # Actual pair-coherence raster (deliberately unlike 0.98 date quality proxy).
@@ -139,6 +140,24 @@ class ZoneServiceTests(unittest.TestCase):
         export_cache(run_name=self.run, data_root=self.root, output=output)
         with patch.dict(os.environ, {"NISAR_ZONES_FILE": str(output)}):
             self.assertEqual(get_zones(), [])
+
+    def test_only_latest_detections_are_exported(self):
+        older = {**self.feature, "properties": {**self.feature["properties"], "last_observed": "2026-07-03"}}
+        self.write_detector([older, self.feature])
+        zones = build_zones(run_name=self.run, data_root=self.root)
+        self.assertEqual(len(zones), 1)
+        self.assertEqual(len(zones[0]["cumulative_series"]), 3)
+
+    def test_no_latest_detection_is_empty(self):
+        self.feature["properties"]["last_observed"] = "2026-07-03"
+        self.write_detector([self.feature])
+        self.assertEqual(build_zones(run_name=self.run, data_root=self.root), [])
+
+    def test_missing_detection_date_is_rejected(self):
+        del self.feature["properties"]["last_observed"]
+        self.write_detector([self.feature])
+        with self.assertRaisesRegex(ValueError, "last_observed"):
+            build_zones(run_name=self.run, data_root=self.root)
 
     def test_multipolygon_and_stable_id(self):
         mp = {"type": "MultiPolygon", "coordinates": [self.poly["coordinates"]]}

@@ -10,6 +10,8 @@ The static dashboard and Python function share a Vercel domain. The dashboard
 requests the API on load. The endpoint reads a precomputed zones export; if the
 export is unavailable it returns HTTP 503. The example in the specification
 contains fictional values, not results from the pipeline.
+The export includes only detections last observed on the latest acquisition
+date; each retained zone still includes its full displacement history.
 
 ```text
 Processed NISAR data -> get_zones() -> GET /api/v1/zones -> dashboard

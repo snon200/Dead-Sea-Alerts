@@ -121,6 +121,7 @@ python src/zone_service.py --run "$RUN" --data-root data --out data/api/zones.js
 ```
 
 This generates the static JSON used by `GET /api/v1/zones`. Re-run this command after Stage 3 results change; the JSON file is **not updated automatically**.
+The export includes only detections last observed on the latest acquisition date; older detections remain in the Stage 3 outputs.
 
 ---
 
