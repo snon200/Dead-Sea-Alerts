@@ -49,7 +49,7 @@ See [Dashboard](./DASHBOARD.md) for the purpose, current implementation, limitat
 
 Serve `index.html` from a local HTTP server and open it in a browser. The map uses OpenStreetMap tiles; the risk zones and measurements are illustrative, not NISAR observations or operational warnings.
 
-The dashboard requests roads and pumping stations for the Dead Sea study area once per page load. Residential building footprints are requested only when zoomed in, and previously requested areas are cached in memory until the page is reloaded. If the Overpass service fails or times out, use the displayed Retry button; map tiles and illustrative zones remain available. Internet access is required for Leaflet, map tiles, and OpenStreetMap features.
+The dashboard requests OpenStreetMap features once per risk-zone bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. Zone outlines and measurements are synthetic. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory until reload; selected ways may extend outside a zone. If a request fails or times out, use the displayed Retry button; successful zones, map tiles, and illustrative zones remain available. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
 
 ## Sources
 
