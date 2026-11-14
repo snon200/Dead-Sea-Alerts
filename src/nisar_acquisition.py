@@ -2,7 +2,7 @@
 """NISAR GUNW acquisition layer: CMR discovery -> Harmony subsets -> validated manifest.
 
 Install:
-    python -m pip install requests harmony-py rasterio
+    python -m pip install requests harmony-py rasterio earthaccess h5py numpy
 
 Sign in with NASA Earthdata Login using ~/.netrc or EDL_USERNAME/EDL_PASSWORD.
 
@@ -24,7 +24,7 @@ Import into the pipeline:
 
 Notes:
 * Optional --with-radar-metadata streams only HDF5 metadata and adds exact
-  radar frequency and a georeferenced incidence_angle_deg.tif. The default
+  radar frequency, incidence and tropospheric phase-screen GeoTIFFs. The default
   --height-m -400 is a constant WGS84 ellipsoid height approximation, NOT
   terrain-following. A height-aware DEM interpolation is needed later.
 * This module downloads phase/coherence/ionosphere/connected-components. It does
@@ -49,7 +49,7 @@ import math
 import re
 import sys
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -232,7 +232,8 @@ def find_scenes(
 
     names = RELEASE_ORDER if release == "auto" else (release,)
     found: list[Scene] = []
-    interval = f"{start.isoformat()}T00:00:00Z,{end.isoformat()+'T23:59:59Z' if end else ''}"
+    cmr_start = start - timedelta(days=48)  # Pair search must include earlier reference acquisitions.
+    interval = f"{cmr_start.isoformat()}T00:00:00Z,{end.isoformat()+'T23:59:59Z' if end else ''}"
     for tier in names:
         short_name = COLLECTIONS[tier]
         collection_id = get_collection_id(session, short_name)
@@ -282,6 +283,120 @@ def find_scenes(
     result = list(by_pair.values())
     result.sort(key=lambda s: s.secondary_time or s.cmr_time_start or "", reverse=True)
     return result
+
+
+def series_key(scene: Scene, requested_polarization: str = "auto") -> tuple[Any, ...] | None:
+    """Stable imaging and processing family for a connected pair network.
+
+    Same track/frame start+end, direction, mode, polarization, release,
+    and CRID. Different families must never be treated as one time series.
+    """
+    if not (scene.reference_time and scene.secondary_time and scene.track is not None
+            and scene.frame is not None):
+        return None
+    fields = Path(scene.granule_name).name.removesuffix(".h5").split("_")
+    if len(fields) < 20:
+        return None
+    polarization = select_polarization(scene, requested_polarization)
+    if polarization is None:
+        return None
+    return (
+        scene.track,
+        scene.frame,
+        scene.direction,
+        scene.mode,
+        polarization,
+        scene.release,
+        fields[15],  # CRID
+    )
+
+
+def _connected_subsets(pairs: list[Scene]) -> list[list[Scene]]:
+    """Connected components of acquisition days; an edge is a GUNW pair."""
+    from collections import defaultdict
+    adjacency = defaultdict(set)
+    for pair in pairs:
+        a, b = pair.reference_time[:10], pair.secondary_time[:10]
+        adjacency[a].add(b)
+        adjacency[b].add(a)
+    remaining = set(adjacency)
+    results = []
+    while remaining:
+        root = remaining.pop()
+        group = {root}
+        stack = [root]
+        while stack:
+            for day in adjacency[stack.pop()]:
+                if day not in group:
+                    group.add(day)
+                    remaining.discard(day)
+                    stack.append(day)
+        component = [pair for pair in pairs
+                     if pair.reference_time[:10] in group and pair.secondary_time[:10] in group]
+        results.append(sorted(component, key=lambda p: p.secondary_time))
+    return results
+
+
+def _newest_connected_subset(pairs: list[Scene], max_pairs: int) -> list[Scene]:
+    """A capped time series must remain connected, not just be the newest N edges."""
+    if max_pairs == 0 or len(pairs) <= max_pairs:
+        return pairs
+    newest = max(pairs, key=lambda p: p.secondary_time)
+    result = [newest]
+    dates = {newest.reference_time[:10], newest.secondary_time[:10]}
+    unused = [p for p in pairs if p is not newest]
+    while unused and len(result) < max_pairs:
+        adjacent = [p for p in unused if p.reference_time[:10] in dates
+                    or p.secondary_time[:10] in dates]
+        if not adjacent:
+            break
+        pick = max(adjacent, key=lambda p: p.secondary_time)
+        result.append(pick)
+        dates.update((pick.reference_time[:10], pick.secondary_time[:10]))
+        unused.remove(pick)
+    return sorted(result, key=lambda p: p.secondary_time)
+
+
+def select_time_series(
+    scenes: list[Scene],
+    track: int | None = None,
+    frame: int | None = None,
+    polarization: str = "auto",
+    max_scenes: int = 0,
+) -> list[Scene]:
+    """Choose the largest connected family, ordered by secondary acquisition.
+
+    This identifies a consistent *network of interferogram pairs*; it does NOT
+    perform SBAS/network inversion or place the rasters on a shared pixel grid.
+    """
+    from collections import defaultdict
+    families = defaultdict(list)
+    for scene in scenes:
+        if track is not None and scene.track != track:
+            continue
+        if frame is not None and scene.frame != frame:
+            continue
+        key = series_key(scene, polarization)
+        if key is not None:
+            families[key].append(scene)
+
+    candidates = []
+    for key, family in families.items():
+        for component in _connected_subsets(family):
+            if len(component) >= 2:
+                dates = {d for p in component for d in
+                         (p.reference_time[:10], p.secondary_time[:10])}
+                candidates.append((len(component), len(dates),
+                                   component[-1].secondary_time, key, component))
+    if not candidates:
+        raise AcquisitionError(
+            "No connected GUNW series with >=2 pairs. Expand dates or specify another track/frame."
+        )
+    best = max(candidates, key=lambda c: c[:3])
+    selected = _newest_connected_subset(best[4], max_scenes)
+    LOG.info("Time-series family %s: %d connected pair(s)", best[3], len(selected))
+    return selected
+
 
 
 def select_polarization(scene: Scene, requested: str = "auto") -> str | None:
@@ -572,6 +687,11 @@ def fetch_radar_metadata(
             z = np.asarray(h5[f'{cube_base}/heightAboveEllipsoid'][:], dtype=np.float64)
             epsg = int(h5[f'{cube_base}/projection'][()])
             cube = h5[f'{cube_base}/incidenceAngle']
+            angle_units = cube.attrs.get('units', b'')
+            if isinstance(angle_units, bytes):
+                angle_units = angle_units.decode('utf-8')
+            if str(angle_units).strip().lower() not in ('degrees', 'degree', 'deg'):
+                raise AcquisitionError(f'Unexpected or missing incidenceAngle units: {angle_units!r}')
             if cube.shape != (len(z), len(y), len(x)) or len(z) < 1:
                 raise AcquisitionError(f'Unexpected incidence cube shape: {cube.shape}')
             if not (np.all(np.diff(x) > 0) or np.all(np.diff(x) < 0)) or not (
@@ -596,6 +716,59 @@ def fetch_radar_metadata(
                 fraction = float((height_m - z[lo]) / (z[hi] - z[lo]))
                 grid = lower * (1 - fraction) + upper * fraction
 
+            # -------------------------------------------------------
+            # Tropospheric correction cubes at the requested height
+            # -------------------------------------------------------
+            def read_tropo_slice(dataset_name):
+                path = f"{cube_base}/{dataset_name}"
+
+                if path not in h5:
+                    raise AcquisitionError(
+                        f"Missing tropospheric dataset: {path}"
+                    )
+
+                ds = h5[path]
+
+                expected_shape = (len(z), len(y), len(x))
+
+                if ds.shape != expected_shape:
+                    raise AcquisitionError(
+                        f"Unexpected {dataset_name} shape: {ds.shape}; "
+                        f"expected {expected_shape}"
+                    )
+
+                units = ds.attrs.get("units", "")
+                if isinstance(units, bytes):
+                    units = units.decode("utf-8")
+
+                if str(units).lower() not in ("", "rad", "radian", "radians"):
+                    raise AcquisitionError(
+                        f"Unexpected units for {dataset_name}: {units}"
+                    )
+
+                lower = np.asarray(ds[lo, :, :], dtype=np.float32)
+
+                if lo == hi:
+                    return lower
+
+                upper = np.asarray(ds[hi, :, :], dtype=np.float32)
+
+                alpha = (height_m - z[lo]) / (z[hi] - z[lo])
+
+                return (
+                    lower * (1 - alpha) + upper * alpha
+                ).astype(np.float32)
+
+
+            wet_grid = read_tropo_slice(
+                "wetTroposphericPhaseScreen"
+            )
+
+            dry_grid = read_tropo_slice(
+                "hydrostaticTroposphericPhaseScreen"
+            )
+
+        
     # Coordinate vectors represent pixel centers. Use full signed dx/dy to
     # preserve increasing/decreasing axes and let rasterio reproject correctly.
     if len(x) < 2 or len(y) < 2:
@@ -629,6 +802,62 @@ def fetch_radar_metadata(
     if not np.isfinite(out_angle).any():
         destination.unlink(missing_ok=True)
         raise AcquisitionError('No overlap between radar metadata and requested phase TIFF')
+    valid_angles = out_angle[np.isfinite(out_angle)]
+    if not np.all((valid_angles >= 0) & (valid_angles < 90)):
+        raise AcquisitionError('Invalid incidence angles: expected degrees in [0,90)')
+
+
+    # -------------------------------------------------------
+    # Resample correction grids to the same raster as phase
+    # -------------------------------------------------------
+
+    correction_layers = {
+        "tropo_wet": (
+            wet_grid,
+            "tropo_wet_phase_rad.tif",
+        ),
+        "tropo_dry": (
+            dry_grid,
+            "tropo_dry_phase_rad.tif",
+        ),
+    }
+
+    for layer_name, (source_grid, filename) in correction_layers.items():
+
+        output_array = np.full(
+            (profile["height"], profile["width"]),
+            np.nan,
+            dtype=np.float32,
+        )
+
+        reproject(
+            source=source_grid,
+            destination=output_array,
+            src_transform=source_transform,
+            src_crs=f"EPSG:{epsg}",
+            src_nodata=np.nan,
+            dst_transform=profile["transform"],
+            dst_crs=profile["crs"],
+            dst_nodata=np.nan,
+            resampling=Resampling.bilinear,
+        )
+
+        if not np.isfinite(output_array).any():
+            raise AcquisitionError(
+                f"No valid {layer_name} correction pixels"
+            )
+
+        output_path = destination.parent / filename
+
+        with rasterio.open(output_path, "w", **profile) as dst:
+            dst.write(output_array, 1)
+            dst.set_band_description(1, layer_name)
+            dst.update_tags(
+                units="radians",
+                height_above_wgs84_ellipsoid_m=str(height_m),
+                height_assumption="constant_not_dem",
+            )
+
 
     return {
         'center_frequency_hz': float(frequency_hz),
@@ -638,6 +867,8 @@ def fetch_radar_metadata(
         'incidence_approximation': 'constant_WGS84_ellipsoid_height_not_dem',
         'incidence_cube_path': f'{cube_base}/incidenceAngle',
         'remote_hdf5_url': source_url,
+        "troposphere_height_m": float(height_m),
+        "troposphere_assumption": "constant_ellipsoid_height_not_dem",
     }
 
 
@@ -645,32 +876,43 @@ def ensure_radar_metadata(
     record: dict[str, Any], scene: Scene, folder: Path, *,
     height_m: float, previous: dict[str, Any] | None = None,
 ) -> None:
-    """Enrich a Harmony scene with frequency and a pixel-aligned incidence TIFF.
+    """Extract frequency, incidence and wet/dry troposphere, with cache reuse.
 
-    Metadata failures never trigger a second Harmony download. The original
-    COGs remain in place and can be reused when rerunning acquisition.
+    IMPORTANT: height_m is a constant *ellipsoidal* height approximation, not
+    the terrain elevation. DEM-aware interpolation is needed for hazard analysis.
     """
     previous = previous or {}
-    old = previous.get('radar_metadata', {})
-    old_angle = previous.get('assets', {}).get('incidence_angle', {}).get('path')
-    if (old.get('center_frequency_hz') and
-        old.get('incidence_height_m') == float(height_m) and
-        old_angle and Path(old_angle).is_file()):
-        record['radar_metadata'] = old
-        record['assets']['incidence_angle'] = previous['assets']['incidence_angle']
-        record['metadata_status'] = 'complete_cached'
+    old_md = previous.get("radar_metadata") or {}
+    old_assets = previous.get("assets") or {}
+    keys = ("incidence_angle", "tropo_wet", "tropo_dry")
+    phase_asset = record["assets"]["phase"]
+    cached_paths = {}
+    for key in keys:
+        asset = old_assets.get(key) or {}
+        if asset.get("path") and Path(asset["path"]).is_file():
+            cached_paths[key] = asset["path"]
+
+    if (old_md.get("center_frequency_hz") and
+            old_md.get("incidence_height_m") == float(height_m) and
+            len(cached_paths) == len(keys)):
+        # Revalidate raster alignment, not just file existence.
+        validated = raster_metadata({"phase": phase_asset["path"], **cached_paths})
+        record["radar_metadata"] = old_md
+        record["assets"].update({key: validated[key] for key in keys})
+        record["metadata_status"] = "complete_cached"
         return
-    angle_file = folder / 'incidence_angle_deg.tif'
-    md = fetch_radar_metadata(scene, record['assets']['phase']['path'],
-                              angle_file, height_m=height_m)
-    md_asset = raster_metadata({'incidence_angle': str(angle_file)})['incidence_angle']
-    phase = record['assets']['phase']
-    for attr in ('crs', 'width', 'height', 'transform'):
-        if md_asset[attr] != phase[attr]:
-            raise AcquisitionError(f'Incidence raster not aligned with phase: {attr}')
-    record['radar_metadata'] = md
-    record['assets']['incidence_angle'] = md_asset
-    record['metadata_status'] = 'complete'
+
+    md = fetch_radar_metadata(scene, phase_asset["path"],
+                              folder / "incidence_angle_deg.tif", height_m=height_m)
+    extracted = {
+        "incidence_angle": str(folder / "incidence_angle_deg.tif"),
+        "tropo_wet": str(folder / "tropo_wet_phase_rad.tif"),
+        "tropo_dry": str(folder / "tropo_dry_phase_rad.tif"),
+    }
+    validated = raster_metadata({"phase": phase_asset["path"], **extracted})
+    record["assets"].update({key: validated[key] for key in keys})
+    record["radar_metadata"] = md
+    record["metadata_status"] = "complete"
 
 
 
@@ -713,6 +955,11 @@ def acquire_one(
         try:
             manifest["assets"] = inspect_outputs(folder, layers)
             manifest["status"] = "complete"
+            if previous.get("radar_metadata"):
+                manifest["radar_metadata"] = previous["radar_metadata"]
+                for extra in ("incidence_angle", "tropo_wet", "tropo_dry"):
+                    if extra in previous.get("assets", {}):
+                        manifest["assets"][extra] = previous["assets"][extra]
             manifest["cached"] = True
             manifest["job_id"] = previous.get("job_id")
             if with_radar_metadata:
@@ -792,6 +1039,9 @@ def acquire_gunw(
     metadata_height_m: float = -400.0,
     session: requests.Session | None = None,
     harmony_client: Any | None = None,
+    timeseries: bool = False,
+    series_track: int | None = None,
+    series_frame: int | None = None,
 ) -> list[dict[str, Any]]:
     """Acquire matching scenes; return scene records with status and asset metadata.
 
@@ -808,6 +1058,8 @@ def acquire_gunw(
         raise ValueError("metadata_height_m must be a finite WGS84 ellipsoid height")
     if max_scenes < 0:
         raise ValueError("max_scenes must be >= 0 (0 means all)")
+    if timeseries and max_scenes == 1:
+        raise ValueError("--timeseries requires --max-scenes 0 or at least 2")
     if polarization not in ("auto", "HH", "VV"):
         raise ValueError("polarization must be auto, HH, VV")
     if epsg is not None and epsg != 4326 and not (32601 <= epsg <= 32660 or 32701 <= epsg <= 32760):
@@ -827,7 +1079,10 @@ def acquire_gunw(
     # counting unprocessable scenes against --max-scenes).
     if polarization != "auto":
         scenes = [s for s in scenes if select_polarization(s, polarization) is not None]
-    if max_scenes:
+    if timeseries:
+        scenes = select_time_series(scenes, track=series_track, frame=series_frame,
+                                    polarization=polarization, max_scenes=max_scenes)
+    elif max_scenes:
         scenes = scenes[:max_scenes]
     LOG.info("Selected %d distinct GUNW scene(s)", len(scenes))
     if search_only:
@@ -841,7 +1096,16 @@ def acquire_gunw(
             "request": {"bbox_wsen": list(bbox), "start_date": start_date,
                         "end_date": end_date, "release": release,
                         "polarization": polarization, "layers": list(layers),
-                        "max_scenes": max_scenes},
+                        "max_scenes": max_scenes, "timeseries": timeseries,
+                        "series_track": series_track, "series_frame": series_frame,},
+            "series": ({
+                "family": list(series_key(scenes[0], polarization)) if scenes else None,
+                "pair_count": len(scenes),
+                "acquisition_dates": sorted({day for scene in scenes
+                    for day in ((scene.reference_time or "")[:10],
+                                (scene.secondary_time or "")[:10]) if day}),
+                "warning": "Connected interferogram-pair network; not inverted to cumulative displacement",
+            } if timeseries else None),
             "scenes": records,
         })
 
@@ -856,6 +1120,8 @@ def acquire_gunw(
         except AcquisitionError as exc:
             LOG.error("Acquisition setup failed for %s: %s", scene.granule_id, exc)
             record = {"scene": asdict(scene), "status": "failed", "error": str(exc), "assets": {}}
+        if record.get("directory"):
+            record["manifest_path"] = str(Path(record["directory"]) / "manifest.json")
         records.append(record)
         save_index()
     return records
@@ -886,10 +1152,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--search-only", action="store_true", help="Only inspect results, no Harmony job")
     parser.add_argument("--retry-failed", action="store_true", help="Resubmit previously failed jobs")
     parser.add_argument("--with-radar-metadata", action="store_true",
-                        help="Also stream exact frequency and derive a pixel-aligned incidence angle")
+                        help="Stream radar frequency and aligned incidence/wet/dry tropospheric rasters")
     parser.add_argument("--height-m", type=float, default=-400.0,
-                        help="Assumed constant WGS84 ELLIPSOID height for incidence cube (not a DEM)")
+                        help="Constant WGS84 ELLIPSOID height for radar geometry and troposphere (not a DEM)")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--timeseries", action="store_true", help="Select a connected acquisition-pair time series")
+    parser.add_argument("--series-track", type=int, default=None,)
+    parser.add_argument("--series-frame", type=int, default=None,)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(levelname)s: %(message)s")
@@ -905,6 +1174,9 @@ def main(argv: list[str] | None = None) -> int:
             retry_failed=args.retry_failed,
             with_radar_metadata=args.with_radar_metadata,
             metadata_height_m=args.height_m,
+            timeseries=args.timeseries,
+            series_track=args.series_track,
+            series_frame=args.series_frame,
         )
     except (AcquisitionError, ValueError, requests.RequestException) as exc:
         LOG.error("%s", exc)

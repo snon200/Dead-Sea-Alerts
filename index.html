@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>Project Hail Miriam | Dead Sea Risk Monitor</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="preconnect" href="https://overpass-api.de">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      --page: #f3f6fa;
+      --panel: #ffffff;
+      --panel-raised: #f7f9fc;
+      --border: #e3e9f1;
+      --muted: #718096;
+      --text: #172338;
+      --accent: #1182a8;
+      --red: #fb6473;
+      --orange: #f9a24b;
+      --yellow: #e9c85d;
+      --green: #53c99a;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { background: var(--page); color: var(--text); overflow: hidden; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .app { display: flex; flex-direction: column; min-width: 320px; width: 100%; height: 100dvh; }
+    .topbar {
+      min-height: 66px; display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: #fff;
+      z-index: 700;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #b7dce8;
+      border-radius: 12px; background: #eaf6fa; color: #126782; font-weight: 800; font-size: 13px;
+      letter-spacing: -.06em; flex: 0 0 auto;
+    }
+    .brand-name { font-size: 13px; font-weight: 750; letter-spacing: .075em; }
+    .brand-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .top-button, .icon-button, .refresh-button {
+      border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 8px 10px;
+      cursor: pointer; transition: background .15s, border-color .15s;
+    }
+    .top-button:hover, .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
+    .top-button { color: #34445a; font-size: 12px; }
+    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
+    .workspace {
+      --left-width: 286px;
+      --right-width: 350px;
+      flex: 1; min-height: 0; display: grid;
+      grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+      transition: grid-template-columns .22s ease;
+    }
+    .workspace.left-collapsed { --left-width: 0px; }
+    .workspace.right-collapsed { --right-width: 0px; }
+    .sidebar {
+      min-width: 0; min-height: 0; display: flex; flex-direction: column;
+      background: var(--panel); overflow: hidden;
+    }
+    .left-sidebar { grid-column: 1; border-right: 1px solid var(--border); }
+    .right-sidebar { grid-column: 3; border-left: 1px solid var(--border); }
+    .sidebar.collapsed { display: none; }
+    .sidebar-scroll { overflow: auto; min-height: 0; padding: 16px; }
+    .sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    h1, h2, h3, p { margin: 0; }
+    .eyebrow { color: #718096; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .count { color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .compact-intro { margin: 7px 0 0; font-size: 10px; }
+    .building-hint { margin: 8px 0 0; font-size: 10px; }
+    .source-line { margin-top: 8px; }
+    .zone-list { display: flex; flex-direction: column; gap: 8px; }
+    .zone-card {
+      width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
+      border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
+    }
+    .zone-card:hover { border-color: #b9c9d9; background: #f8fbfe; }
+    .zone-card.selected { border-color: color-mix(in srgb, var(--zone-color), #fff 42%); box-shadow: inset 3px 0 var(--zone-color); background: color-mix(in srgb, var(--zone-color), #fff 95%); }
+    .zone-card-top, .zone-card-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .zone-title { color: #1c2a3d; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .level-pill { flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--zone-color), transparent 58%);
+      border-radius: 999px; padding: 3px 6px; background: color-mix(in srgb, var(--zone-color), transparent 88%);
+      color: var(--zone-color); font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 10px; line-height: 1.5; }
+    .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
+      color: #66758a; font: 9px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .layer-section { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border); }
+    .layer-list { display: grid; gap: 8px; margin-top: 10px; }
+    .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 9px; color: #43536a; font-size: 11px; }
+    .layer-control input { accent-color: var(--accent); }
+    .swatch { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
+    .panel-note { margin-top: 16px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0;
+      padding: 10px; color: #78653b; font-size: 10px; line-height: 1.55; }
+    .panel-note strong { color: #77530d; }
+
+    .map-column { grid-column: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; background: #17212b; }
+    .map-toolbar {
+      position: absolute; z-index: 500; top: 12px; left: 12px; right: 12px; display: flex;
+      justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none;
+    }
+    .map-chip, .map-status {
+      border: 1px solid #dfe6ee; border-radius: 9px; background: rgb(255 255 255 / 94%);
+      box-shadow: 0 3px 14px rgb(0 0 0 / 23%); padding: 8px 10px; backdrop-filter: blur(8px);
+    }
+    .map-chip { margin-top: 70px; color: #24344a; font-size: 11px; font-weight: 700; }
+    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 9px; font-weight: 500; }
+    .map-status { max-width: 250px; color: #53637a; font-size: 10px; line-height: 1.45; pointer-events: auto; }
+    .map-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
+    .map-status[data-state="loading"] { color: #876622; }
+    .retry-osm { margin-top: 6px; border: 0; border-radius: 5px; background: #f5e5e7;
+      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 10px; }
+    #map { flex: 1; min-height: 0; width: 100%; z-index: 1; }
+    .map-legend {
+      position: absolute; z-index: 500; bottom: 34px; left: 12px; display: grid; gap: 6px;
+      max-width: 220px; border: 1px solid #dfe6ee; border-radius: 10px; background: rgb(255 255 255 / 94%);
+      padding: 9px 11px; box-shadow: 0 3px 14px rgb(25 42 61 / 12%); pointer-events: none;
+    }
+    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 10px; font-weight: 750; }
+    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 9px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--legend-color); }
+    .map-footer { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px;
+      border-top: 1px solid var(--border); background: #fff; color: var(--muted); font-size: 9px; }
+    .map-footer a, .source-link { color: #88d9ee; text-decoration: none; }
+    .map-footer a:hover, .source-link:hover { text-decoration: underline; }
+    .leaflet-container { background: #d7e1e8; font: 11px Inter, ui-sans-serif, sans-serif; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #1c2a3d; }
+    .leaflet-popup-content-wrapper { border: 1px solid #d7e0e9; }
+    .leaflet-tooltip { border: 1px solid #d7e0e9; background: #fff; color: #1c2a3d; }
+    .leaflet-control-zoom a { background: #fff !important; color: #24344a !important; border-color: #d7e0e9 !important; }
+    .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #a9ddff;
+      border-radius: 50%; background: #12324b; color: white; font-size: 13px; box-shadow: 0 1px 5px #0008; }
+    .poi-label { color: white; font-weight: 700; }
+
+    .detail-header { padding: 16px; border-bottom: 1px solid var(--border); }
+    .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 17px; line-height: 1.28; }
+    .detail-scroll { overflow: auto; min-height: 0; padding: 14px 16px 18px; }
+    .detail-description { color: #66758a; font-size: 11px; line-height: 1.6; }
+    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 10px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .metric { min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 10px; }
+    .metric-label { color: #718096; font-size: 9px; }
+    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric-unit { margin-left: 3px; color: #718096; font-size: 9px; font-weight: 500; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .data-table th, .data-table td { border-bottom: 1px solid #edf1f5; padding: 8px 3px; text-align: left; vertical-align: top; }
+    .data-table th { width: 48%; color: #718096; font-weight: 500; }
+    .data-table td { color: #34445a; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .chart-wrap { height: 96px; margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 7px; }
+    .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+    .detail-callout { margin-top: 12px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0; padding: 10px;
+      color: #78653b; font-size: 10px; line-height: 1.6; }
+    .detail-callout strong { color: #77530d; }
+    .method-card { border: 1px solid var(--border); border-radius: 9px; background: #f7f9fc; padding: 10px;
+      color: #66758a; font-size: 10px; line-height: 1.6; }
+    .method-details { margin-top: 16px; }
+    .method-details summary { color: #53637a; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .method-details .method-card { margin-top: 9px; }
+    .empty-state { padding: 16px 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .attribution { color: #c4d1e0; }
+
+    @media (max-width: 1100px) {
+      .workspace { --left-width: 250px; --right-width: 310px; }
+    }
+    @media (max-width: 850px) {
+      .workspace { position: relative; display: block; }
+      .map-column { position: absolute; inset: 0; }
+      .sidebar { position: absolute; top: 0; bottom: 0; z-index: 600; width: min(88vw, 350px); box-shadow: 0 0 30px #0008; }
+      .left-sidebar { left: 0; }
+      .right-sidebar { right: 0; }
+      .sidebar.collapsed { display: none; }
+      .topbar { min-height: 58px; padding: 8px 10px; }
+      .brand-mark { width: 34px; height: 34px; }
+      .brand-name { font-size: 11px; }
+      .brand-subtitle { display: none; }
+      .top-button { padding: 7px; font-size: 10px; }
+      .map-toolbar { top: 10px; left: 10px; right: 10px; }
+      .map-status { max-width: 165px; }
+    }
+    @media (max-width: 420px) {
+      .brand { gap: 8px; }
+      .top-actions { gap: 5px; }
+      .top-button { max-width: 82px; line-height: 1.2; }
+      .map-chip { max-width: 145px; }
+      .map-legend { bottom: 30px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">SAR</div>
+        <div>
+          <div class="brand-name">PROJECT HAIL MIRIAM</div>
+          <p class="brand-subtitle">Dead Sea subsidence & infrastructure risk monitor</p>
+        </div>
+      </div>
+      <nav class="top-actions" aria-label="Dashboard controls">
+        <button class="top-button" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true">Hide risks</button>
+        <button class="top-button" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true">Hide details</button>
+      </nav>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
+        <div class="sidebar-scroll">
+          <div class="sidebar-heading">
+            <h1 class="eyebrow">Risk zones</h1>
+            <span class="count" id="zoneCount"></span>
+          </div>
+          <p class="intro">Select a zone to view its location and risk indicators.</p>
+          <div class="zone-list" id="zoneList"></div>
+          <section class="layer-section" aria-labelledby="osmLayersHeading">
+            <h2 class="eyebrow" id="osmLayersHeading">Map layers</h2>
+            <p class="intro compact-intro">OpenStreetMap features, cached while this page is open.</p>
+            <div class="layer-list">
+              <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads</span><input id="toggleRoads" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#67c9f2"></i>Pumping stations</span><input id="togglePumps" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#b4a1ef"></i>Houses & buildings</span><input id="toggleBuildings" type="checkbox" checked></label>
+            </div>
+            <p class="intro building-hint" id="buildingHint">Zoom in to load building footprints.</p>
+          </section>
+        </div>
+      </aside>
+
+      <section class="map-column" aria-label="Map of Dead Sea risk zones">
+        <div class="map-toolbar">
+          <div class="map-chip">Dead Sea study area<small>OpenStreetMap · pan or zoom to explore</small></div>
+          <div class="map-status" id="osmStatus" role="status" aria-live="polite" data-state="loading">
+            <span id="osmStatusText">Connecting to OpenStreetMap features…</span>
+            <button type="button" class="retry-osm" id="retryOsm" hidden>Retry</button>
+          </div>
+        </div>
+        <div id="map" aria-label="Interactive map"></div>
+        <div class="map-legend" aria-label="Risk-level legend">
+          <div class="legend-title">Risk level</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--red)"></i>High</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--yellow)"></i>Watch</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--green)"></i>Low</div>
+        </div>
+        <footer class="map-footer">
+          <span>Not for safety or operational decisions</span>
+          <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></span>
+        </footer>
+      </section>
+
+      <aside class="sidebar right-sidebar" id="detailSidebar" aria-label="Selected risk-zone details">
+        <div class="detail-header" id="detailHeader"></div>
+        <div class="detail-scroll" id="detailContent" aria-live="polite"></div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    'use strict';
+
+    const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
+    const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a' };
+
+    // All values below are synthetic UI fixtures; they are not derived from NISAR.
+    const RISK_ZONES = [
+      {
+        id: 'ein-gedi', name: 'Ein Gedi · Route 90', level: 'high', label: 'High',
+        polygon: [[31.424,35.365],[31.438,35.381],[31.424,35.397],[31.410,35.382]],
+        summary: 'Subsidence zone near the Ein Gedi section of Route 90.',
+        asset: 'Route 90', losRate: -42.6, cumulative: -18.4, acceleration: -3.2,
+        coherence: 0.81, nearestAsset: 185, footprint: 1.08, observations: 6,
+        series: [0,-1.7,-4.0,-6.8,-10.0,-13.7,-18.4]
+      },
+      {
+        id: 'mineral-beach', name: 'Mineral Beach · North coast', level: 'elevated', label: 'Elevated',
+        polygon: [[31.704,35.438],[31.718,35.452],[31.706,35.471],[31.691,35.456]],
+        summary: 'Zone near the northern Dead Sea shoreline and access roads.',
+        asset: 'Access road', losRate: -26.8, cumulative: -11.2, acceleration: -1.4,
+        coherence: 0.73, nearestAsset: 420, footprint: 0.74, observations: 6,
+        series: [0,-0.8,-2.0,-3.7,-5.7,-8.2,-11.2]
+      },
+      {
+        id: 'zeelim-south', name: 'Ze’elim · Southern fan', level: 'watch', label: 'Watch',
+        polygon: [[31.232,35.350],[31.248,35.364],[31.237,35.382],[31.220,35.368]],
+        summary: 'Zone on the southern alluvial-fan margin.',
+        asset: 'Utility corridor', losRate: -16.3, cumulative: -6.9, acceleration: -0.5,
+        coherence: 0.68, nearestAsset: 860, footprint: 0.62, observations: 6,
+        series: [0,-0.4,-1.1,-2.0,-3.2,-4.8,-6.9]
+      },
+      {
+        id: 'south-basin', name: 'Southern basin · Reference', level: 'low', label: 'Low',
+        polygon: [[31.075,35.365],[31.090,35.381],[31.077,35.396],[31.061,35.381]],
+        summary: 'Low-change reference area for comparing observations.',
+        asset: 'No assigned asset', losRate: -3.1, cumulative: -1.3, acceleration: 0.1,
+        coherence: 0.77, nearestAsset: null, footprint: 0.49, observations: 6,
+        series: [0,-0.2,-0.4,-0.6,-0.8,-1.0,-1.3]
+      }
+    ];
+
+    const state = {
+      selectedId: RISK_ZONES[0].id,
+      show: { roads: true, pumps: true, buildings: true },
+      sidebar: { left: true, right: true },
+      osm: { timer: null, request: null, lastRequestAt: 0, base: null, buildings: [], failed: null }
+    };
+
+    const studyBounds = L.latLngBounds(
+      [DEAD_SEA_BOUNDS.south, DEAD_SEA_BOUNDS.west],
+      [DEAD_SEA_BOUNDS.north, DEAD_SEA_BOUNDS.east]
+    );
+    const map = L.map('map', {
+      zoomControl: true,
+      preferCanvas: true,
+      maxBounds: studyBounds,
+      maxBoundsViscosity: 1
+    });
+
+    function constrainStudyArea() {
+      const minimumZoom = Math.max(0, map.getBoundsZoom(studyBounds) - 1);
+      map.setMinZoom(minimumZoom);
+      if (map.getZoom() < minimumZoom) map.setZoom(minimumZoom, { animate: false });
+      map.panInsideBounds(studyBounds, { animate: false });
+    }
+
+    map.setView([31.40, 35.42], 9);
+    constrainStudyArea();
+    map.fitBounds(studyBounds, { animate: false });
+    map.on('resize', constrainStudyArea);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
+      crossOrigin: true
+    }).addTo(map);
+
+    const riskLayer = L.featureGroup().addTo(map);
+    const osmRoadLayer = L.layerGroup().addTo(map);
+    const osmPumpLayer = L.layerGroup().addTo(map);
+    const osmBuildingLayer = L.layerGroup().addTo(map);
+
+    function selectedZone() {
+      return RISK_ZONES.find(zone => zone.id === state.selectedId) || RISK_ZONES[0];
+    }
+
+    function polygonBounds(polygon) {
+      const lats = polygon.map(point => point[0]);
+      const lons = polygon.map(point => point[1]);
+      return {
+        south: Math.min(...lats), north: Math.max(...lats),
+        west: Math.min(...lons), east: Math.max(...lons)
+      };
+    }
+
+    function coordRange(zone) {
+      const b = polygonBounds(zone.polygon);
+      return `Lat ${b.south.toFixed(4)}–${b.north.toFixed(4)} · Lon ${b.west.toFixed(4)}–${b.east.toFixed(4)}`;
+    }
+
+    function renderZoneList() {
+      document.getElementById('zoneCount').textContent = `${RISK_ZONES.length} zones`;
+      document.getElementById('zoneList').innerHTML = RISK_ZONES.map(zone => `
+        <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
+          style="--zone-color:${COLORS[zone.level]}" data-zone-id="${zone.id}" aria-pressed="${zone.id === state.selectedId}">
+          <span class="zone-card-top">
+            <span class="zone-title">${zone.name}</span>
+            <span class="level-pill">${zone.label}</span>
+          </span>
+          <span class="zone-card-meta"><span>LOS ${zone.losRate} mm/yr</span><span>${zone.footprint.toFixed(2)} km²</span></span>
+          <span class="zone-coords">${coordRange(zone)}</span>
+        </button>
+      `).join('');
+      document.querySelectorAll('[data-zone-id]').forEach(button => {
+        button.addEventListener('click', () => selectZone(button.dataset.zoneId, true));
+      });
+    }
+
+    function renderChart(zone) {
+      const width = 300, height = 88, pad = 12;
+      const min = Math.min(...zone.series, 0), max = Math.max(...zone.series, 0);
+      const span = (max - min) || 1;
+      const points = zone.series.map((value, index) => {
+        const x = pad + index * (width - pad * 2) / (zone.series.length - 1);
+        const y = pad + (max - value) * (height - pad * 2) / span;
+        return [x, y];
+      });
+      const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
+      const dots = points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"/>`).join('');
+      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Displacement series">
+        <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
+        <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">Earlier</text>
+        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">Latest</text>
+      </svg>`;
+    }
+
+    function renderDetails() {
+      const zone = selectedZone();
+      const header = document.getElementById('detailHeader');
+      header.innerHTML = `
+        <div class="detail-title-row">
+          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${zone.name}</h2></div>
+          <span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span>
+        </div>
+      `;
+      document.getElementById('detailContent').innerHTML = `
+        <p class="detail-description">${zone.summary}</p>
+        <div class="metric-grid">
+          <div class="metric"><div class="metric-label">LOS velocity</div><div class="metric-value">${zone.losRate}<span class="metric-unit">mm/yr</span></div></div>
+          <div class="metric"><div class="metric-label">Cumulative shift</div><div class="metric-value">${zone.cumulative}<span class="metric-unit">mm</span></div></div>
+          <div class="metric"><div class="metric-label">Trend</div><div class="metric-value">${zone.acceleration}<span class="metric-unit">mm/yr²</span></div></div>
+          <div class="metric"><div class="metric-label">Zone area</div><div class="metric-value">${zone.footprint.toFixed(2)}<span class="metric-unit">km²</span></div></div>
+        </div>
+        <h3 class="section-title">Measurement inputs</h3>
+        <table class="data-table"><tbody>
+          <tr><th>Coordinate range</th><td>${coordRange(zone)}</td></tr>
+          <tr><th>Coherence</th><td>${zone.coherence.toFixed(2)}</td></tr>
+          <tr><th>Observations</th><td>${zone.observations} epochs</td></tr>
+          <tr><th>Nearest asset</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
+          <tr><th>Asset context</th><td>${zone.asset}</td></tr>
+        </tbody></table>
+        <h3 class="section-title">Displacement trend</h3>
+        <div class="chart-wrap">${renderChart(zone)}</div>
+        <details class="method-details">
+          <summary>Data provenance &amp; method</summary>
+          <div class="method-card">The displayed values and zone outlines are not NISAR observations or an operational hazard assessment. The cited study analyzes multi-year InSAR time series and refines them with LiDAR; its abstract describes precursory subsidence from days to about five years before collapse. Model features and thresholds require validation against the paper and measured data.
+            <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
+          </div>
+        </details>
+      `;
+    }
+
+    function drawRiskZones() {
+      riskLayer.clearLayers();
+      RISK_ZONES.forEach(zone => {
+        const selected = zone.id === state.selectedId;
+        const color = COLORS[zone.level];
+        L.polygon(zone.polygon, {
+          color, weight: selected ? 3 : 2,
+          opacity: selected ? 1 : .86,
+          fillColor: color,
+          fillOpacity: selected ? .29 : .17
+        }).bindTooltip(`${zone.name} · ${zone.label}`, { sticky: true })
+          .on('click', () => selectZone(zone.id, false))
+          .addTo(riskLayer);
+      });
+    }
+
+    function selectZone(id, panToZone) {
+      if (!RISK_ZONES.some(zone => zone.id === id)) return;
+      state.selectedId = id;
+      renderZoneList();
+      renderDetails();
+      drawRiskZones();
+      if (panToZone) {
+        const zone = selectedZone();
+        map.fitBounds(L.latLngBounds(zone.polygon), { padding: [70, 70], maxZoom: 12, animate: true });
+      }
+    }
+
+    function currentOverpassBounds() {
+      const b = map.getBounds();
+      return {
+        south: Math.max(b.getSouth(), DEAD_SEA_BOUNDS.south),
+        west: Math.max(b.getWest(), DEAD_SEA_BOUNDS.west),
+        north: Math.min(b.getNorth(), DEAD_SEA_BOUNDS.north),
+        east: Math.min(b.getEast(), DEAD_SEA_BOUNDS.east)
+      };
+    }
+
+    function setOsmStatus(message, status, retry = false) {
+      const element = document.getElementById('osmStatus');
+      document.getElementById('osmStatusText').textContent = message;
+      document.getElementById('retryOsm').hidden = !retry;
+      element.dataset.state = status;
+    }
+
+    function makeOverpassQuery(bounds, kind) {
+      const box = `${bounds.south.toFixed(5)},${bounds.west.toFixed(5)},${bounds.north.toFixed(5)},${bounds.east.toFixed(5)}`;
+      const selectors = kind === 'base' ? [
+        `way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service)$"](${box});`,
+        `node["man_made"="pumping_station"](${box});`,
+        `way["man_made"="pumping_station"](${box});`
+      ] : [
+        `way["building"~"^(house|residential|apartments|detached|semidetached_house)$"](${box});`
+      ];
+      return `[out:json][timeout:25];(${selectors.join('')});out geom;`;
+    }
+
+    function clearOsmLayers() {
+      osmRoadLayer.clearLayers();
+      osmPumpLayer.clearLayers();
+      osmBuildingLayer.clearLayers();
+    }
+
+    function renderOsmData(elements) {
+      clearOsmLayers();
+      let roads = 0, pumps = 0, buildings = 0;
+      elements.forEach(element => {
+        const tags = element.tags || {};
+        if (tags.highway && state.show.roads && element.geometry) {
+          const points = element.geometry.map(point => [point.lat, point.lon]);
+          L.polyline(points, {
+            color: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? '#f5b942' : '#f2d690',
+            weight: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? 3 : 1.8,
+            opacity: .9
+          }).bindTooltip(escapeHtml(tags.name || `${tags.highway} road`), { sticky: true }).addTo(osmRoadLayer);
+          roads++;
+          return;
+        }
+        if (tags.man_made === 'pumping_station' && state.show.pumps) {
+          const point = element.lat !== undefined ? [element.lat, element.lon]
+            : element.center ? [element.center.lat, element.center.lon]
+              : element.geometry && element.geometry.length ? [element.geometry[0].lat, element.geometry[0].lon] : null;
+          if (point) {
+            L.marker(point, { icon: L.divIcon({ className: '', html: '<span class="pump-marker" aria-label="Pumping station">P</span>', iconSize: [24,24], iconAnchor: [12,12] }) })
+              .bindPopup(`<strong>${escapeHtml(tags.name || 'Mapped pumping station')}</strong><br><span>OpenStreetMap feature</span>`)
+              .addTo(osmPumpLayer);
+            pumps++;
+          }
+          return;
+        }
+        if (tags.building && state.show.buildings && element.geometry) {
+          L.polygon(element.geometry.map(point => [point.lat, point.lon]), {
+            color: '#b4a1ef', weight: 1, fillColor: '#b4a1ef', fillOpacity: .3
+          }).bindTooltip(escapeHtml(tags.name || `Building: ${tags.building}`), { sticky: true }).addTo(osmBuildingLayer);
+          buildings++;
+        }
+      });
+      if (!state.show.roads) osmRoadLayer.clearLayers();
+      if (!state.show.pumps) osmPumpLayer.clearLayers();
+      if (!state.show.buildings) osmBuildingLayer.clearLayers();
+      return { roads, pumps, buildings };
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+    }
+
+    function renderCachedOsmData() {
+      const elements = new Map();
+      const batches = [state.osm.base || [], ...state.osm.buildings.map(entry => entry.elements)];
+      batches.flat().forEach(element => elements.set(`${element.type}/${element.id}`, element));
+      return renderOsmData([...elements.values()]);
+    }
+
+    function buildingBounds() {
+      const b = currentOverpassBounds();
+      const area = (b.north - b.south) * (b.east - b.west);
+      if (!state.show.buildings || map.getZoom() < 14 || area <= 0 || area > 0.035) return null;
+      const step = 0.05;
+      return {
+        south: Math.max(DEAD_SEA_BOUNDS.south, Math.floor(b.south / step) * step),
+        west: Math.max(DEAD_SEA_BOUNDS.west, Math.floor(b.west / step) * step),
+        north: Math.min(DEAD_SEA_BOUNDS.north, Math.ceil(b.north / step) * step),
+        east: Math.min(DEAD_SEA_BOUNDS.east, Math.ceil(b.east / step) * step)
+      };
+    }
+
+    function boundsCover(outer, inner) {
+      return outer.south <= inner.south && outer.west <= inner.west &&
+        outer.north >= inner.north && outer.east >= inner.east;
+    }
+
+    function showOsmReady() {
+      const counts = renderCachedOsmData();
+      setOsmStatus(`OSM infrastructure loaded: ${counts.roads} roads, ${counts.pumps} pumping stations${state.show.buildings ? `, ${counts.buildings} buildings` : ''}.`, 'ready');
+    }
+
+    async function requestOsm(kind, bounds) {
+      const controller = new AbortController();
+      state.osm.request = controller;
+      state.osm.lastRequestAt = Date.now();
+      const timeout = setTimeout(() => controller.abort(), 35000);
+      setOsmStatus(kind === 'base'
+        ? 'Loading roads and pumping stations for the study area…'
+        : 'Loading building footprints for this area…', 'loading');
+
+      try {
+        const response = await fetch(OVERPASS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json' },
+          body: `data=${encodeURIComponent(makeOverpassQuery(bounds, kind))}`,
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Overpass returned HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload.elements) || payload.remark) {
+          throw new Error(payload.remark || 'Invalid Overpass response');
+        }
+        if (kind === 'base') state.osm.base = payload.elements;
+        else state.osm.buildings.push({ bounds, elements: payload.elements });
+        state.osm.failed = null;
+        showOsmReady();
+      } catch (error) {
+        state.osm.failed = kind;
+        console.error('Could not load OpenStreetMap features:', error);
+        const reason = error.name === 'AbortError' ? 'timed out' : 'failed';
+        setOsmStatus(`OSM ${kind === 'base' ? 'infrastructure' : 'building'} request ${reason}. ${kind === 'buildings' ? 'Roads and pumps remain available.' : 'Map and risk zones remain available.'}`, 'error', true);
+      } finally {
+        clearTimeout(timeout);
+        state.osm.request = null;
+      }
+      if (!state.osm.failed) scheduleBuildingLoad();
+    }
+
+    function scheduleBuildingLoad() {
+      clearTimeout(state.osm.timer);
+      const bounds = buildingBounds();
+      document.getElementById('buildingHint').textContent = !state.show.buildings
+        ? 'Building layer is hidden.'
+        : bounds ? 'Building footprints load on demand and are cached.'
+          : 'Zoom in further; buildings load only for small view areas.';
+      if (!bounds || !state.osm.base || state.osm.request || state.osm.failed ||
+          state.osm.buildings.some(entry => boundsCover(entry.bounds, bounds))) return;
+      const wait = Math.max(850, 8000 - (Date.now() - state.osm.lastRequestAt));
+      state.osm.timer = setTimeout(() => {
+        const current = buildingBounds();
+        if (current && !state.osm.request && !state.osm.failed &&
+            !state.osm.buildings.some(entry => boundsCover(entry.bounds, current))) {
+          requestOsm('buildings', current);
+        }
+      }, wait);
+    }
+
+    function setSidebar(side, visible) {
+      state.sidebar[side] = visible;
+      const isLeft = side === 'left';
+      const workspace = document.querySelector('.workspace');
+      const sidebar = document.getElementById(isLeft ? 'riskSidebar' : 'detailSidebar');
+      const button = document.getElementById(isLeft ? 'toggleLeft' : 'toggleRight');
+      sidebar.classList.toggle('collapsed', !visible);
+      workspace.classList.toggle(`${side}-collapsed`, !visible);
+      button.setAttribute('aria-expanded', String(visible));
+      button.textContent = visible ? (isLeft ? 'Hide risks' : 'Hide details') : (isLeft ? 'Show risks' : 'Show details');
+      setTimeout(() => map.invalidateSize({ pan: false }), 240);
+    }
+
+    document.getElementById('toggleLeft').addEventListener('click', () => setSidebar('left', !state.sidebar.left));
+    document.getElementById('toggleRight').addEventListener('click', () => setSidebar('right', !state.sidebar.right));
+    document.getElementById('toggleRoads').addEventListener('change', event => {
+      state.show.roads = event.target.checked;
+      event.target.checked ? osmRoadLayer.addTo(map) : map.removeLayer(osmRoadLayer);
+      renderCachedOsmData();
+    });
+    document.getElementById('togglePumps').addEventListener('change', event => {
+      state.show.pumps = event.target.checked;
+      event.target.checked ? osmPumpLayer.addTo(map) : map.removeLayer(osmPumpLayer);
+      renderCachedOsmData();
+    });
+    document.getElementById('toggleBuildings').addEventListener('change', event => {
+      state.show.buildings = event.target.checked;
+      event.target.checked ? osmBuildingLayer.addTo(map) : map.removeLayer(osmBuildingLayer);
+      renderCachedOsmData();
+      scheduleBuildingLoad();
+    });
+    document.getElementById('retryOsm').addEventListener('click', () => {
+      const failed = state.osm.failed;
+      state.osm.failed = null;
+      if (failed === 'base') requestOsm('base', DEAD_SEA_BOUNDS);
+      else if (failed === 'buildings') {
+        showOsmReady();
+        scheduleBuildingLoad();
+      }
+    });
+
+    renderZoneList();
+    renderDetails();
+    drawRiskZones();
+    map.on('moveend', scheduleBuildingLoad);
+    requestOsm('base', DEAD_SEA_BOUNDS);
+  </script>
+</body>
+</html>

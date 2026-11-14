@@ -1,5 +1,7 @@
 # Project Hail Miriam
 
+<img width="1914" height="910" alt="image" src="https://github.com/user-attachments/assets/345bf72f-3197-4e51-9fde-a9dd69b3d126" />
+
 An interactive web experience for exploring how Earth's surface changes over time, using NASA-ISRO Synthetic Aperture Radar (NISAR) observations.
 
 This repository is the starting point for Team Project Hail Miriam's 2026 NASA Space Apps Challenge project. The team describes itself as a multidisciplinary group of builders, data enthusiasts, and storytellers. Its stated goal is to make NISAR radar remote sensing accessible through an interactive experience that tracks surface changes and explores the natural and human forces behind them.
@@ -41,7 +43,13 @@ NASA notes that it does not endorse non-U.S. Government entities or take respons
 
 ## Project status
 
-Project implementation, study area, datasets, and technical decisions are to be documented here as the team develops them.
+See [Dashboard](./DASHBOARD.md) for the purpose, current implementation, limitations, and development plan.
+
+### Dashboard prototype
+
+Serve `index.html` from a local HTTP server and open it in a browser. The map uses OpenStreetMap tiles; the risk zones and measurements are illustrative, not NISAR observations or operational warnings.
+
+The dashboard requests roads and pumping stations for the Dead Sea study area once per page load. Residential building footprints are requested only when zoomed in, and previously requested areas are cached in memory until the page is reloaded. If the Overpass service fails or times out, use the displayed Retry button; map tiles and illustrative zones remain available. Internet access is required for Leaflet, map tiles, and OpenStreetMap features.
 
 ## Sources
 
