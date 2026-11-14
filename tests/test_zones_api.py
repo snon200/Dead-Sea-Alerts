@@ -5,6 +5,10 @@ import unittest
 from http.server import HTTPServer
 from pathlib import Path
 from unittest.mock import patch
+from tempfile import TemporaryDirectory
+import os
+
+from src.zone_service import ZoneCalculationUnavailable
 
 from api.v1.zones import handler
 
@@ -31,11 +35,31 @@ class ZonesApiTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_unimplemented_calculations_report_unavailable(self):
-        status, content_type, payload = self.request()
+    def test_missing_deployed_export_reports_unavailable(self):
+        with patch("api.v1.zones.get_zones", side_effect=ZoneCalculationUnavailable("not deployed")):
+            status, content_type, payload = self.request()
         self.assertEqual(status, 503)
         self.assertEqual(content_type, "application/json; charset=utf-8")
         self.assertEqual(payload["error"]["code"], "calculations_unavailable")
+
+    def test_real_service_reads_precomputed_zones_through_handler(self):
+        spec = json.loads((Path(__file__).resolve().parents[1] / "openapi.json").read_text(encoding="utf-8"))
+        example = spec["paths"]["/api/v1/zones"]["get"]["responses"]["200"]["content"]["application/json"]["example"]
+        with TemporaryDirectory() as folder:
+            cache = Path(folder) / "zones.json"
+            cache.write_text(json.dumps({"schema_version": "1.0", "zones": example["zones"]}), encoding="utf-8")
+            with patch.dict(os.environ, {"NISAR_ZONES_FILE": str(cache)}):
+                status, _, payload = self.request()
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, example)
+        # Optional full response-schema validation (development dependency only).
+        try:
+            from openapi_schema_validator import OAS30Validator
+            from jsonschema import RefResolver
+        except ImportError:
+            return
+        response_schema = spec["paths"]["/api/v1/zones"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+        OAS30Validator(response_schema, resolver=RefResolver.from_schema(spec)).validate(payload)
 
     def test_returns_calculated_zones_in_documented_envelope(self):
         spec = json.loads((Path(__file__).resolve().parents[1] / "openapi.json").read_text(encoding="utf-8"))
