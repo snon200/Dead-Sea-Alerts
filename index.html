@@ -1,794 +1,694 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Hail Miriam | NISAR Macro-Subsidence & Infrastructure Risk Monitor</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>Project Hail Miriam | Dead Sea Risk Monitor</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="preconnect" href="https://overpass-api.de">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: #090d16;
-      color: #f1f5f9;
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      --page: #f3f6fa;
+      --panel: #ffffff;
+      --panel-raised: #f7f9fc;
+      --border: #e3e9f1;
+      --muted: #718096;
+      --text: #172338;
+      --accent: #1182a8;
+      --red: #fb6473;
+      --orange: #f9a24b;
+      --yellow: #e9c85d;
+      --green: #53c99a;
     }
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { background: var(--page); color: var(--text); overflow: hidden; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .app { display: flex; flex-direction: column; min-width: 320px; width: 100%; height: 100dvh; }
+    .topbar {
+      min-height: 66px; display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: #fff;
+      z-index: 700;
     }
-    .leaflet-container {
-      background: #060911;
-      font-family: 'Inter', sans-serif;
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #b7dce8;
+      border-radius: 12px; background: #eaf6fa; color: #126782; font-weight: 800; font-size: 13px;
+      letter-spacing: -.06em; flex: 0 0 auto;
     }
-    .leaflet-popup-content-wrapper {
-      background: #0f172a;
-      color: #f8fafc;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      border-radius: 10px;
+    .brand-name { font-size: 13px; font-weight: 750; letter-spacing: .075em; }
+    .brand-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .top-button, .icon-button, .refresh-button {
+      border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 8px 10px;
+      cursor: pointer; transition: background .15s, border-color .15s;
     }
-    .leaflet-popup-tip {
-      background: #0f172a;
+    .top-button:hover, .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
+    .top-button { color: #34445a; font-size: 12px; }
+    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
+    .demo-badge {
+      padding: 6px 9px; border: 1px solid #ead8aa; border-radius: 999px;
+      background: #fff8e9; color: #8a6417; font-size: 10px; font-weight: 750;
+      letter-spacing: .07em; white-space: nowrap;
     }
-    input[type="range"].pass-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      background: #1e293b;
-      height: 6px;
-      border-radius: 999px;
-      cursor: pointer;
+
+    .workspace {
+      --left-width: 286px;
+      --right-width: 350px;
+      flex: 1; min-height: 0; display: grid;
+      grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+      transition: grid-template-columns .22s ease;
     }
-    input[type="range"].pass-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      height: 18px;
-      width: 18px;
-      border-radius: 50%;
-      background: #38bdf8;
-      border: 2px solid #ffffff;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+    .workspace.left-collapsed { --left-width: 0px; }
+    .workspace.right-collapsed { --right-width: 0px; }
+    .sidebar {
+      min-width: 0; min-height: 0; display: flex; flex-direction: column;
+      background: var(--panel); overflow: hidden;
     }
-    ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+    .left-sidebar { grid-column: 1; border-right: 1px solid var(--border); }
+    .right-sidebar { grid-column: 3; border-left: 1px solid var(--border); }
+    .sidebar.collapsed { display: none; }
+    .sidebar-scroll { overflow: auto; min-height: 0; padding: 16px; }
+    .sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    h1, h2, h3, p { margin: 0; }
+    .eyebrow { color: #718096; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .count { color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .compact-intro { margin: 7px 0 0; font-size: 10px; }
+    .building-hint { margin: 8px 0 0; font-size: 10px; }
+    .source-line { margin-top: 8px; }
+    .zone-list { display: flex; flex-direction: column; gap: 8px; }
+    .zone-card {
+      width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
+      border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
     }
-    ::-webkit-scrollbar-track {
-      background: #090d16;
+    .zone-card:hover { border-color: #b9c9d9; background: #f8fbfe; }
+    .zone-card.selected { border-color: color-mix(in srgb, var(--zone-color), #fff 42%); box-shadow: inset 3px 0 var(--zone-color); background: color-mix(in srgb, var(--zone-color), #fff 95%); }
+    .zone-card-top, .zone-card-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .zone-title { color: #1c2a3d; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .level-pill { flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--zone-color), transparent 58%);
+      border-radius: 999px; padding: 3px 6px; background: color-mix(in srgb, var(--zone-color), transparent 88%);
+      color: var(--zone-color); font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 10px; line-height: 1.5; }
+    .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
+      color: #66758a; font: 9px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .layer-section { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border); }
+    .layer-list { display: grid; gap: 8px; margin-top: 10px; }
+    .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 9px; color: #43536a; font-size: 11px; }
+    .layer-control input { accent-color: var(--accent); }
+    .swatch { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
+    .panel-note { margin-top: 16px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0;
+      padding: 10px; color: #78653b; font-size: 10px; line-height: 1.55; }
+    .panel-note strong { color: #77530d; }
+
+    .map-column { grid-column: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; background: #17212b; }
+    .map-toolbar {
+      position: absolute; z-index: 500; top: 12px; left: 12px; right: 12px; display: flex;
+      justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 3px;
+    .map-chip, .map-status {
+      border: 1px solid #dfe6ee; border-radius: 9px; background: rgb(255 255 255 / 94%);
+      box-shadow: 0 3px 14px rgb(0 0 0 / 23%); padding: 8px 10px; backdrop-filter: blur(8px);
+    }
+    .map-chip { margin-top: 70px; color: #24344a; font-size: 11px; font-weight: 700; }
+    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 9px; font-weight: 500; }
+    .map-status { max-width: 250px; color: #53637a; font-size: 10px; line-height: 1.45; pointer-events: auto; }
+    .map-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
+    .map-status[data-state="loading"] { color: #876622; }
+    .retry-osm { margin-top: 6px; border: 0; border-radius: 5px; background: #f5e5e7;
+      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 10px; }
+    #map { flex: 1; min-height: 0; width: 100%; z-index: 1; }
+    .map-legend {
+      position: absolute; z-index: 500; bottom: 34px; left: 12px; display: grid; gap: 6px;
+      max-width: 220px; border: 1px solid #dfe6ee; border-radius: 10px; background: rgb(255 255 255 / 94%);
+      padding: 9px 11px; box-shadow: 0 3px 14px rgb(25 42 61 / 12%); pointer-events: none;
+    }
+    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 10px; font-weight: 750; }
+    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 9px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--legend-color); }
+    .map-footer { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px;
+      border-top: 1px solid var(--border); background: #fff; color: var(--muted); font-size: 9px; }
+    .map-footer a, .source-link { color: #88d9ee; text-decoration: none; }
+    .map-footer a:hover, .source-link:hover { text-decoration: underline; }
+    .leaflet-container { background: #d7e1e8; font: 11px Inter, ui-sans-serif, sans-serif; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #1c2a3d; }
+    .leaflet-popup-content-wrapper { border: 1px solid #d7e0e9; }
+    .leaflet-tooltip { border: 1px solid #d7e0e9; background: #fff; color: #1c2a3d; }
+    .leaflet-control-zoom a { background: #fff !important; color: #24344a !important; border-color: #d7e0e9 !important; }
+    .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #a9ddff;
+      border-radius: 50%; background: #12324b; color: white; font-size: 13px; box-shadow: 0 1px 5px #0008; }
+    .poi-label { color: white; font-weight: 700; }
+
+    .detail-header { padding: 16px; border-bottom: 1px solid var(--border); }
+    .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 17px; line-height: 1.28; }
+    .detail-scroll { overflow: auto; min-height: 0; padding: 14px 16px 18px; }
+    .detail-description { color: #66758a; font-size: 11px; line-height: 1.6; }
+    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 10px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .metric { min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 10px; }
+    .metric-label { color: #718096; font-size: 9px; }
+    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric-unit { margin-left: 3px; color: #718096; font-size: 9px; font-weight: 500; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .data-table th, .data-table td { border-bottom: 1px solid #edf1f5; padding: 8px 3px; text-align: left; vertical-align: top; }
+    .data-table th { width: 48%; color: #718096; font-weight: 500; }
+    .data-table td { color: #34445a; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .chart-wrap { height: 96px; margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 7px; }
+    .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+    .detail-callout { margin-top: 12px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0; padding: 10px;
+      color: #78653b; font-size: 10px; line-height: 1.6; }
+    .detail-callout strong { color: #77530d; }
+    .method-card { border: 1px solid var(--border); border-radius: 9px; background: #f7f9fc; padding: 10px;
+      color: #66758a; font-size: 10px; line-height: 1.6; }
+    .method-details { margin-top: 16px; }
+    .method-details summary { color: #53637a; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .method-details .method-card { margin-top: 9px; }
+    .empty-state { padding: 16px 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .attribution { color: #c4d1e0; }
+
+    @media (max-width: 1100px) {
+      .workspace { --left-width: 250px; --right-width: 310px; }
+    }
+    @media (max-width: 850px) {
+      .workspace { position: relative; display: block; }
+      .map-column { position: absolute; inset: 0; }
+      .sidebar { position: absolute; top: 0; bottom: 0; z-index: 600; width: min(88vw, 350px); box-shadow: 0 0 30px #0008; }
+      .left-sidebar { left: 0; }
+      .right-sidebar { right: 0; }
+      .sidebar.collapsed { display: none; }
+      .topbar { min-height: 58px; padding: 8px 10px; }
+      .brand-mark { width: 34px; height: 34px; }
+      .brand-name { font-size: 11px; }
+      .brand-subtitle { display: none; }
+      .demo-badge { display: none; }
+      .top-button { padding: 7px; font-size: 10px; }
+      .map-toolbar { top: 10px; left: 10px; right: 10px; }
+      .map-status { max-width: 165px; }
+    }
+    @media (max-width: 420px) {
+      .brand { gap: 8px; }
+      .top-actions { gap: 5px; }
+      .top-button { max-width: 82px; line-height: 1.2; }
+      .map-chip { max-width: 145px; }
+      .map-legend { bottom: 30px; }
     }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100">
-
-  <!-- Clean Top Header -->
-  <header class="h-14 border-b border-slate-800 bg-slate-900/95 px-5 flex items-center justify-between shrink-0">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 font-bold mono text-sm">
-        SAR
-      </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-sm tracking-tight text-white">PROJECT HAIL MIRIAM</span>
-          <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
-            NISAR L-Band GUNW (80m Macro-Scale)
-          </span>
-        </div>
-        <p class="text-[11px] text-slate-400 hidden sm:block">
-          Dead Sea Regional Land Subsidence & Infrastructure Susceptibility System
-        </p>
-      </div>
-    </div>
-
-    <!-- Mission Telemetry Strip -->
-    <div class="hidden lg:flex items-center gap-6 text-xs">
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase">Product Layer</span>
-        <span class="mono font-semibold text-slate-200">NISAR L2 GUNW (Unwrapped Phase)</span>
-      </div>
-      <div class="h-6 w-px bg-slate-800"></div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase">Orbit Cycle</span>
-        <span class="mono font-semibold text-emerald-400">12-Day Repeat (Pass #8 Active)</span>
-      </div>
-      <div class="h-6 w-px bg-slate-800"></div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase">Macro Detection Scale</span>
-        <span class="mono font-semibold text-amber-300">200m – 1,200m Subsidence Bowls</span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button id="btnExportGeoJSON" class="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-        </svg>
-        <span>Export Risk GeoJSON</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Main 3-Column Focused Workspace -->
-  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
-
-    <!-- LEFT COLUMN (3 cols): Macro Susceptibility Zones & GIS Layers -->
-    <aside class="lg:col-span-3 border-r border-slate-800 bg-slate-900/60 flex flex-col overflow-y-auto p-4 gap-4">
-      
-      <!-- Regional Corridors List -->
-      <div>
-        <div class="flex items-center justify-between mb-1">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Macro Subsidence Zones (AOIs)</h2>
-          <span class="text-[11px] mono text-slate-400">5 Sectors</span>
-        </div>
-        <p class="text-xs text-slate-400 mb-3">
-          Select a regional subsidence bowl ($300\text{--}1,200\text{ m}$ scale) to inspect infrastructure exposure:
-        </p>
-        <div id="zoneList" class="flex flex-col gap-2">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Focused GIS Infrastructure Layers -->
-      <div class="border-t border-slate-800 pt-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">GIS & Geological Layers</h3>
-        <div class="space-y-2 text-xs">
-          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
-            <span class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-sm bg-rose-500/60 border border-rose-400"></span>
-              <span>NISAR Macro Subsidence Polygons</span>
-            </span>
-            <input type="checkbox" id="layerPolygons" checked class="accent-sky-400">
-          </label>
-
-          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
-            <span class="flex items-center gap-2">
-              <span class="w-3 h-0.5 bg-amber-400"></span>
-              <span>Route 90 Highway & DSW Conduits</span>
-            </span>
-            <input type="checkbox" id="layerInfra" checked class="accent-sky-400">
-          </label>
-
-          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
-            <span class="flex items-center gap-2">
-              <span class="w-3 h-0.5 border-b-2 border-dashed border-fuchsia-400"></span>
-              <span>Subsurface Salt Edge (Halite Limit)</span>
-            </span>
-            <input type="checkbox" id="layerSaltEdge" checked class="accent-sky-400">
-          </label>
-        </div>
-      </div>
-
-      <!-- Macro Concept Note -->
-      <div class="mt-auto p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-        <div class="font-semibold text-sky-300 mb-1">Why Macro-Scale Detection?</div>
-        Individual sinkholes ($5\text{--}20\text{ m}$) form inside broader **subsidence bowls ($200\text{--}1,000\text{ m}$)** caused by subsurface salt dissolution. NISAR’s $24\text{ cm}$ L-band radar maps these wide bowls every 12 days to flag high-risk corridors before collapse.
-      </div>
-    </aside>
-
-    <!-- CENTER COLUMN (5 cols): Interactive Map + 12-Day Timeline Bar -->
-    <section class="lg:col-span-5 flex flex-col bg-slate-950 relative overflow-hidden">
-      <!-- Map Container -->
-      <div id="mapContainer" class="flex-1 w-full relative">
-        <!-- Map Legend Overlay -->
-        <div class="absolute bottom-4 left-4 z-[400] bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 text-xs shadow-xl w-60">
-          <div class="font-bold text-slate-200 mb-2">GSI / NISAR Macro Alert Level</div>
-          <div class="space-y-1.5 text-[11px]">
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-rose-500 inline-block"></span>Critical Risk</span>
-              <span class="mono text-slate-400">&gt;100 mm/yr</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-orange-500 inline-block"></span>Accelerating</span>
-              <span class="mono text-slate-400">40–100 mm/yr</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span>Watch Zone</span>
-              <span class="mono text-slate-400">15–40 mm/yr</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span>Stable Corridor</span>
-              <span class="mono text-slate-400">&lt;10 mm/yr</span>
-            </div>
-          </div>
-          <div class="mt-2 pt-2 border-t border-slate-800 space-y-1 text-[10px] text-slate-400">
-            <div class="flex items-center gap-2">
-              <span class="w-4 h-0.5 bg-amber-400 inline-block"></span> Route 90 Highway Corridor
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-4 h-0.5 border-b-2 border-dashed border-fuchsia-400 inline-block"></span> Western Salt Layer Boundary
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom 12-Day NISAR Pass Timeline Scrubber -->
-      <div class="h-24 border-t border-slate-800 bg-slate-900/95 px-5 py-3 flex flex-col justify-between shrink-0">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <button id="btnPlayPasses" class="px-3 py-1 rounded-md bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition">
-              ▶ Play 12-Day Passes
-            </button>
-            <span class="text-xs font-medium text-slate-300">NISAR Acquisition Timeline (2026 Observation Window)</span>
-          </div>
-          <span id="passDateBadge" class="text-xs mono font-semibold text-sky-300 bg-sky-500/10 px-2.5 py-0.5 rounded border border-sky-500/20">
-            Pass 8/8 • Sep 09, 2026
-          </span>
-        </div>
-
-        <input type="range" id="passSlider" min="0" max="7" step="1" value="7" class="pass-slider w-full">
-
-        <div class="grid grid-cols-8 text-[10px] mono text-slate-400 text-center">
-          <span>Jun 17</span>
-          <span>Jun 29</span>
-          <span>Jul 11</span>
-          <span>Jul 23</span>
-          <span>Aug 04</span>
-          <span>Aug 16</span>
-          <span>Aug 28</span>
-          <span class="text-sky-300 font-bold">Sep 09</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT COLUMN (4 cols): Focused Macro Zone Telemetry & Chart -->
-    <section class="lg:col-span-4 border-l border-slate-800 bg-slate-900/60 flex flex-col overflow-y-auto p-4 gap-4">
-      
-      <!-- Selected Zone Header & Alert Pill -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400 block">Selected Macro Sector</span>
-            <h2 id="detailTitle" class="text-base font-bold text-white">Ein Gedi & Route 90 Bypass Corridor</h2>
-          </div>
-          <span id="detailAlertBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
-            CRITICAL RISK
-          </span>
-        </div>
-        <p id="detailSummary" class="text-xs text-slate-300 leading-relaxed">
-          Elongated macro-subsidence bowl (850m x 350m) obliquely intersecting Route 90. Driven by rapid halite dissolution along concealed fault lineaments.
-        </p>
-
-        <!-- 3 Focused Macro KPIs -->
-        <div class="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-800">
-          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
-            <span class="text-[10px] text-slate-400 uppercase block">LOS Velocity</span>
-            <span id="kpiVelocity" class="text-sm font-extrabold text-rose-400 mono">-159 mm/yr</span>
-          </div>
-          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
-            <span class="text-[10px] text-slate-400 uppercase block">Bowl Footprint</span>
-            <span id="kpiFootprint" class="text-sm font-extrabold text-white mono">850 × 350 m</span>
-          </div>
-          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
-            <span class="text-[10px] text-slate-400 uppercase block">L-Band Coherence</span>
-            <span id="kpiCoherence" class="text-sm font-extrabold text-emerald-400 mono">0.89 (High)</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cumulative Regional Displacement Chart -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Macro Bowl Subsidence Time-Series</h3>
-            <p class="text-[11px] text-slate-400">Cumulative LOS Displacement (mm) vs. Stable Reference</p>
-          </div>
-          <span id="kpiCumPass" class="text-xs mono font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-            -36.6 mm (84d)
-          </span>
-        </div>
-        <div class="h-48 w-full mt-1">
-          <canvas id="macroChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Infrastructure Exposure & Decision Support -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col justify-between gap-3">
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">SAR</div>
         <div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2.5">Infrastructure Exposure & Mitigation</h3>
-          
-          <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
-            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-              <span class="text-slate-400 block text-[11px]">Threatened Asset</span>
-              <span id="detailAsset" class="font-semibold text-amber-300">Route 90 Highway (KM 234)</span>
-            </div>
-            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-              <span class="text-slate-400 block text-[11px]">Sediment / Salt Depth</span>
-              <span id="detailGeology" class="font-semibold text-slate-200">Alluvial Fan • 22m Depth</span>
-            </div>
-          </div>
-
-          <div class="text-xs font-semibold text-slate-300 mb-1.5">Recommended Planning Actions:</div>
-          <ul id="detailActions" class="space-y-1.5 text-xs text-slate-300">
-            <!-- Populated by JS -->
-          </ul>
+          <div class="brand-name">PROJECT HAIL MIRIAM</div>
+          <p class="brand-subtitle">Dead Sea subsidence & infrastructure risk monitor</p>
         </div>
-
-        <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Reference: Nof et al. (GSI) & NISAR L2 GUNW Spec</span>
-          <span class="mono text-sky-400">EPSG:4326</span>
-        </div>
+        <span class="demo-badge" aria-label="Illustrative data; not live NISAR measurements">ILLUSTRATIVE · NOT LIVE</span>
       </div>
+      <nav class="top-actions" aria-label="Dashboard controls">
+        <button class="top-button" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true">Hide risks</button>
+        <button class="top-button" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true">Hide details</button>
+      </nav>
+    </header>
 
-    </section>
-  </main>
+    <main class="workspace">
+      <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
+        <div class="sidebar-scroll">
+          <div class="sidebar-heading">
+            <h1 class="eyebrow">Risk zones</h1>
+            <span class="count" id="zoneCount"></span>
+          </div>
+          <p class="intro">Select a zone to view its location and risk indicators.</p>
+          <div class="zone-list" id="zoneList"></div>
+          <section class="layer-section" aria-labelledby="osmLayersHeading">
+            <h2 class="eyebrow" id="osmLayersHeading">Map layers</h2>
+            <p class="intro compact-intro">OpenStreetMap features, cached while this page is open.</p>
+            <div class="layer-list">
+              <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads</span><input id="toggleRoads" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#67c9f2"></i>Pumping stations</span><input id="togglePumps" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#b4a1ef"></i>Houses & buildings</span><input id="toggleBuildings" type="checkbox" checked></label>
+            </div>
+            <p class="intro building-hint" id="buildingHint">Zoom in to load building footprints.</p>
+          </section>
+        </div>
+      </aside>
 
+      <section class="map-column" aria-label="Map of Dead Sea risk zones">
+        <div class="map-toolbar">
+          <div class="map-chip">Dead Sea study area<small>OpenStreetMap · pan or zoom to explore</small></div>
+          <div class="map-status" id="osmStatus" role="status" aria-live="polite" data-state="loading">
+            <span id="osmStatusText">Connecting to OpenStreetMap features…</span>
+            <button type="button" class="retry-osm" id="retryOsm" hidden>Retry</button>
+          </div>
+        </div>
+        <div id="map" aria-label="Interactive map"></div>
+        <div class="map-legend" aria-label="Mock risk-level legend">
+          <div class="legend-title">Risk level</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--red)"></i>High</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--yellow)"></i>Watch</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--green)"></i>Low</div>
+        </div>
+        <footer class="map-footer">
+          <span>Illustrative zones · not live monitoring</span>
+          <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></span>
+        </footer>
+      </section>
+
+      <aside class="sidebar right-sidebar" id="detailSidebar" aria-label="Selected risk-zone details">
+        <div class="detail-header" id="detailHeader"></div>
+        <div class="detail-scroll" id="detailContent" aria-live="polite"></div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Macro-Scale Subsidence Corridors grounded in Geological Survey of Israel (GSI) case studies (Nof et al., 2019)
-    const MACRO_ZONES = [
+    'use strict';
+
+    const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
+    const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a' };
+
+    // All values below are synthetic UI fixtures; they are not derived from NISAR.
+    const RISK_ZONES = [
       {
-        id: 'ein-gedi-corridor',
-        name: 'Ein Gedi & Route 90 Corridor',
-        alertLevel: 'CRITICAL RISK',
-        alertColor: '#ef4444',
-        badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
-        velocityMmYr: -159,
-        footprint: '850 × 350 m',
-        coherence: '0.89 (High)',
-        asset: 'Route 90 Highway & Bypass',
-        geology: 'Alluvial Fan • Salt at 22m',
-        center: [31.412, 35.388],
-        // Polygon coordinates representing a ~850m macro subsidence trough crossing Route 90
-        polygon: [
-          [31.416, 35.385],
-          [31.417, 35.390],
-          [31.409, 35.393],
-          [31.407, 35.388]
-        ],
-        summary: 'Elongated macro-subsidence trough (850m × 350m) crossing Route 90 obliquely from NNW to SSE. NISAR L-band maintains high coherence over adjacent date orchards, detecting accelerated precursory sinking along the western salt margin.',
-        actions: [
-          'Enforce traffic diversion to the western Route 90 bypass corridor outside the active InSAR bowl.',
-          'Inspect geosynthetic road reinforcement sheets for perimeter tensile cracking.',
-          'Flag 150m buffer around the active GUNW polygon as No-Build Statutory Red Zone.'
-        ],
-        series: [0, -5.2, -10.8, -15.9, -21.4, -26.8, -31.7, -36.6],
-        baseline: [0, -0.6, -1.1, -1.7, -2.2, -2.8, -3.3, -3.9]
+        id: 'ein-gedi', name: 'Ein Gedi · Route 90', level: 'high', label: 'High',
+        polygon: [[31.424,35.365],[31.438,35.381],[31.424,35.397],[31.410,35.382]],
+        summary: 'Subsidence zone near the Ein Gedi section of Route 90.',
+        asset: 'Route 90', losRate: -42.6, cumulative: -18.4, acceleration: -3.2,
+        coherence: 0.81, nearestAsset: 185, footprint: 1.08, observations: 6,
+        series: [0,-1.7,-4.0,-6.8,-10.0,-13.7,-18.4]
       },
       {
-        id: 'zeelim-dsw-south',
-        name: 'Ze’elim Fan South (DSW P88 Corridor)',
-        alertLevel: 'ACCELERATING',
-        alertColor: '#f97316',
-        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
-        velocityMmYr: -78,
-        footprint: '1,100 × 480 m',
-        coherence: '0.92 (High)',
-        asset: 'DSW Brine Conduits & P88 Station',
-        geology: 'Mudflat / Gravel Transition • 30m',
-        center: [31.298, 35.372],
-        polygon: [
-          [31.304, 35.368],
-          [31.305, 35.377],
-          [31.293, 35.378],
-          [31.292, 35.369]
-        ],
-        summary: 'Wide regional subsidence zone (>1 km length) across the southern Ze’elim alluvial fan and mudflat boundary. Active ground deformation directly intersects proposed southern pipeline alignments for Dead Sea Works (DSW).',
-        actions: [
-          'Disqualify southern alternative sites for new DSW pumping infrastructure due to active macro-subsidence.',
-          'Relocate water conduit corridors northward into the verified stable gravel fan sector (Site P9 North).',
-          'Monitor post-flash-flood dissolution spikes using 12-day NISARGUNW interferograms.'
-        ],
-        series: [0, -2.5, -5.1, -7.8, -10.4, -13.1, -15.6, -18.0],
-        baseline: [0, -0.4, -0.8, -1.2, -1.5, -1.9, -2.3, -2.7]
+        id: 'mineral-beach', name: 'Mineral Beach · North coast', level: 'elevated', label: 'Elevated',
+        polygon: [[31.704,35.438],[31.718,35.452],[31.706,35.471],[31.691,35.456]],
+        summary: 'Zone near the northern Dead Sea shoreline and access roads.',
+        asset: 'Access road', losRate: -26.8, cumulative: -11.2, acceleration: -1.4,
+        coherence: 0.73, nearestAsset: 420, footprint: 0.74, observations: 6,
+        series: [0,-0.8,-2.0,-3.7,-5.7,-8.2,-11.2]
       },
       {
-        id: 'mineral-beach-shalem',
-        name: 'Mineral Beach & Access Road Zone',
-        alertLevel: 'CRITICAL RISK',
-        alertColor: '#ef4444',
-        badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
-        velocityMmYr: -112,
-        footprint: '620 × 290 m',
-        coherence: '0.86 (High)',
-        asset: 'Mineral Beach Access Road & Parking',
-        geology: 'Alluvial / Lacustrine • Salt at 25m',
-        center: [31.556, 35.401],
-        polygon: [
-          [31.560, 35.398],
-          [31.561, 35.404],
-          [31.552, 35.405],
-          [31.551, 35.399]
-        ],
-        summary: 'Progressive northward-migrating subsidence lineament separating Route 90 from the Mineral Beach resort complex. Precursory macro-bowl sinking preceded parking lot and access road collapse.',
-        actions: [
-          'Maintain full closure of the eastern access road and resort perimeter within the red InSAR polygon.',
-          'Combine NISAR L-band macro-polygons with borehole/nanoseismic monitoring near vegetated structures.',
-          'Update Megillot Regional Council statutory susceptibility map from fixed radius to InSAR contour.'
-        ],
-        series: [0, -3.7, -7.4, -11.1, -14.8, -18.5, -22.1, -25.8],
-        baseline: [0, -0.5, -0.9, -1.4, -1.8, -2.3, -2.7, -3.1]
+        id: 'zeelim-south', name: 'Ze’elim · Southern fan', level: 'watch', label: 'Watch',
+        polygon: [[31.232,35.350],[31.248,35.364],[31.237,35.382],[31.220,35.368]],
+        summary: 'Zone on the southern alluvial-fan margin.',
+        asset: 'Utility corridor', losRate: -16.3, cumulative: -6.9, acceleration: -0.5,
+        coherence: 0.68, nearestAsset: 860, footprint: 0.62, observations: 6,
+        series: [0,-0.4,-1.1,-2.0,-3.2,-4.8,-6.9]
       },
       {
-        id: 'hever-south-fan',
-        name: 'Nahal Hever South Alluvial Fan',
-        alertLevel: 'WATCH ZONE',
-        alertColor: '#eab308',
-        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-        velocityMmYr: -43,
-        footprint: '540 × 310 m',
-        coherence: '0.94 (Very High)',
-        asset: 'Power Lines & Regional Service Roads',
-        geology: 'Coarse Fluvial Gravel • Salt at 19m',
-        center: [31.365, 35.377],
-        polygon: [
-          [31.369, 35.374],
-          [31.370, 35.381],
-          [31.361, 35.381],
-          [31.360, 35.374]
-        ],
-        summary: 'Thick, stiff alluvial fan overburden delays immediate surface collapse while subsurface salt cavities expand over multi-year periods, creating a clean 500m-wide precursory subsidence bowl.',
-        actions: [
-          'Maintain Yellow Watch Alert; restrict heavy machinery and utility pole installation inside bowl.',
-          'Track consecutive 12-day NISAR passes for non-linear velocity acceleration (trigger for Orange Alert).'
-        ],
-        series: [0, -1.4, -2.9, -4.3, -5.8, -7.2, -8.6, -10.0],
-        baseline: [0, -0.3, -0.5, -0.8, -1.1, -1.3, -1.6, -1.8]
-      },
-      {
-        id: 'zeelim-p9-north-stable',
-        name: 'Ze’elim North (DSW P9 Approved Site)',
-        alertLevel: 'STABLE CORRIDOR',
-        alertColor: '#10b981',
-        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-        velocityMmYr: -4,
-        footprint: '700 × 400 m',
-        coherence: '0.95 (Very High)',
-        asset: 'DSW P9 Pumping Station & Conduit',
-        geology: 'Consolidated Gravel Fan • Stable',
-        center: [31.324, 35.374],
-        polygon: [
-          [31.328, 35.370],
-          [31.329, 35.379],
-          [31.320, 35.379],
-          [31.319, 35.370]
-        ],
-        summary: 'Verified stable corridor selected by the Geological Survey of Israel for the P9 pumping station construction. InSAR time-series confirms absence of regional dissolution subsidence along the pipeline track.',
-        actions: [
-          'Cleared for critical DSW pumping station (P9) and water conduit operation.',
-          'Continue routine automated 12-day NISAR background verification.'
-        ],
-        series: [0, -0.1, -0.3, -0.4, -0.5, -0.7, -0.8, -0.9],
-        baseline: [0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7]
+        id: 'south-basin', name: 'Southern basin · Reference', level: 'low', label: 'Low',
+        polygon: [[31.075,35.365],[31.090,35.381],[31.077,35.396],[31.061,35.381]],
+        summary: 'Low-change reference area for comparing observations.',
+        asset: 'No assigned asset', losRate: -3.1, cumulative: -1.3, acceleration: 0.1,
+        coherence: 0.77, nearestAsset: null, footprint: 0.49, observations: 6,
+        series: [0,-0.2,-0.4,-0.6,-0.8,-1.0,-1.3]
       }
     ];
 
-    const PASS_DATES = [
-      'Jun 17, 2026',
-      'Jun 29, 2026',
-      'Jul 11, 2026',
-      'Jul 23, 2026',
-      'Aug 04, 2026',
-      'Aug 16, 2026',
-      'Aug 28, 2026',
-      'Sep 09, 2026'
-    ];
-
-    let state = {
-      selectedId: 'ein-gedi-corridor',
-      passIndex: 7,
-      playing: false,
-      timer: null,
-      showPolygons: true,
-      showInfra: true,
-      showSaltEdge: true
+    const state = {
+      selectedId: RISK_ZONES[0].id,
+      show: { roads: true, pumps: true, buildings: true },
+      sidebar: { left: true, right: true },
+      osm: { timer: null, request: null, lastRequestAt: 0, base: null, buildings: [], failed: null }
     };
 
-    let map, polygonGroup, infraGroup, saltGroup, chartInstance;
+    const studyBounds = L.latLngBounds(
+      [DEAD_SEA_BOUNDS.south, DEAD_SEA_BOUNDS.west],
+      [DEAD_SEA_BOUNDS.north, DEAD_SEA_BOUNDS.east]
+    );
+    const map = L.map('map', {
+      zoomControl: true,
+      preferCanvas: true,
+      maxBounds: studyBounds,
+      maxBoundsViscosity: 1
+    });
 
-    function getActiveZone() {
-      return MACRO_ZONES.find(z => z.id === state.selectedId) || MACRO_ZONES[0];
+    function constrainStudyArea() {
+      const minimumZoom = Math.max(0, map.getBoundsZoom(studyBounds) - 1);
+      map.setMinZoom(minimumZoom);
+      if (map.getZoom() < minimumZoom) map.setZoom(minimumZoom, { animate: false });
+      map.panInsideBounds(studyBounds, { animate: false });
     }
 
-    function initMap() {
-      map = L.map('mapContainer', {
-        center: [31.410, 35.390],
-        zoom: 11,
-        zoomControl: true
-      });
+    map.setView([31.40, 35.42], 9);
+    constrainStudyArea();
+    map.fitBounds(studyBounds, { animate: false });
+    map.on('resize', constrainStudyArea);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
+      crossOrigin: true
+    }).addTo(map);
 
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Project Hail Miriam (NISAR Macro Demo)',
-        maxZoom: 17
-      }).addTo(map);
+    const riskLayer = L.featureGroup().addTo(map);
+    const osmRoadLayer = L.layerGroup().addTo(map);
+    const osmPumpLayer = L.layerGroup().addTo(map);
+    const osmBuildingLayer = L.layerGroup().addTo(map);
 
-      polygonGroup = L.layerGroup().addTo(map);
-      infraGroup = L.layerGroup().addTo(map);
-      saltGroup = L.layerGroup().addTo(map);
-
-      drawStaticLayers();
-      drawMacroPolygons();
+    function selectedZone() {
+      return RISK_ZONES.find(zone => zone.id === state.selectedId) || RISK_ZONES[0];
     }
 
-    function drawStaticLayers() {
-      infraGroup.clearLayers();
-      saltGroup.clearLayers();
-
-      if (state.showInfra) {
-        // Route 90 Highway Corridor
-        const route90 = [
-          [31.600, 35.408],
-          [31.556, 35.399],
-          [31.480, 35.392],
-          [31.412, 35.388],
-          [31.365, 35.375],
-          [31.324, 35.368],
-          [31.280, 35.363]
-        ];
-        L.polyline(route90, {
-          color: '#fbbf24',
-          weight: 3.5,
-          opacity: 0.9
-        }).bindTooltip('Route 90 National Highway Corridor', { sticky: true }).addTo(infraGroup);
-      }
-
-      if (state.showSaltEdge) {
-        // Western edge of subsurface Holocene salt layer (controls sinkhole susceptibility)
-        const saltEdge = [
-          [31.595, 35.395],
-          [31.555, 35.394],
-          [31.412, 35.383],
-          [31.365, 35.370],
-          [31.295, 35.364]
-        ];
-        L.polyline(saltEdge, {
-          color: '#e879f9',
-          weight: 2.5,
-          dashArray: '6, 6',
-          opacity: 0.85
-        }).bindTooltip('Western Subsurface Salt (Halite) Pinch-Out Boundary', { sticky: true }).addTo(saltGroup);
-      }
+    function polygonBounds(polygon) {
+      const lats = polygon.map(point => point[0]);
+      const lons = polygon.map(point => point[1]);
+      return {
+        south: Math.min(...lats), north: Math.max(...lats),
+        west: Math.min(...lons), east: Math.max(...lons)
+      };
     }
 
-    function drawMacroPolygons() {
-      polygonGroup.clearLayers();
-      if (!state.showPolygons) return;
-
-      const passScale = 0.55 + 0.45 * ((state.passIndex + 1) / 8);
-
-      MACRO_ZONES.forEach(zone => {
-        const isSelected = zone.id === state.selectedId;
-
-        // Draw macro regional polygon
-        const poly = L.polygon(zone.polygon, {
-          color: zone.alertColor,
-          weight: isSelected ? 3 : 1.8,
-          fillColor: zone.alertColor,
-          fillOpacity: isSelected ? 0.42 * passScale : 0.25 * passScale
-        }).addTo(polygonGroup);
-
-        // Inner core bowl contour
-        L.circle(zone.center, {
-          radius: 140 * passScale,
-          color: zone.alertColor,
-          weight: 1.5,
-          dashArray: '3, 3',
-          fillColor: zone.alertColor,
-          fillOpacity: 0.35
-        }).addTo(polygonGroup);
-
-        const cumVal = zone.series[state.passIndex].toFixed(1);
-        poly.bindTooltip(`
-          <div class="text-xs">
-            <div class="font-bold text-white">${zone.name}</div>
-            <div class="text-slate-300">Footprint: <strong>${zone.footprint}</strong></div>
-            <div class="text-sky-300">Rate: <strong>${zone.velocityMmYr} mm/yr</strong> | Pass #${state.passIndex + 1}: <strong>${cumVal} mm</strong></div>
-          </div>
-        `, { sticky: true });
-
-        poly.on('click', () => {
-          selectZone(zone.id, true);
-        });
-      });
+    function coordRange(zone) {
+      const b = polygonBounds(zone.polygon);
+      return `Lat ${b.south.toFixed(4)}–${b.north.toFixed(4)} · Lon ${b.west.toFixed(4)}–${b.east.toFixed(4)}`;
     }
 
     function renderZoneList() {
-      const container = document.getElementById('zoneList');
-      container.innerHTML = MACRO_ZONES.map(zone => {
-        const active = zone.id === state.selectedId;
-        return `
-          <button data-id="${zone.id}" class="zone-btn w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 ${
-            active
-              ? 'bg-slate-800/90 border-sky-400 shadow-md shadow-sky-500/10'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-          }">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-bold text-white truncate">${zone.name}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full border font-bold shrink-0 ${zone.badgeClass}">
-                ${zone.alertLevel}
-              </span>
-            </div>
-            <div class="flex items-center justify-between text-[11px] text-slate-400">
-              <span>Scale: ${zone.footprint}</span>
-              <span class="mono font-semibold text-slate-200">${zone.velocityMmYr} mm/yr</span>
-            </div>
-          </button>
-        `;
-      }).join('');
-
-      container.querySelectorAll('.zone-btn').forEach(btn => {
-        btn.addEventListener('click', () => selectZone(btn.getAttribute('data-id'), true));
-      });
-    }
-
-    function updateChart() {
-      const zone = getActiveZone();
-      const labels = ['Jun 17', 'Jun 29', 'Jul 11', 'Jul 23', 'Aug 04', 'Aug 16', 'Aug 28', 'Sep 09'];
-      const radii = zone.series.map((_, idx) => idx === state.passIndex ? 6 : 3.5);
-
-      if (!chartInstance) {
-        const ctx = document.getElementById('macroChart').getContext('2d');
-        chartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: 'Macro Subsidence Bowl (LOS mm)',
-                data: zone.series,
-                borderColor: zone.alertColor,
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                borderWidth: 2.5,
-                fill: true,
-                tension: 0.25,
-                pointRadius: radii
-              },
-              {
-                label: 'Stable Reference Margin',
-                data: zone.baseline,
-                borderColor: '#64748b',
-                borderDash: [4, 4],
-                borderWidth: 1.5,
-                fill: false,
-                pointRadius: 2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: { color: '#cbd5e1', font: { family: 'Inter', size: 11 } }
-              }
-            },
-            scales: {
-              x: {
-                ticks: { color: '#94a3b8', font: { size: 10 } },
-                grid: { color: 'rgba(148, 163, 184, 0.08)' }
-              },
-              y: {
-                ticks: { color: '#94a3b8', font: { size: 10 } },
-                grid: { color: 'rgba(148, 163, 184, 0.08)' }
-              }
-            }
-          }
-        });
-      } else {
-        chartInstance.data.datasets[0].data = zone.series;
-        chartInstance.data.datasets[0].borderColor = zone.alertColor;
-        chartInstance.data.datasets[0].pointRadius = radii;
-        chartInstance.data.datasets[1].data = zone.baseline;
-        chartInstance.update();
-      }
-    }
-
-    function syncUI() {
-      const zone = getActiveZone();
-
-      document.getElementById('detailTitle').textContent = zone.name;
-      const badge = document.getElementById('detailAlertBadge');
-      badge.textContent = zone.alertLevel;
-      badge.className = `px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${zone.badgeClass}`;
-
-      document.getElementById('detailSummary').textContent = zone.summary;
-      document.getElementById('kpiVelocity').textContent = `${zone.velocityMmYr} mm/yr`;
-      document.getElementById('kpiFootprint').textContent = zone.footprint;
-      document.getElementById('kpiCoherence').textContent = zone.coherence;
-      document.getElementById('kpiCumPass').textContent = `${zone.series[state.passIndex].toFixed(1)} mm (Pass #${state.passIndex + 1})`;
-
-      document.getElementById('detailAsset').textContent = zone.asset;
-      document.getElementById('detailGeology').textContent = zone.geology;
-
-      document.getElementById('detailActions').innerHTML = zone.actions.map(act => `
-        <li class="flex items-start gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800/80">
-          <span class="text-sky-400 font-bold">•</span>
-          <span>${act}</span>
-        </li>
+      document.getElementById('zoneCount').textContent = `${RISK_ZONES.length} zones`;
+      document.getElementById('zoneList').innerHTML = RISK_ZONES.map(zone => `
+        <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
+          style="--zone-color:${COLORS[zone.level]}" data-zone-id="${zone.id}" aria-pressed="${zone.id === state.selectedId}">
+          <span class="zone-card-top">
+            <span class="zone-title">${zone.name}</span>
+            <span class="level-pill">${zone.label}</span>
+          </span>
+          <span class="zone-card-meta"><span>LOS ${zone.losRate} mm/yr</span><span>${zone.footprint.toFixed(2)} km²</span></span>
+          <span class="zone-coords">${coordRange(zone)}</span>
+        </button>
       `).join('');
-
-      document.getElementById('passDateBadge').textContent = `Pass ${state.passIndex + 1}/8 • ${PASS_DATES[state.passIndex]}`;
-      document.getElementById('passSlider').value = state.passIndex;
-
-      renderZoneList();
-      drawMacroPolygons();
-      updateChart();
-    }
-
-    function selectZone(id, fly = false) {
-      state.selectedId = id;
-      const zone = getActiveZone();
-      if (fly && map) {
-        map.flyTo(zone.center, 13, { duration: 0.8 });
-      }
-      syncUI();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      initMap();
-      syncUI();
-
-      document.getElementById('passSlider').addEventListener('input', e => {
-        state.passIndex = Number(e.target.value);
-        syncUI();
+      document.querySelectorAll('[data-zone-id]').forEach(button => {
+        button.addEventListener('click', () => selectZone(button.dataset.zoneId, true));
       });
+    }
 
-      document.getElementById('btnPlayPasses').addEventListener('click', e => {
-        const btn = e.currentTarget;
-        if (state.playing) {
-          clearInterval(state.timer);
-          state.playing = false;
-          btn.textContent = '▶ Play 12-Day Passes';
-        } else {
-          state.playing = true;
-          btn.textContent = '⏸ Pause Timeline';
-          state.timer = setInterval(() => {
-            state.passIndex = (state.passIndex + 1) % 8;
-            syncUI();
-          }, 1000);
+    function renderChart(zone) {
+      const width = 300, height = 88, pad = 12;
+      const min = Math.min(...zone.series, 0), max = Math.max(...zone.series, 0);
+      const span = (max - min) || 1;
+      const points = zone.series.map((value, index) => {
+        const x = pad + index * (width - pad * 2) / (zone.series.length - 1);
+        const y = pad + (max - value) * (height - pad * 2) / span;
+        return [x, y];
+      });
+      const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
+      const dots = points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"/>`).join('');
+      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Illustrative displacement series">
+        <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
+        <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">Earlier</text>
+        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">Latest</text>
+      </svg>`;
+    }
+
+    function renderDetails() {
+      const zone = selectedZone();
+      const header = document.getElementById('detailHeader');
+      header.innerHTML = `
+        <div class="detail-title-row">
+          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${zone.name}</h2></div>
+          <span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span>
+        </div>
+      `;
+      document.getElementById('detailContent').innerHTML = `
+        <p class="detail-description">${zone.summary}</p>
+        <div class="metric-grid">
+          <div class="metric"><div class="metric-label">LOS velocity</div><div class="metric-value">${zone.losRate}<span class="metric-unit">mm/yr</span></div></div>
+          <div class="metric"><div class="metric-label">Cumulative shift</div><div class="metric-value">${zone.cumulative}<span class="metric-unit">mm</span></div></div>
+          <div class="metric"><div class="metric-label">Trend</div><div class="metric-value">${zone.acceleration}<span class="metric-unit">mm/yr²</span></div></div>
+          <div class="metric"><div class="metric-label">Zone area</div><div class="metric-value">${zone.footprint.toFixed(2)}<span class="metric-unit">km²</span></div></div>
+        </div>
+        <h3 class="section-title">Measurement inputs</h3>
+        <table class="data-table"><tbody>
+          <tr><th>Coordinate range</th><td>${coordRange(zone)}</td></tr>
+          <tr><th>Coherence</th><td>${zone.coherence.toFixed(2)}</td></tr>
+          <tr><th>Observations</th><td>${zone.observations} epochs</td></tr>
+          <tr><th>Nearest asset</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
+          <tr><th>Asset context</th><td>${zone.asset}</td></tr>
+          <tr><th>Data source</th><td>Illustrative sample</td></tr>
+        </tbody></table>
+        <h3 class="section-title">Displacement trend</h3>
+        <div class="chart-wrap">${renderChart(zone)}</div>
+        <details class="method-details">
+          <summary>Data provenance &amp; method</summary>
+          <div class="method-card">The values and zone outlines shown here are illustrative, not NISAR observations or an operational hazard assessment. The cited study analyzes multi-year InSAR time series and refines them with LiDAR; its abstract describes precursory subsidence from days to about five years before collapse. Model features and thresholds require validation against the paper and measured data.
+            <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
+          </div>
+        </details>
+      `;
+    }
+
+    function drawRiskZones() {
+      riskLayer.clearLayers();
+      RISK_ZONES.forEach(zone => {
+        const selected = zone.id === state.selectedId;
+        const color = COLORS[zone.level];
+        L.polygon(zone.polygon, {
+          color, weight: selected ? 3 : 2,
+          opacity: selected ? 1 : .86,
+          fillColor: color,
+          fillOpacity: selected ? .29 : .17
+        }).bindTooltip(`${zone.name} · ${zone.label}`, { sticky: true })
+          .on('click', () => selectZone(zone.id, false))
+          .addTo(riskLayer);
+      });
+    }
+
+    function selectZone(id, panToZone) {
+      if (!RISK_ZONES.some(zone => zone.id === id)) return;
+      state.selectedId = id;
+      renderZoneList();
+      renderDetails();
+      drawRiskZones();
+      if (panToZone) {
+        const zone = selectedZone();
+        map.fitBounds(L.latLngBounds(zone.polygon), { padding: [70, 70], maxZoom: 12, animate: true });
+      }
+    }
+
+    function currentOverpassBounds() {
+      const b = map.getBounds();
+      return {
+        south: Math.max(b.getSouth(), DEAD_SEA_BOUNDS.south),
+        west: Math.max(b.getWest(), DEAD_SEA_BOUNDS.west),
+        north: Math.min(b.getNorth(), DEAD_SEA_BOUNDS.north),
+        east: Math.min(b.getEast(), DEAD_SEA_BOUNDS.east)
+      };
+    }
+
+    function setOsmStatus(message, status, retry = false) {
+      const element = document.getElementById('osmStatus');
+      document.getElementById('osmStatusText').textContent = message;
+      document.getElementById('retryOsm').hidden = !retry;
+      element.dataset.state = status;
+    }
+
+    function makeOverpassQuery(bounds, kind) {
+      const box = `${bounds.south.toFixed(5)},${bounds.west.toFixed(5)},${bounds.north.toFixed(5)},${bounds.east.toFixed(5)}`;
+      const selectors = kind === 'base' ? [
+        `way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service)$"](${box});`,
+        `node["man_made"="pumping_station"](${box});`,
+        `way["man_made"="pumping_station"](${box});`
+      ] : [
+        `way["building"~"^(house|residential|apartments|detached|semidetached_house)$"](${box});`
+      ];
+      return `[out:json][timeout:25];(${selectors.join('')});out geom;`;
+    }
+
+    function clearOsmLayers() {
+      osmRoadLayer.clearLayers();
+      osmPumpLayer.clearLayers();
+      osmBuildingLayer.clearLayers();
+    }
+
+    function renderOsmData(elements) {
+      clearOsmLayers();
+      let roads = 0, pumps = 0, buildings = 0;
+      elements.forEach(element => {
+        const tags = element.tags || {};
+        if (tags.highway && state.show.roads && element.geometry) {
+          const points = element.geometry.map(point => [point.lat, point.lon]);
+          L.polyline(points, {
+            color: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? '#f5b942' : '#f2d690',
+            weight: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? 3 : 1.8,
+            opacity: .9
+          }).bindTooltip(escapeHtml(tags.name || `${tags.highway} road`), { sticky: true }).addTo(osmRoadLayer);
+          roads++;
+          return;
+        }
+        if (tags.man_made === 'pumping_station' && state.show.pumps) {
+          const point = element.lat !== undefined ? [element.lat, element.lon]
+            : element.center ? [element.center.lat, element.center.lon]
+              : element.geometry && element.geometry.length ? [element.geometry[0].lat, element.geometry[0].lon] : null;
+          if (point) {
+            L.marker(point, { icon: L.divIcon({ className: '', html: '<span class="pump-marker" aria-label="Pumping station">P</span>', iconSize: [24,24], iconAnchor: [12,12] }) })
+              .bindPopup(`<strong>${escapeHtml(tags.name || 'Mapped pumping station')}</strong><br><span>OpenStreetMap feature</span>`)
+              .addTo(osmPumpLayer);
+            pumps++;
+          }
+          return;
+        }
+        if (tags.building && state.show.buildings && element.geometry) {
+          L.polygon(element.geometry.map(point => [point.lat, point.lon]), {
+            color: '#b4a1ef', weight: 1, fillColor: '#b4a1ef', fillOpacity: .3
+          }).bindTooltip(escapeHtml(tags.name || `Building: ${tags.building}`), { sticky: true }).addTo(osmBuildingLayer);
+          buildings++;
         }
       });
+      if (!state.show.roads) osmRoadLayer.clearLayers();
+      if (!state.show.pumps) osmPumpLayer.clearLayers();
+      if (!state.show.buildings) osmBuildingLayer.clearLayers();
+      return { roads, pumps, buildings };
+    }
 
-      document.getElementById('layerPolygons').addEventListener('change', e => {
-        state.showPolygons = e.target.checked;
-        drawMacroPolygons();
-      });
-      document.getElementById('layerInfra').addEventListener('change', e => {
-        state.showInfra = e.target.checked;
-        drawStaticLayers();
-      });
-      document.getElementById('layerSaltEdge').addEventListener('change', e => {
-        state.showSaltEdge = e.target.checked;
-        drawStaticLayers();
-      });
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+    }
 
-      document.getElementById('btnExportGeoJSON').addEventListener('click', () => {
-        const zone = getActiveZone();
-        const geojson = {
-          type: 'FeatureCollection',
-          metadata: {
-            project: 'Project Hail Miriam - NASA Space Apps 2026',
-            sensor: 'NISAR L-Band GUNW (80m Macro Subsidence)',
-            passDate: PASS_DATES[state.passIndex]
-          },
-          features: [
-            {
-              type: 'Feature',
-              properties: {
-                id: zone.id,
-                name: zone.name,
-                alertLevel: zone.alertLevel,
-                velocityMmYr: zone.velocityMmYr,
-                footprint: zone.footprint,
-                threatenedAsset: zone.asset
-              },
-              geometry: {
-                type: 'Polygon',
-                coordinates: [zone.polygon.map(pt => [pt[1], pt[0]])]
-              }
-            }
-          ]
-        };
-        const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${zone.id}-macro-risk.geojson`;
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+    function renderCachedOsmData() {
+      const elements = new Map();
+      const batches = [state.osm.base || [], ...state.osm.buildings.map(entry => entry.elements)];
+      batches.flat().forEach(element => elements.set(`${element.type}/${element.id}`, element));
+      return renderOsmData([...elements.values()]);
+    }
+
+    function buildingBounds() {
+      const b = currentOverpassBounds();
+      const area = (b.north - b.south) * (b.east - b.west);
+      if (!state.show.buildings || map.getZoom() < 14 || area <= 0 || area > 0.035) return null;
+      const step = 0.05;
+      return {
+        south: Math.max(DEAD_SEA_BOUNDS.south, Math.floor(b.south / step) * step),
+        west: Math.max(DEAD_SEA_BOUNDS.west, Math.floor(b.west / step) * step),
+        north: Math.min(DEAD_SEA_BOUNDS.north, Math.ceil(b.north / step) * step),
+        east: Math.min(DEAD_SEA_BOUNDS.east, Math.ceil(b.east / step) * step)
+      };
+    }
+
+    function boundsCover(outer, inner) {
+      return outer.south <= inner.south && outer.west <= inner.west &&
+        outer.north >= inner.north && outer.east >= inner.east;
+    }
+
+    function showOsmReady() {
+      const counts = renderCachedOsmData();
+      setOsmStatus(`OSM infrastructure loaded: ${counts.roads} roads, ${counts.pumps} pumping stations${state.show.buildings ? `, ${counts.buildings} buildings` : ''}.`, 'ready');
+    }
+
+    async function requestOsm(kind, bounds) {
+      const controller = new AbortController();
+      state.osm.request = controller;
+      state.osm.lastRequestAt = Date.now();
+      const timeout = setTimeout(() => controller.abort(), 35000);
+      setOsmStatus(kind === 'base'
+        ? 'Loading roads and pumping stations for the study area…'
+        : 'Loading building footprints for this area…', 'loading');
+
+      try {
+        const response = await fetch(OVERPASS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json' },
+          body: `data=${encodeURIComponent(makeOverpassQuery(bounds, kind))}`,
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Overpass returned HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload.elements) || payload.remark) {
+          throw new Error(payload.remark || 'Invalid Overpass response');
+        }
+        if (kind === 'base') state.osm.base = payload.elements;
+        else state.osm.buildings.push({ bounds, elements: payload.elements });
+        state.osm.failed = null;
+        showOsmReady();
+      } catch (error) {
+        state.osm.failed = kind;
+        console.error('Could not load OpenStreetMap features:', error);
+        const reason = error.name === 'AbortError' ? 'timed out' : 'failed';
+        setOsmStatus(`OSM ${kind === 'base' ? 'infrastructure' : 'building'} request ${reason}. ${kind === 'buildings' ? 'Roads and pumps remain available.' : 'Map and risk zones remain available.'}`, 'error', true);
+      } finally {
+        clearTimeout(timeout);
+        state.osm.request = null;
+      }
+      if (!state.osm.failed) scheduleBuildingLoad();
+    }
+
+    function scheduleBuildingLoad() {
+      clearTimeout(state.osm.timer);
+      const bounds = buildingBounds();
+      document.getElementById('buildingHint').textContent = !state.show.buildings
+        ? 'Building layer is hidden.'
+        : bounds ? 'Building footprints load on demand and are cached.'
+          : 'Zoom in further; buildings load only for small view areas.';
+      if (!bounds || !state.osm.base || state.osm.request || state.osm.failed ||
+          state.osm.buildings.some(entry => boundsCover(entry.bounds, bounds))) return;
+      const wait = Math.max(850, 8000 - (Date.now() - state.osm.lastRequestAt));
+      state.osm.timer = setTimeout(() => {
+        const current = buildingBounds();
+        if (current && !state.osm.request && !state.osm.failed &&
+            !state.osm.buildings.some(entry => boundsCover(entry.bounds, current))) {
+          requestOsm('buildings', current);
+        }
+      }, wait);
+    }
+
+    function setSidebar(side, visible) {
+      state.sidebar[side] = visible;
+      const isLeft = side === 'left';
+      const workspace = document.querySelector('.workspace');
+      const sidebar = document.getElementById(isLeft ? 'riskSidebar' : 'detailSidebar');
+      const button = document.getElementById(isLeft ? 'toggleLeft' : 'toggleRight');
+      sidebar.classList.toggle('collapsed', !visible);
+      workspace.classList.toggle(`${side}-collapsed`, !visible);
+      button.setAttribute('aria-expanded', String(visible));
+      button.textContent = visible ? (isLeft ? 'Hide risks' : 'Hide details') : (isLeft ? 'Show risks' : 'Show details');
+      setTimeout(() => map.invalidateSize({ pan: false }), 240);
+    }
+
+    document.getElementById('toggleLeft').addEventListener('click', () => setSidebar('left', !state.sidebar.left));
+    document.getElementById('toggleRight').addEventListener('click', () => setSidebar('right', !state.sidebar.right));
+    document.getElementById('toggleRoads').addEventListener('change', event => {
+      state.show.roads = event.target.checked;
+      event.target.checked ? osmRoadLayer.addTo(map) : map.removeLayer(osmRoadLayer);
+      renderCachedOsmData();
     });
+    document.getElementById('togglePumps').addEventListener('change', event => {
+      state.show.pumps = event.target.checked;
+      event.target.checked ? osmPumpLayer.addTo(map) : map.removeLayer(osmPumpLayer);
+      renderCachedOsmData();
+    });
+    document.getElementById('toggleBuildings').addEventListener('change', event => {
+      state.show.buildings = event.target.checked;
+      event.target.checked ? osmBuildingLayer.addTo(map) : map.removeLayer(osmBuildingLayer);
+      renderCachedOsmData();
+      scheduleBuildingLoad();
+    });
+    document.getElementById('retryOsm').addEventListener('click', () => {
+      const failed = state.osm.failed;
+      state.osm.failed = null;
+      if (failed === 'base') requestOsm('base', DEAD_SEA_BOUNDS);
+      else if (failed === 'buildings') {
+        showOsmReady();
+        scheduleBuildingLoad();
+      }
+    });
+
+    renderZoneList();
+    renderDetails();
+    drawRiskZones();
+    map.on('moveend', scheduleBuildingLoad);
+    requestOsm('base', DEAD_SEA_BOUNDS);
   </script>
 </body>
 </html>

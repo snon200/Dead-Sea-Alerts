@@ -41,7 +41,13 @@ NASA notes that it does not endorse non-U.S. Government entities or take respons
 
 ## Project status
 
-Project implementation, study area, datasets, and technical decisions are to be documented here as the team develops them.
+See [Dashboard](./DASHBOARD.md) for the purpose, current implementation, limitations, and development plan.
+
+### Dashboard prototype
+
+Serve `index.html` from a local HTTP server and open it in a browser. The map uses OpenStreetMap tiles; the risk zones and measurements are illustrative, not NISAR observations or operational warnings.
+
+The dashboard requests roads and pumping stations for the Dead Sea study area once per page load. Residential building footprints are requested only when zoomed in, and previously requested areas are cached in memory until the page is reloaded. If the Overpass service fails or times out, use the displayed Retry button; map tiles and illustrative zones remain available. Internet access is required for Leaflet, map tiles, and OpenStreetMap features.
 
 ## Sources
 
