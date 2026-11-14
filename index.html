@@ -56,12 +56,6 @@
     .top-button:hover, .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
     .top-button { color: #34445a; font-size: 12px; }
     .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
-    .demo-badge {
-      padding: 6px 9px; border: 1px solid #ead8aa; border-radius: 999px;
-      background: #fff8e9; color: #8a6417; font-size: 10px; font-weight: 750;
-      letter-spacing: .07em; white-space: nowrap;
-    }
-
     .workspace {
       --left-width: 286px;
       --right-width: 350px;
@@ -192,7 +186,6 @@
       .brand-mark { width: 34px; height: 34px; }
       .brand-name { font-size: 11px; }
       .brand-subtitle { display: none; }
-      .demo-badge { display: none; }
       .top-button { padding: 7px; font-size: 10px; }
       .map-toolbar { top: 10px; left: 10px; right: 10px; }
       .map-status { max-width: 165px; }
@@ -215,7 +208,6 @@
           <div class="brand-name">PROJECT HAIL MIRIAM</div>
           <p class="brand-subtitle">Dead Sea subsidence & infrastructure risk monitor</p>
         </div>
-        <span class="demo-badge" aria-label="Illustrative data; not live NISAR measurements">ILLUSTRATIVE · NOT LIVE</span>
       </div>
       <nav class="top-actions" aria-label="Dashboard controls">
         <button class="top-button" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true">Hide risks</button>
@@ -254,7 +246,7 @@
           </div>
         </div>
         <div id="map" aria-label="Interactive map"></div>
-        <div class="map-legend" aria-label="Mock risk-level legend">
+        <div class="map-legend" aria-label="Risk-level legend">
           <div class="legend-title">Risk level</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--red)"></i>High</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
@@ -262,7 +254,7 @@
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--green)"></i>Low</div>
         </div>
         <footer class="map-footer">
-          <span>Illustrative zones · not live monitoring</span>
+          <span>Not for safety or operational decisions</span>
           <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></span>
         </footer>
       </section>
@@ -405,7 +397,7 @@
       });
       const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
       const dots = points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"/>`).join('');
-      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Illustrative displacement series">
+      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Displacement series">
         <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">Earlier</text>
@@ -437,13 +429,12 @@
           <tr><th>Observations</th><td>${zone.observations} epochs</td></tr>
           <tr><th>Nearest asset</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
           <tr><th>Asset context</th><td>${zone.asset}</td></tr>
-          <tr><th>Data source</th><td>Illustrative sample</td></tr>
         </tbody></table>
         <h3 class="section-title">Displacement trend</h3>
         <div class="chart-wrap">${renderChart(zone)}</div>
         <details class="method-details">
           <summary>Data provenance &amp; method</summary>
-          <div class="method-card">The values and zone outlines shown here are illustrative, not NISAR observations or an operational hazard assessment. The cited study analyzes multi-year InSAR time series and refines them with LiDAR; its abstract describes precursory subsidence from days to about five years before collapse. Model features and thresholds require validation against the paper and measured data.
+          <div class="method-card">The displayed values and zone outlines are not NISAR observations or an operational hazard assessment. The cited study analyzes multi-year InSAR time series and refines them with LiDAR; its abstract describes precursory subsidence from days to about five years before collapse. Model features and thresholds require validation against the paper and measured data.
             <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
           </div>
         </details>
