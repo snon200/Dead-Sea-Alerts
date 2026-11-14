@@ -1,2 +1,6 @@
-# Ignore data files
-data/*
+__pycache__/
+.pytest_cache/
+data/
+*.pyc
+.env
+.netrc
