@@ -1,6 +1,6 @@
 # Project Hail Miriam
 
-<img width="1914" height="910" alt="image" src="https://github.com/user-attachments/assets/345bf72f-3197-4e51-9fde-a9dd69b3d126" />
+<img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/3ef2dacb-0954-46cb-a59e-2a3e749b3fd2" />
 
 An interactive web experience for exploring how Earth's surface changes over time, using NASA-ISRO Synthetic Aperture Radar (NISAR) observations.
 
