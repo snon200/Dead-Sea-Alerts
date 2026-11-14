@@ -1,6 +1,8 @@
 __pycache__/
 .pytest_cache/
-data/
+data/*
+!data/processed/
+!data/processed/**
 *.pyc
 .env
 .netrc
