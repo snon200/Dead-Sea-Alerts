@@ -1,5 +1,7 @@
 # Project Hail Miriam
 
+<img width="1914" height="910" alt="image" src="https://github.com/user-attachments/assets/345bf72f-3197-4e51-9fde-a9dd69b3d126" />
+
 An interactive web experience for exploring how Earth's surface changes over time, using NASA-ISRO Synthetic Aperture Radar (NISAR) observations.
 
 This repository is the starting point for Team Project Hail Miriam's 2026 NASA Space Apps Challenge project. The team describes itself as a multidisciplinary group of builders, data enthusiasts, and storytellers. Its stated goal is to make NISAR radar remote sensing accessible through an interactive experience that tracks surface changes and explores the natural and human forces behind them.
