@@ -1032,9 +1032,33 @@
       }
     }
 
+    async function loadOsmCache(generation) {
+      try {
+        const response = await fetch('/data/api/osm-cache.json');
+        if (!response.ok) return 0;
+        const cache = await response.json();
+        if (generation !== state.osm.generation) return 0;
+        if (!cache || !cache.elements || !cache.zones) return 0;
+        let hits = 0;
+        RISK_ZONES.forEach(zone => {
+          if (state.osm.results[zone.id]) return;
+          const keys = cache.zones[zone.id];
+          if (Array.isArray(keys)) {
+            state.osm.results[zone.id] = keys.map(key => cache.elements[key]).filter(Boolean);
+            hits++;
+          }
+        });
+        if (hits) refreshOsmDisplay();
+        return hits;
+      } catch (error) {
+        console.warn('Precomputed OSM cache unavailable, falling back to live OSM:', error);
+        return 0;
+      }
+    }
+
     async function requestOsm() {
       if (state.osm.loading) return;
-      const pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
+      let pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
       if (!pending.length) return;
       const generation = state.osm.generation;
       state.osm.loading = true;
@@ -1043,6 +1067,10 @@
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
       renderZoneList();
       try {
+        setOsmStatus('Loading cached infrastructure…', 'loading');
+        await loadOsmCache(generation);
+        if (generation !== state.osm.generation) return;
+        pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
         for (let index = 0; index < pending.length; index++) {
           if (generation !== state.osm.generation) return;
           const zone = pending[index];
