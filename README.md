@@ -1,10 +1,16 @@
 # Dead Sea Alerts
 
+[Visit Dead Sea Alerts](https://deadsea-alerts.earth/)
+
 <img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/3ef2dacb-0954-46cb-a59e-2a3e749b3fd2" />
 
-An interactive web experience for exploring how Earth's surface changes over time, using NASA-ISRO Synthetic Aperture Radar (NISAR) observations.
+Dead Sea Alerts is an interactive map for exploring ground deformation around the Dead Sea and its relationship to nearby infrastructure. The project aims to use NASA-ISRO Synthetic Aperture Radar (NISAR) observations to help people explore changes over time.
 
-This repository is the starting point for Team Project Hail Miriam's 2026 NASA Space Apps Challenge project. The team describes itself as a multidisciplinary group of builders, data enthusiasts, and storytellers. Its stated goal is to make NISAR radar remote sensing accessible through an interactive experience that tracks surface changes and explores the natural and human forces behind them.
+Built by [Team Project Hail Miriam](https://www.spaceappschallenge.org/2026/find-a-team/project-hail-miriam/) for the 2026 NASA Space Apps Challenge, **Dancing with the SARs**.
+
+> **Important:** Dashboard example zones and measurements are illustrative. This project is not a validated hazard assessment or a safety warning system.
+
+The team brings together builders, data enthusiasts and storytellers to make NISAR observations accessible. Team listing: Tel Aviv, Israel; languages: English and Hebrew.
 
 ## Challenge: Dancing with the SARs
 
@@ -14,9 +20,13 @@ SAR is an active microwave sensing technique: the instrument transmits and recei
 
 The challenge encourages a user-friendly, open-source solution that makes complex radar observations understandable to a broad audience. Suggested approaches include change-detection maps, time-series animations, and dashboards. Teams should choose a study area, obtain freely available NISAR data, optionally add complementary imagery or GIS layers, investigate plausible drivers, and present findings in an interactive digital medium. The challenge page suggests considering different polarizations/frequencies, dates, ancillary data, human impacts, local context, and compelling visual storytelling. It does not prescribe a single study area or specific final format.
 
-## Team direction
+## How it works
 
-The team's published description proposes an interactive web experience for tracking Earth's surface changes and explaining the forces behind them. The team page currently does not publish further project specifics. Team listing: Tel Aviv, Israel; languages: English and Hebrew.
+- **Dashboard:** A Leaflet map displays zones, displacement indicators, trends and nearby OpenStreetMap infrastructure.
+- **NISAR processing:** Python scripts acquire GUNW products and build a cumulative line-of-sight displacement stack. A separate detector screens for exploratory deformation anomalies.
+- **API:** A Python endpoint defines the interface for zone geometry, measurements and displacement histories. See the [API guide](./API.md) and [OpenAPI specification](./openapi.json).
+
+Line-of-sight movement is relative to the processing reference and is not automatically vertical subsidence. The reference, sign convention, classification methods and scientific interpretation require validation. Intersecting mapped infrastructure does not establish damage.
 
 ## Official challenge and data resources
 
@@ -41,23 +51,23 @@ The team's published description proposes an interactive web experience for trac
 
 NASA notes that it does not endorse non-U.S. Government entities or take responsibility for information on their websites. Follow each non-U.S. resource's own data-use terms.
 
-## Project status
+## Explore the dashboard
 
-See [Dashboard](./DASHBOARD.md) for the purpose, current implementation, limitations, and development plan.
+Explore [deadsea-alerts.earth](https://deadsea-alerts.earth/) to view the map, select zones and explore nearby infrastructure. See [Dashboard](./DASHBOARD.md) for implementation details and limitations.
 
 ### Zones API
 
 The [OpenAPI specification](./openapi.json) describes `GET /api/v1/zones` and can be opened in Swagger Editor. See the [backend integration guide](./API.md) for the contract and implementation handoff. The Python endpoint is in `api/v1/zones.py`; its processing integration point is `src/zone_service.py::get_zones()`.
 
-The integration is not implemented yet, so the endpoint returns HTTP 503 rather than fictional results. Almog can implement `get_zones()` using the typed return contract and OpenAPI specification. Return an empty list only when processing succeeds and detects no zones. Use `null` for unavailable measurements or classifications; never turn NaN into JSON. The latest detector produces exploratory deformation anomalies, review priorities and per-date quality proxies, not necessarily the API's risk categories or latest-pair coherence. Do not treat them as equivalent without a defined method. Its output may contain MultiPolygon geometry and uses mm/day and mm/day², so compatible LOS results need unit conversion.
+The detector produces exploratory deformation anomalies, review priorities and per-date quality proxies. These are not automatically equivalent to risk levels or latest-pair coherence. Its results can include MultiPolygon geometry and use mm/day and mm/day²; compatible LOS values need unit conversion for the API.
 
 For local endpoint testing use `vercel dev` from the project directory (a plain `python -m http.server` only serves static files). Run the route tests with `python -m unittest discover -s tests`.
 
-### Dashboard prototype
+### Run locally
 
-Serve `index.html` from a local HTTP server and open it in a browser. The map uses OpenStreetMap tiles; the risk zones and measurements are illustrative, not NISAR observations or operational warnings.
+Run `vercel dev` from the repository root and open its local URL. The dashboard includes illustrative zones and measurements. A plain static HTTP server serves the frontend but cannot run the Python API. The map uses OpenStreetMap tiles; neither illustrative nor experimental data is an operational warning.
 
-The dashboard requests OpenStreetMap features once per risk-zone bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. Zone outlines and measurements are synthetic. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory until reload; selected ways may extend outside a zone. If a request fails or times out, use the displayed Retry button; successful zones, map tiles, and illustrative zones remain available. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
+The dashboard requests OpenStreetMap features for each zone's bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. The demo zone outlines and measurements are synthetic. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory during the session; selected ways may extend outside a zone. If a request fails or times out, use the displayed Retry button. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
 
 ## Sources
 

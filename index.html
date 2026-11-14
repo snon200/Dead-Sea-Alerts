@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1220">
-  <title>Project Hail Miriam | Dead Sea Risk Monitor</title>
+  <title>Dead Sea Alerts</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="preconnect" href="https://api.openstreetmap.org">
@@ -93,6 +94,11 @@
     .zone-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0;
       overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 2px 2px; }
     .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 10px; line-height: 1.4; }
+    .zone-source-status { flex: none; margin-bottom: 8px; border: 1px solid #dfe6ee; border-radius: 9px;
+      background: #f7f9fc; padding: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
+    .zone-source-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
+    .zone-source-status[data-state="demo"] { border-color: #f0dfb8; color: #78653b; background: #fffaf0; }
+    .zone-source-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
     .zone-card {
       flex: none; width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
       border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
@@ -285,6 +291,13 @@
             <span class="count" id="zoneCount" aria-live="polite"></span>
           </div>
           <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
+          <div class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">
+            <span id="zoneSourceText">Loading zone data…</span>
+            <div class="zone-source-actions">
+              <button class="layer-action" id="retryZones" type="button" hidden>Retry API</button>
+              <button class="layer-action" id="showDemoZones" type="button" hidden>Show illustrative demo</button>
+            </div>
+          </div>
           <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
           <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones" tabindex="0"></div>
           <section class="layer-section" aria-labelledby="osmLayersHeading">
@@ -324,6 +337,7 @@
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--yellow)"></i>Watch</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--green)"></i>Low</div>
+          <div class="legend-row"><i class="legend-dot" style="--legend-color:#718096"></i>Unavailable</div>
         </div>
       </section>
 
@@ -335,16 +349,17 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="zone-api.js"></script>
   <script>
     'use strict';
 
     const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
     const OSM_MAP_URL = 'https://api.openstreetmap.org/api/0.6/map.json';
-    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a' };
-    const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3 };
+    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
+    const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
 
     // All values below are synthetic UI fixtures; they are not derived from NISAR.
-    const RISK_ZONES = [
+    const DEMO_ZONES = [
       {
         id: 'ein-gedi', name: 'Ein Gedi · Route 90', level: 'high', label: 'High',
         polygon: [[31.42040,35.38035],[31.41790,35.38315],[31.41540,35.38035],[31.41790,35.37755]],
@@ -440,11 +455,13 @@
       ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.matches]))
     };
 
+    let RISK_ZONES = [];
     const state = {
-      selectedId: RISK_ZONES[0].id,
+      selectedId: null,
+      zoneSource: 'loading',
       show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true },
       sidebar: { left: true, right: true },
-      osm: { loading: false, results: {}, errors: {}, elements: [] }
+      osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
     };
 
     const studyBounds = L.latLngBounds(
@@ -485,26 +502,96 @@
     let selectedFeatureMarker = null;
     let activeMetricHelp = null;
     let pinnedMetricHelp = null;
+    let zoneRequest = null;
 
-    function selectedZone() {
-      return RISK_ZONES.find(zone => zone.id === state.selectedId) || RISK_ZONES[0];
+    function setZoneSourceStatus(message, source, retry, demo) {
+      const status = document.getElementById('zoneSourceStatus');
+      status.dataset.state = source;
+      document.getElementById('zoneSourceText').textContent = message;
+      document.getElementById('retryZones').hidden = !retry;
+      document.getElementById('showDemoZones').hidden = !demo;
+      state.zoneSource = source;
     }
 
-    function polygonBounds(polygon) {
-      const lats = polygon.map(point => point[0]);
-      const lons = polygon.map(point => point[1]);
-      return {
-        south: Math.min(...lats), north: Math.max(...lats),
-        west: Math.min(...lons), east: Math.max(...lons)
-      };
+    function replaceZones(zones) {
+      state.osm.generation++;
+      if (state.osm.controller) state.osm.controller.abort();
+      state.osm.loading = false;
+      state.osm.controller = null;
+      state.osm.results = Object.create(null);
+      state.osm.errors = Object.create(null);
+      state.osm.elements = [];
+      clearOsmLayers();
+      clearSelectedFeature();
+      RISK_ZONES = zones;
+      state.selectedId = zones.length ? zones[0].id : null;
+      riskLabelLayer.clearLayers();
+      riskLabelMarkers.length = 0;
+      drawRiskLabels();
+      renderZoneList();
+      renderDetails();
+      drawRiskZones();
+      updateRiskLabelVisibility();
+      if (zones.length) {
+        updateLayerCounts([], 'Loading...');
+        requestOsm();
+      } else {
+        updateLayerCounts([], 'No zones');
+        setOsmStatus('No zones available for infrastructure lookup.', 'ready');
+      }
+    }
+
+    async function loadZones() {
+      if (zoneRequest) zoneRequest.abort();
+      const controller = new AbortController();
+      zoneRequest = controller;
+      setZoneSourceStatus('Loading zone data…', 'loading', false, false);
+      replaceZones([]);
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      try {
+        const response = await fetch('/api/v1/zones', { signal: controller.signal });
+        if (!response.ok) throw new Error(`Zone API returned HTTP ${response.status}`);
+        const zones = parseZoneResponse(await response.json());
+        if (zoneRequest !== controller) return;
+        setZoneSourceStatus(zones.length ? 'Experimental zone data; not for safety decisions.' :
+          'No zones found in the current data.', 'ready', true, true);
+        replaceZones(zones);
+      } catch (error) {
+        if (zoneRequest !== controller) return;
+        console.error('Could not load zone data:', error);
+        setZoneSourceStatus('Zone data is unavailable. Retry or open the illustrative demo.', 'error', true, true);
+        renderZoneList();
+        renderDetails();
+      } finally {
+        clearTimeout(timeout);
+        if (zoneRequest === controller) zoneRequest = null;
+      }
+    }
+
+    function showDemoZones() {
+      if (zoneRequest) zoneRequest.abort();
+      zoneRequest = null;
+      setZoneSourceStatus('Illustrative demo: zones and measurements are synthetic, not NISAR data.', 'demo', true, false);
+      replaceZones(DEMO_ZONES.map(zone => ({ ...zone, polygons: [[zone.polygon]], demo: true })));
+    }
+
+    function selectedZone() {
+      return RISK_ZONES.find(zone => zone.id === state.selectedId) || null;
+    }
+
+    function polygonBounds(zone) {
+      return zone.polygons.flat(2).reduce((bounds, [lat, lon]) => ({
+        south: Math.min(bounds.south, lat), north: Math.max(bounds.north, lat),
+        west: Math.min(bounds.west, lon), east: Math.max(bounds.east, lon)
+      }), { south: Infinity, north: -Infinity, west: Infinity, east: -Infinity });
     }
 
     function coordRange(zone) {
-      const b = polygonBounds(zone.polygon);
+      const b = polygonBounds(zone);
       return `Lat ${b.south.toFixed(4)}–${b.north.toFixed(4)} · Lon ${b.west.toFixed(4)}–${b.east.toFixed(4)}`;
     }
 
-    function zoneAreaKm2(polygon) {
+    function ringAreaKm2(polygon) {
       const radians = Math.PI / 180;
       const radius = 6371008.8;
       let sum = 0;
@@ -514,6 +601,11 @@
           (2 + Math.sin(point[0] * radians) + Math.sin(next[0] * radians));
       });
       return Math.abs(sum) * radius * radius / 2e6;
+    }
+
+    function zoneAreaKm2(zone) {
+      return zone.polygons.reduce((total, rings) =>
+        total + ringAreaKm2(rings[0]) - rings.slice(1).reduce((sum, ring) => sum + ringAreaKm2(ring), 0), 0);
     }
 
     function filteredRiskZones() {
@@ -538,36 +630,52 @@
         .sort((a, b) => RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level])
         .map(zone => `
         <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
-          style="--zone-color:${COLORS[zone.level]}" data-zone-id="${zone.id}" aria-pressed="${zone.id === state.selectedId}">
+          style="--zone-color:${COLORS[zone.level]}" data-zone-id="${escapeHtml(zone.id)}" aria-pressed="${zone.id === state.selectedId}">
           <span class="zone-card-top">
-            <span class="zone-title">${zone.name}</span>
+            <span class="zone-title">${escapeHtml(zone.name)}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
-          <span class="zone-card-meta"><span>LOS ${zone.losRate} mm/yr</span><span>${zoneAreaKm2(zone.polygon).toFixed(2)} km²</span></span>
+          <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${zoneAreaKm2(zone).toFixed(2)} km²</span></span>
           <span class="zone-coords">${coordRange(zone)}</span>
         </button>
-      `).join('') || `<p class="empty-state">${selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
+      `).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
       document.querySelectorAll('[data-zone-id]').forEach(button => {
         button.addEventListener('click', () => selectZone(button.dataset.zoneId, true));
       });
     }
 
+    function formatMeasurement(value, unit = '') {
+      return value === null || value === undefined ? 'Unavailable' : `${value}${unit ? ` ${unit}` : ''}`;
+    }
+
     function renderChart(zone) {
+      if (!zone.series || !zone.series.length) return '<p class="empty-state">Displacement history unavailable.</p>';
       const width = 300, height = 88, pad = 12;
-      const min = Math.min(...zone.series, 0), max = Math.max(...zone.series, 0);
+      const values = zone.demo ? zone.series : zone.series.map(point => point.value);
+      const min = Math.min(...values, 0), max = Math.max(...values, 0);
       const span = (max - min) || 1;
-      const points = zone.series.map((value, index) => {
-        const x = pad + index * (width - pad * 2) / (zone.series.length - 1);
+      const firstTime = zone.demo ? 0 : Date.parse(zone.series[0].time);
+      const lastTime = zone.demo ? values.length - 1 : Date.parse(zone.series[zone.series.length - 1].time);
+      const points = values.map((value, index) => {
+        const time = zone.demo ? index : Date.parse(zone.series[index].time);
+        const x = pad + (lastTime === firstTime ? 0 : (time - firstTime) / (lastTime - firstTime)) * (width - pad * 2);
         const y = pad + (max - value) * (height - pad * 2) / span;
         return [x, y];
       });
       const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
-      const dots = points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"/>`).join('');
-      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Displacement series">
+      const dots = points.map(([x, y], index) => {
+        const label = zone.demo ? `Observation ${index + 1}` : zone.series[index].time;
+        return `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"><title>${escapeHtml(label)}: ${values[index]} mm</title></circle>`;
+      }).join('');
+      const firstLabel = zone.demo ? 'Earlier' : zone.series[0].time.slice(0, 10);
+      const lastLabel = zone.demo ? 'Latest' : zone.series[zone.series.length - 1].time.slice(0, 10);
+      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${min} to ${max}">
         <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">Earlier</text>
-        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">Latest</text>
+        <text x="${width-pad}" y="9" fill="#718096" font-size="8" text-anchor="end">${max} mm</text>
+        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="8" text-anchor="end">${min} mm</text>
+        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">${firstLabel}</text>
+        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">${lastLabel}</text>
       </svg>`;
     }
 
@@ -601,20 +709,26 @@
       hideMetricHelp();
       const zone = selectedZone();
       const header = document.getElementById('detailHeader');
+      if (!zone) {
+        header.innerHTML = '<div class="eyebrow">Zone details</div>';
+        document.getElementById('detailContent').innerHTML =
+          '<p class="empty-state">No zone selected. Load zone data or open the illustrative demo.</p>';
+        return;
+      }
       header.innerHTML = `
         <div class="detail-title-row">
-          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${zone.name}</h2></div>
+          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${escapeHtml(zone.name)}</h2></div>
           <div class="detail-risk"><span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span></div>
         </div>
       `;
       document.getElementById('detailContent').innerHTML = `
-        <p class="detail-description">${zone.summary}</p>
-        <p class="detail-description detail-disclaimer">Illustrative zones and measurements; not for safety decisions.</p>
+        <p class="detail-description">${zone.demo ? escapeHtml(zone.summary) : 'Experimental zone from the processing API.'}</p>
+        <p class="detail-description detail-disclaimer">${zone.demo ? 'Illustrative zones and measurements' : 'Experimental measurements and classifications'}; not for safety decisions.</p>
         <div class="metric-grid">
-          <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${zone.losRate}<span class="metric-unit">mm/yr</span></div></div>
-          <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${zone.cumulative}<span class="metric-unit">mm</span></div></div>
-          <div class="metric"><div class="metric-label">Trend${metricHelp('trend', 'trend', 'How quickly the movement speed toward or away from the satellite changes each year.')}</div><div class="metric-value">${zone.acceleration}<span class="metric-unit">mm/yr²</span></div></div>
-          <div class="metric"><div class="metric-label">Zone area${metricHelp('area', 'zone area', 'The area inside the risk-zone outline.')}</div><div class="metric-value">${zoneAreaKm2(zone.polygon).toFixed(2)}<span class="metric-unit">km²</span></div></div>
+          <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
+          <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${formatMeasurement(zone.cumulative)}${zone.cumulative === null ? '' : '<span class="metric-unit">mm</span>'}</div></div>
+          <div class="metric"><div class="metric-label">Trend${metricHelp('trend', 'trend', 'How quickly the movement speed toward or away from the satellite changes each year.')}</div><div class="metric-value">${formatMeasurement(zone.acceleration)}${zone.acceleration === null ? '' : '<span class="metric-unit">mm/yr²</span>'}</div></div>
+          <div class="metric"><div class="metric-label">Zone area${metricHelp('area', 'zone area', 'The area inside the risk-zone outline.')}</div><div class="metric-value">${zoneAreaKm2(zone).toFixed(2)}<span class="metric-unit">km²</span></div></div>
         </div>
         <details class="measurement-details">
           <summary class="section-title">Measurement inputs
@@ -622,10 +736,11 @@
           </summary>
           <table class="data-table"><tbody>
             <tr><th>Coordinate range${metricHelp('coordinates', 'coordinate range', 'The latitude and longitude limits of the zone.')}</th><td>${coordRange(zone)}</td></tr>
-            <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${zone.coherence.toFixed(2)}</td></tr>
-            <tr><th>Observations${metricHelp('observations', 'observations', 'The number of observation dates represented for this zone.')}</th><td>${zone.observations} epochs</td></tr>
-            <tr><th>Nearest asset${metricHelp('asset-distance', 'nearest asset', 'Estimated distance to the nearest infrastructure asset.')}</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
-            <tr><th>Asset context${metricHelp('asset-context', 'asset context', 'The type of nearby infrastructure considered for this zone.')}</th><td>${zone.asset}</td></tr>
+            <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${zone.coherence === null ? 'Unavailable' : zone.coherence.toFixed(2)}</td></tr>
+            ${zone.demo ? '' : `<tr><th>Coherence pair</th><td>${zone.pairStart && zone.pairEnd ? `${escapeHtml(zone.pairStart)} – ${escapeHtml(zone.pairEnd)}` : 'Unavailable'}</td></tr>`}
+            <tr><th>Observations${metricHelp('observations', 'observations', 'The number of observation dates represented for this zone.')}</th><td>${zone.observations === null ? 'Unavailable' : `${zone.observations} epochs`}</td></tr>
+            ${zone.demo ? `<tr><th>Nearest asset${metricHelp('asset-distance', 'nearest asset', 'Estimated distance to the nearest infrastructure asset.')}</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
+            <tr><th>Asset context${metricHelp('asset-context', 'asset context', 'The type of nearby infrastructure considered for this zone.')}</th><td>${escapeHtml(zone.asset)}</td></tr>` : ''}
           </tbody></table>
         </details>
         <h3 class="section-title">Displacement trend${metricHelp('chart', 'displacement trend', 'How movement toward or away from the satellite changes over time.')}</h3>
@@ -636,7 +751,7 @@
         </section>
         <details class="method-details">
           <summary>Data provenance &amp; method</summary>
-          <div class="method-card">The displayed values and zone outlines are not NISAR observations or an operational hazard assessment. The cited study analyzes multi-year InSAR time series and refines them with LiDAR; its abstract describes precursory subsidence from days to about five years before collapse. Model features and thresholds require validation against the paper and measured data.
+          <div class="method-card">${zone.demo ? 'The displayed values and zone outlines are illustrative, not NISAR observations.' : 'Measurements are relative line-of-sight observations; positive values are toward the satellite. The phase sign and reference need validation.'} This is not an operational hazard assessment. Model features and thresholds require validation against the paper and measured data.
             <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
           </div>
         </details>
@@ -648,19 +763,19 @@
       filteredRiskZones().forEach(zone => {
         const selected = zone.id === state.selectedId;
         const color = COLORS[zone.level];
-        L.polygon(zone.polygon, {
+        L.polygon(zone.polygons, {
           color, weight: selected ? 3 : 2,
           opacity: selected ? 1 : .86,
           fillColor: color,
           fillOpacity: selected ? .29 : .17
-        }).bindTooltip(`${zone.name} · ${zone.label}`, { sticky: true })
+        }).bindTooltip(`${escapeHtml(zone.name)} · ${zone.label}`, { sticky: true })
           .on('click', () => selectZone(zone.id, false))
           .addTo(riskLayer);
       });
     }
 
     function drawRiskLabels() {
-      RISK_ZONES.map(zone => ({ zone, center: L.latLngBounds(zone.polygon).getCenter() }))
+      RISK_ZONES.map(zone => ({ zone, center: L.latLngBounds(zone.polygons.flat(2)).getCenter() }))
         .sort((a, b) => b.center.lat - a.center.lat)
         .forEach(({ zone, center }, index) => {
           const text = document.createElement('span');
@@ -730,7 +845,6 @@
       else riskLabelLayer.remove();
     }
 
-    drawRiskLabels();
     updateRiskLabelVisibility();
     map.on('zoomend', updateRiskLabelVisibility);
     map.on('moveend resize', layoutRiskLabels);
@@ -753,7 +867,7 @@
       });
       if (panToZone) {
         const zone = selectedZone();
-        map.fitBounds(L.latLngBounds(zone.polygon), { padding: [70, 70], maxZoom: 15, animate: false });
+        map.fitBounds(L.latLngBounds(zone.polygons.flat(2)), { padding: [70, 70], maxZoom: 15, animate: false });
       }
     }
 
@@ -905,40 +1019,55 @@
         ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0));
     }
 
-    function featureIntersectsZone(element, polygon) {
-      if (element.type === 'node') return pointInPolygon([element.lat, element.lon], polygon);
+    function pointInZone(point, zone) {
+      return zone.polygons.some(rings => {
+        if (!pointInPolygon(point, rings[0])) return false;
+        return !rings.slice(1).some(ring => {
+          if (ring.some((vertex, index) => pointOnSegment(point, vertex, ring[(index + 1) % ring.length]))) return false;
+          return pointInPolygon(point, ring);
+        });
+      });
+    }
+
+    function featureIntersectsZone(element, zone) {
+      if (element.type === 'node') return pointInZone([element.lat, element.lon], zone);
       const points = element.geometry.map(point => [point.lat, point.lon]);
-      if (points.some(point => pointInPolygon(point, polygon))) return true;
+      if (points.some(point => pointInZone(point, zone))) return true;
       for (let i = 1; i < points.length; i++) {
-        for (let j = 0; j < polygon.length; j++) {
-          if (segmentsIntersect(points[i - 1], points[i], polygon[j], polygon[(j + 1) % polygon.length])) return true;
+        for (const ring of zone.polygons.flat()) {
+          for (let j = 0; j < ring.length; j++) {
+            if (segmentsIntersect(points[i - 1], points[i], ring[j], ring[(j + 1) % ring.length])) return true;
+          }
         }
       }
       const first = points[0], last = points[points.length - 1];
       return points.length >= 4 && first[0] === last[0] && first[1] === last[1] &&
-        pointInPolygon(polygon[0], points);
+        zone.polygons.some(rings => pointInPolygon(rings[0][0], points));
     }
 
-    function featureCoordinates(element, polygon) {
+    function featureCoordinates(element, zone) {
       if (element.type === 'node') return [element.lat, element.lon];
       const points = element.geometry.map(point => [point.lat, point.lon]);
-      const inside = points.filter(point => pointInPolygon(point, polygon));
+      const inside = points.filter(point => pointInZone(point, zone));
       if (inside.length) return inside[Math.floor(inside.length / 2)];
       for (let i = 1; i < points.length; i++) {
         const a = points[i - 1], b = points[i];
-        for (let j = 0; j < polygon.length; j++) {
-          const c = polygon[j], d = polygon[(j + 1) % polygon.length];
-          if (!segmentsIntersect(a, b, c, d)) continue;
-          if (pointOnSegment(a, c, d)) return a;
-          if (pointOnSegment(b, c, d)) return b;
-          if (pointOnSegment(c, a, b)) return c;
-          if (pointOnSegment(d, a, b)) return d;
-          const denominator = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]);
-          const t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / denominator;
-          return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+        for (const ring of zone.polygons.flat()) {
+          for (let j = 0; j < ring.length; j++) {
+            const c = ring[j], d = ring[(j + 1) % ring.length];
+            if (!segmentsIntersect(a, b, c, d)) continue;
+            if (pointOnSegment(a, c, d)) return a;
+            if (pointOnSegment(b, c, d)) return b;
+            if (pointOnSegment(c, a, b)) return c;
+            if (pointOnSegment(d, a, b)) return d;
+            const denominator = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]);
+            const t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / denominator;
+            return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+          }
         }
       }
-      if (pointInPolygon(polygon[0], points)) return polygon[0];
+      const contained = zone.polygons.find(rings => pointInPolygon(rings[0][0], points));
+      if (contained) return contained[0][0];
       throw new Error(`Could not locate OSM ${element.type} ${element.id} inside the zone`);
     }
 
@@ -956,7 +1085,7 @@
       return `<p class="detail-description">Mapped features intersecting the zone; intersection does not establish damage. OSM coverage may be incomplete or outdated.</p>` +
         groups.map(([label, fallback, items]) => `<details class="method-details"><summary>${label} · ${items.length}</summary>` +
           `<ul class="feature-list">${items.map(element => {
-            const point = featureCoordinates(element, zone.polygon);
+            const point = featureCoordinates(element, zone);
             return `<li><button type="button" class="feature-link" data-feature-key="${escapeHtml(`${element.type}/${element.id}`)}">` +
               `${escapeHtml(featureName(element, fallback))}` +
               `<span class="feature-coordinates">${point[0].toFixed(5)}, ${point[1].toFixed(5)}</span></button>` +
@@ -980,7 +1109,8 @@
       state.osm.elements = [...unique.values()];
       updateLayerCounts(state.osm.elements, Object.keys(state.osm.results).length ? null : 'Loading...');
       renderCachedOsmData();
-      document.getElementById('zoneInfrastructure').innerHTML = renderInfrastructure(selectedZone());
+      const infrastructure = document.getElementById('zoneInfrastructure');
+      if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
       if (!Object.values(state.show).every(Boolean)) {
         renderZoneList();
         drawRiskZones();
@@ -992,17 +1122,21 @@
       if (state.osm.loading) return;
       const pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
       if (!pending.length) return;
+      const generation = state.osm.generation;
       state.osm.loading = true;
       pending.forEach(zone => delete state.osm.errors[zone.id]);
-      document.getElementById('zoneInfrastructure').innerHTML = renderInfrastructure(selectedZone());
+      const infrastructure = document.getElementById('zoneInfrastructure');
+      if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
       renderZoneList();
       try {
         for (let index = 0; index < pending.length; index++) {
+          if (generation !== state.osm.generation) return;
           const zone = pending[index];
           setOsmStatus(`Loading infrastructure: ${Object.keys(state.osm.results).length}/${RISK_ZONES.length} zones…`, 'loading');
-          const bounds = polygonBounds(zone.polygon);
+          const bounds = polygonBounds(zone);
           const bbox = [bounds.west, bounds.south, bounds.east, bounds.north].join(',');
           const controller = new AbortController();
+          state.osm.controller = controller;
           const timeout = setTimeout(() => controller.abort(), 35000);
           let throttled = false;
           try {
@@ -1012,13 +1146,16 @@
               throw new Error(`OpenStreetMap returned HTTP ${response.status}`);
             }
             const payload = await response.json();
+            if (generation !== state.osm.generation) return;
             if (!Array.isArray(payload.elements)) throw new Error('Invalid OpenStreetMap response');
-            state.osm.results[zone.id] = mapOsmFeatures(payload.elements).filter(element => featureIntersectsZone(element, zone.polygon));
+            state.osm.results[zone.id] = mapOsmFeatures(payload.elements).filter(element => featureIntersectsZone(element, zone));
           } catch (error) {
+            if (generation !== state.osm.generation) return;
             console.error(`Could not load OpenStreetMap features for ${zone.name}:`, error);
             state.osm.errors[zone.id] = error.message;
           } finally {
             clearTimeout(timeout);
+            if (state.osm.controller === controller) state.osm.controller = null;
           }
           if (throttled) {
             pending.slice(index + 1).forEach(remaining => { state.osm.errors[remaining.id] = 'Request paused after service limit'; });
@@ -1028,8 +1165,9 @@
           refreshOsmDisplay();
         }
       } finally {
-        state.osm.loading = false;
+        if (generation === state.osm.generation) state.osm.loading = false;
       }
+      if (generation !== state.osm.generation) return;
       if (Object.keys(state.osm.errors).length) {
         if (!Object.keys(state.osm.results).length) updateLayerCounts([], 'Unavailable');
         setOsmStatus('Some zones could not load infrastructure. Loaded zones remain available.', 'error', true);
@@ -1109,12 +1247,13 @@
       const button = event.target.closest('button[data-feature-key]');
       if (!button) return;
       const zone = selectedZone();
+      if (!zone) return;
       const feature = (state.osm.results[zone.id] || []).find(element => `${element.type}/${element.id}` === button.dataset.featureKey);
       if (!feature) {
         console.error('Selected infrastructure feature is no longer available:', button.dataset.featureKey);
         return;
       }
-      const point = featureCoordinates(feature, zone.polygon);
+      const point = featureCoordinates(feature, zone);
       clearSelectedFeature();
       map.stop();
       map.setView(point, 18, { animate: false });
@@ -1151,11 +1290,13 @@
     document.getElementById('selectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, true));
     document.getElementById('deselectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, false));
     document.getElementById('retryOsm').addEventListener('click', requestOsm);
+    document.getElementById('retryZones').addEventListener('click', loadZones);
+    document.getElementById('showDemoZones').addEventListener('click', showDemoZones);
 
     renderZoneList();
     renderDetails();
     drawRiskZones();
-    requestOsm();
+    loadZones();
   </script>
 </body>
 </html>
