@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "stage": "geophysical_processing_stack",
+  "created_utc": "2026-11-14T16:00:34.503621+00:00",
+  "array_shape": [
+    8,
+    101,
+    122
+  ],
+  "axis_order": [
+    "time_pair",
+    "row",
+    "column"
+  ],
+  "files": {
+    "displacement": "displacement.npy",
+    "coherence": "coherence.npy"
+  },
+  "displacement": {
+    "unit": "mm",
+    "component": "los",
+    "meaning": "Relative displacement between EACH GUNW reference and secondary acquisition (NOT cumulative)",
+    "phase_sign": -1,
+    "positive_los_direction": "toward",
+    "phase_sign_verified_for_provisional_products": false,
+    "assumes_zero_horizontal_motion": false,
+    "reference_bbox_wsen": [
+      35.377,
+      31.449,
+      35.388,
+      31.4555
+    ],
+    "coherence_minimum_for_displacement": 0.3,
+    "zero_on_reference": "Median corrected phase on largest valid unwrapping component in reference bbox"
+  },
+  "coherence": {
+    "unit": "dimensionless",
+    "range": [
+      0,
+      1
+    ],
+    "meaning": "Interferometric coherence of each reference/secondary acquisition pair",
+    "masking": "NaN outside observed/valid coherence; low coherence retained here, masked in displacement"
+  },
+  "grid": {
+    "crs": "EPSG:32636",
+    "transform_affine": [
+      80.0,
+      0.0,
+      723120.0,
+      0.0,
+      -80.0,
+      3487680.0
+    ],
+    "transform_formula": "x=a*(col+0.5)+b*(row+0.5)+c; y=d*(col+0.5)+e*(row+0.5)+f",
+    "width": 122,
+    "height": 101,
+    "bounds_projected": [
+      723120.0,
+      3479600.0,
+      732880.0,
+      3487680.0
+    ],
+    "requested_bbox_wsen": [
+      35.35,
+      31.43,
+      35.45,
+      31.5
+    ],
+    "pixel_size_m": 80.0,
+    "resampling": "nearest for pair displacement and coherence; never interpolate across disconnected unwrapping regions"
+  },
+  "acquisition_family": {
+    "track": 100,
+    "frame": 17,
+    "direction": "A",
+    "mode": "2000",
+    "polarization": "HH",
+    "release": "provisional",
+    "crid": "P05023"
+  },
+  "time_axis": "One row per GUNW acquisition pair, sorted by secondary acquisition time. Times may repeat.",
+  "pairs": [
+    {
+      "granule_id": "G4248968510-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_023_100_A_017_024_2000_SH_20260621T025941_20260621T030016_20260703T025940_20260703T030015_P05023_N_F_J_001",
+      "reference_time_utc": "2026-06-21T02:59:41+00:00",
+      "secondary_time_utc": "2026-07-03T02:59:40+00:00",
+      "baseline_days": 11.999988425925926,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": 8.941684916615486,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5688,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 0,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4248968510-ASF_6f1688a7f41f\\manifest.json"
+    },
+    {
+      "granule_id": "G4254189752-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_024_100_A_017_025_2000_SH_20260703T025940_20260703T030015_20260715T025940_20260715T030014_P05023_N_F_J_001",
+      "reference_time_utc": "2026-07-03T02:59:40+00:00",
+      "secondary_time_utc": "2026-07-15T02:59:40+00:00",
+      "baseline_days": 12.0,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -12.234656810760498,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5623,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 1,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4254189752-ASF_7008657fe881\\manifest.json"
+    },
+    {
+      "granule_id": "G4264495775-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_025_100_A_017_026_2000_SH_20260715T025940_20260715T030014_20260727T025939_20260727T030014_P05023_N_F_J_001",
+      "reference_time_utc": "2026-07-15T02:59:40+00:00",
+      "secondary_time_utc": "2026-07-27T02:59:39+00:00",
+      "baseline_days": 11.999988425925926,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -11.584714651107788,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5680,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 2,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4264495775-ASF_3cc1f08c64ef\\manifest.json"
+    },
+    {
+      "granule_id": "G4286999342-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_026_100_A_017_028_2000_SH_20260727T025939_20260727T030014_20260820T025938_20260820T030012_P05023_N_F_J_001",
+      "reference_time_utc": "2026-07-27T02:59:39+00:00",
+      "secondary_time_utc": "2026-08-20T02:59:38+00:00",
+      "baseline_days": 23.999988425925928,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": 22.909024238586426,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5650,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 3,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4286999342-ASF_62635921cd5b\\manifest.json"
+    },
+    {
+      "granule_id": "G4297046666-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_028_100_A_017_029_2000_SH_20260820T025938_20260820T030012_20260901T025938_20260901T030012_P05023_N_F_J_001",
+      "reference_time_utc": "2026-08-20T02:59:38+00:00",
+      "secondary_time_utc": "2026-09-01T02:59:38+00:00",
+      "baseline_days": 12.0,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -10.064139366149902,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5669,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 4,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4297046666-ASF_ec5c260968fa\\manifest.json"
+    },
+    {
+      "granule_id": "G4311814324-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_029_100_A_017_030_2000_SH_20260901T025938_20260901T030012_20260913T025937_20260913T030012_P05023_N_F_J_001",
+      "reference_time_utc": "2026-09-01T02:59:38+00:00",
+      "secondary_time_utc": "2026-09-13T02:59:37+00:00",
+      "baseline_days": 11.999988425925926,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -1.2137013673782349,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5636,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 5,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4311814324-ASF_d694376e050e\\manifest.json"
+    },
+    {
+      "granule_id": "G4351376597-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_030_100_A_017_032_2000_SH_20260913T025937_20260913T030012_20261007T025938_20261007T030012_P05023_N_F_J_001",
+      "reference_time_utc": "2026-09-13T02:59:37+00:00",
+      "secondary_time_utc": "2026-10-07T02:59:38+00:00",
+      "baseline_days": 24.000011574074072,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -24.239867210388184,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5670,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 6,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4351376597-ASF_788d8a4ff3cd\\manifest.json"
+    },
+    {
+      "granule_id": "G4380908526-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_032_100_A_017_033_2000_SH_20261007T025938_20261007T030012_20261019T025938_20261019T030012_P05023_N_F_J_001",
+      "reference_time_utc": "2026-10-07T02:59:38+00:00",
+      "secondary_time_utc": "2026-10-19T02:59:38+00:00",
+      "baseline_days": 12.0,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "granule_mode",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": 4.356921195983887,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5635,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": null,
+      "time_index": 7,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4380908526-ASF_e81f9376c797\\manifest.json"
+    }
+  ],
+  "correction_policy": {
+    "ionosphere": true,
+    "troposphere": false,
+    "troposphere_constant_height_is_approximate": false,
+    "solid_earth_tides": false,
+    "orbital_ramp": false
+  },
+  "scientific_warnings": [
+    "Do not treat the time axis as cumulative displacement; use acquisition-pair baselines or perform network inversion.",
+    "Single-LOS vertical estimates assume horizontal displacement is negligible.",
+    "Stable reference and phase sign must be independently validated before public warnings.",
+    "Troposphere evaluated at a constant ellipsoidal height is inadequate for precise corrections across strong relief."
+  ]
+}

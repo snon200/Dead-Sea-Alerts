@@ -17,6 +17,7 @@ Examples (from project root, PowerShell):
     python src/nisar_processing.py --input data/raw/index.json \
       --ref-bbox 35.3770 31.4490 35.3880 31.4555 --component vertical
 
+    # Frequency A is detected automatically from each granule mode.
     # For exploratory data lacking troposphere metadata only:
     python src/nisar_processing.py --input data/raw/index.json \
       --ref-bbox 35.3770 31.4490 35.3880 31.4555 --no-troposphere
@@ -44,6 +45,7 @@ import json
 import logging
 import math
 import os
+import re
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -58,6 +60,66 @@ from rasterio.warp import Resampling, reproject, transform_bounds, transform_geo
 LOG = logging.getLogger('nisar.stage2')
 C = 299_792_458.0
 SCHEMA_VERSION = 1
+
+# NISAR L-band frequency-A center frequency by first two digits of
+# the four-digit range-bandwidth mode in the granule name.
+# Source: ASF NISAR Data User Guide, "About NISAR", Frequencies table.
+# The filename mode 2000 is 20 MHz frequency A -> 1229.0 MHz.
+FREQUENCY_A_BY_BANDWIDTH_MHZ = {
+    "05": 1221.5,
+    "20": 1229.0,
+    "40": 1239.0,
+    "77": 1257.5,
+}
+
+
+def frequency_a_from_mode(scene: dict) -> tuple[float, str]:
+    """Infer frequency-A from a NISAR 4-digit mode; never use frequency B.
+
+    The first two digits are frequency-A bandwidth in MHz and the last two
+    describe frequency-B bandwidth. E.g. 2000, 2005, 2020 -> 1229 MHz A.
+    """
+    identity = scene.get("scene", {})
+    name = Path(str(identity.get("granule_name") or "")).name
+    parts = name.removesuffix(".h5").split("_")
+    filename_mode = parts[9] if len(parts) >= 20 and parts[0] == "NISAR" else None
+    manifest_mode = identity.get("mode")
+    if filename_mode and manifest_mode and str(filename_mode) != str(manifest_mode):
+        raise ValueError(f"Mode mismatch between manifest {manifest_mode!r} and granule {filename_mode!r}")
+    mode = str(manifest_mode or filename_mode or "")
+    if not re.fullmatch(r"[0-9]{4}", mode):
+        raise ValueError(f"Cannot determine NISAR frequency-A mode from {mode!r}; refusing to guess")
+    bandwidth_a = mode[:2]
+    if bandwidth_a == "00":
+        raise ValueError(f"NISAR mode {mode} has no frequency-A band")
+    mhz = FREQUENCY_A_BY_BANDWIDTH_MHZ.get(bandwidth_a)
+    if mhz is None:
+        raise ValueError(f"Unsupported NISAR frequency-A bandwidth in mode {mode}; update verified mapping")
+    return mhz * 1e6, mode
+
+
+def resolve_frequency_a(scene: dict, manual_frequency_mhz: float | None) -> tuple[float, str, str]:
+    """Return (frequency_hz, source, mode); cross-check all available values."""
+    expected_hz, mode = frequency_a_from_mode(scene)
+    md = scene.get("radar_metadata") or {}
+    metadata_value = md.get("center_frequency_hz")
+    if metadata_value is not None:
+        metadata_hz = float(metadata_value)
+        if not np.isfinite(metadata_hz) or abs(metadata_hz - expected_hz) > 5e5:
+            raise ValueError(f"Frequency metadata {metadata_hz} Hz conflicts with mode {mode} ({expected_hz} Hz)")
+    else:
+        metadata_hz = None
+
+    if manual_frequency_mhz is not None:
+        frequency_hz = float(manual_frequency_mhz) * 1e6
+        source = "manual_override"
+        if not np.isfinite(frequency_hz) or abs(frequency_hz - expected_hz) > 5e5:
+            raise ValueError(f"Manual frequency {frequency_hz} Hz conflicts with mode {mode} ({expected_hz} Hz)")
+    elif metadata_hz is not None:
+        frequency_hz, source = metadata_hz, "scene_metadata"
+    else:
+        frequency_hz, source = expected_hz, "granule_mode"
+    return frequency_hz, source, mode
 
 
 def load_json(path: Path) -> dict:
@@ -249,11 +311,12 @@ def process_pair(path: Path, scene: dict, args, grid: dict) -> tuple[np.ndarray,
     components, _ = read_native(paths['connected_components'], reference=info, integer=True)
 
     md = scene.get('radar_metadata') or {}
-    frequency = float(args.frequency_mhz * 1e6 if args.frequency_mhz is not None
-                      else md.get('center_frequency_hz') or float('nan'))
-    if not np.isfinite(frequency) or not 1.1e9 < frequency < 1.4e9:
-        raise ValueError('Missing/invalid frequency-A center frequency; fix Stage 1 or use a verified --frequency-mhz')
+    frequency, frequency_source, frequency_mode = resolve_frequency_a(
+        scene, args.frequency_mhz
+    )
     wavelength = C / frequency
+    LOG.info('Frequency A: %.1f MHz (mode %s, source: %s)',
+             frequency / 1e6, frequency_mode, frequency_source)
 
     corrected = phase.copy()
     applied = []
@@ -308,6 +371,8 @@ def process_pair(path: Path, scene: dict, args, grid: dict) -> tuple[np.ndarray,
         'secondary_time_utc': end.isoformat(),
         'baseline_days': delta_days,
         'center_frequency_hz': frequency,
+        'frequency_source': frequency_source,
+        'frequency_mode': frequency_mode,
         'wavelength_m': wavelength,
         'reference_phase_rad': zero,
         'reference_component': main_component,
@@ -333,8 +398,9 @@ def run(args) -> dict:
     if args.phase_sign not in (-1, 1):
         raise ValueError('phase-sign must be +1 or -1')
 
-    output = Path(args.out)
-    output.mkdir(parents=True, exist_ok=True)
+    run_name = datetime.now(timezone.utc).strftime("run_%Y%m%d_%H%M%S_%f")
+    output = Path(args.out) / run_name
+    output.mkdir(parents=True, exist_ok=False)
     t, ny, nx = len(scenes), grid['height'], grid['width']
     est_gb = 2 * t * ny * nx * 4 / (1024**3)
     LOG.info('Allocating two %s float32 arrays, shape (%d,%d,%d), %.3f GiB total',
@@ -416,7 +482,7 @@ def run(args) -> dict:
 def main() -> int:
     p = argparse.ArgumentParser(description='Stack corrected GUNW pair displacement/coherence arrays')
     p.add_argument('--input', default='data/raw/index.json', help='Stage 1 acquisition index')
-    p.add_argument('--out', default='data/processed', help='Directory holding the three outputs')
+    p.add_argument('--out', default='data/processed/', help='Directory holding the three outputs')
     p.add_argument('--bbox', nargs=4, type=float, metavar=('W','S','E','N'),
                    help='Output AOI; default is Stage 1 request bbox')
     p.add_argument('--ref-bbox', nargs=4, type=float, required=True, metavar=('W','S','E','N'),
@@ -429,7 +495,7 @@ def main() -> int:
     p.add_argument('--min-ref-pixels', type=int, default=10)
     p.add_argument('--no-ionosphere', action='store_true', help='Exploratory only: do not apply ionosphere screen')
     p.add_argument('--no-troposphere', action='store_true', help='Exploratory only: do not apply wet/dry corrections')
-    p.add_argument('--frequency-mhz', type=float, help='Verified frequency override if metadata unavailable')
+    p.add_argument('--frequency-mhz', type=float, help='Optional manual check/override; frequency A is normally inferred from mode')
     p.add_argument('--incidence-deg', type=float, help='Verified incidence override for vertical component')
     p.add_argument('--phase-sign', type=int, choices=(-1,1), default=-1)
     p.add_argument('--verbose', action='store_true')
