@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Stage 2 — build a single aligned, pair-wise NISAR GUNW displacement stack.
+"""Stage 2 — cumulative NISAR GUNW displacement stack via network inversion.
 
-Output (only three files):
-    data/processed/displacement.npy   float32 (T, Y, X), NaN means unusable
-    data/processed/coherence.npy      float32 (T, Y, X), NaN means no observation
-    data/processed/metadata.json     map grid, dates, reference and provenance
+Output (only three files, in a unique run_... directory):
+    data/processed/run_.../displacement.npy   float32 (T, Y, X), NaN means unusable
+    data/processed/run_.../coherence.npy      float32 (T, Y, X), NaN means no observation
+    data/processed/run_.../metadata.json     map grid, dates, reference and provenance
 
-Each time slice is the corrected displacement BETWEEN the reference and
-secondary acquisitions of that GUNW interferogram. It is NOT a cumulative
-motion time series, and coherence also refers to that acquisition PAIR.
+Each time slice is cumulative displacement relative to the first acquisition
+date. Overlapping interferogram pairs are combined via per-pixel weighted least
+squares, never added twice. The coherence stack is per-date quality summaries.
 
 Examples (from project root, PowerShell):
     python src/nisar_processing.py --input data/raw/index.json \
@@ -386,6 +386,114 @@ def process_pair(path: Path, scene: dict, args, grid: dict) -> tuple[np.ndarray,
     return displaced, cohered, record
 
 
+def invert_pair_network(pair_d: np.ndarray, pair_c: np.ndarray, records: list[dict],
+                        *, coherence_min: float, block_pixels: int = 4096):
+    """Weighted pixel-wise network inversion, anchored to first acquisition date.
+
+    Each interferogram p measures D(t_secondary)-D(t_reference). Distinct dates
+    are joined by calendar day because individual NISAR passes can differ by
+    seconds across independently processed pairs. No double-counting of pairs.
+    Coherence for an output DATE is mean coherence among incident usable edges;
+    it is a support proxy, not a physical single-image coherence measurement.
+    """
+    dates = sorted({r['reference_time_utc'][:10] for r in records} |
+                   {r['secondary_time_utc'][:10] for r in records})
+    n = len(dates)
+    if n < 2 or n > 48:
+        raise ValueError('Network inversion supports 2 to 48 acquisition dates; split large stacks')
+    lookup = {day: k for k, day in enumerate(dates)}
+    edges = [(lookup[r['reference_time_utc'][:10]], lookup[r['secondary_time_utc'][:10]])
+             for r in records]
+    # Require the acquisition network itself to be connected.
+    nodes = {0}
+    for _ in range(n):
+        for a, b in edges:
+            if a in nodes or b in nodes:
+                nodes.update((a, b))
+    if len(nodes) != n:
+        raise ValueError('Acquisition-date network is disconnected')
+
+    pcount, ny, nx = pair_d.shape
+    if len(edges) != pcount or pair_c.shape != pair_d.shape:
+        raise ValueError('Edge count / pair array mismatch')
+    A = np.zeros((pcount, n - 1), dtype=np.float64)
+    for p, (a, b) in enumerate(edges):
+        if a > 0:
+            A[p, a - 1] = -1.
+        if b > 0:
+            A[p, b - 1] = 1.
+    d_out = np.full((n, ny, nx), np.nan, dtype=np.float32)
+    c_out = np.full((n, ny, nx), np.nan, dtype=np.float32)
+    flat_d = pair_d.reshape(pcount, -1)
+    flat_c = pair_c.reshape(pcount, -1)
+    flat_o = d_out.reshape(n, -1)
+    flat_q = c_out.reshape(n, -1)
+    total = ny * nx
+
+    for begin in range(0, total, block_pixels):
+        stop = min(begin + block_pixels, total)
+        dd = np.asarray(flat_d[:, begin:stop], dtype=np.float64)
+        cc = np.asarray(flat_c[:, begin:stop], dtype=np.float64)
+        valid = np.isfinite(dd) & np.isfinite(cc) & (cc >= coherence_min) & (cc <= 1)
+        m = stop - begin
+        # Each pixel can have a different valid subgraph: determine which
+        # acquisition dates can be linked to the reference using valid edges.
+        reachable = np.zeros((n, m), dtype=bool)
+        reachable[0] = True
+        for _ in range(n):
+            changed = False
+            for p, (a, b) in enumerate(edges):
+                joined = valid[p] & (reachable[a] | reachable[b])
+                fresh_a = joined & ~reachable[a]
+                fresh_b = joined & ~reachable[b]
+                if fresh_a.any() or fresh_b.any():
+                    reachable[a] |= joined
+                    reachable[b] |= joined
+                    changed = True
+            if not changed:
+                break
+        any_support = reachable[1:].any(axis=0)
+        usable = valid.copy()
+        for p, (a, b) in enumerate(edges):
+            usable[p] &= reachable[a] & reachable[b]
+
+        # Coherence-derived least-squares weights are heuristic, not a formal
+        # InSAR uncertainty model (multilooking and correlated errors unknown).
+        weights = np.where(usable, np.maximum(cc, 0) ** 2, 0.0)
+        observation = np.where(usable, dd, 0.0)
+        normal = np.einsum('pi,pj,pk->kij', A, A, weights, optimize=True)
+        rhs = np.einsum('pi,pk->ki', A, weights * observation, optimize=True)
+        # Disconnected dates have unconstrained unknowns. Add diagonal only
+        # for these nodes, then explicitly output NaN for them below.
+        missing = ~reachable[1:].T
+        ix = np.arange(n - 1)
+        normal[:, ix, ix] += missing * 1.0 + 1e-9
+        try:
+            solution = np.linalg.solve(normal, rhs[..., None])[..., 0].T
+        except np.linalg.LinAlgError as exc:
+            raise ValueError('Singular inversion system; inspect pair connectivity') from exc
+        flat_o[0, begin:stop] = np.where(any_support, 0., np.nan)
+        for k in range(1, n):
+            flat_o[k, begin:stop] = np.where(reachable[k], solution[k-1], np.nan)
+
+        # Per-date summary of the ORIGINAL coherence of incident usable edges.
+        quality_sum = np.zeros((n, m), dtype=float)
+        quality_count = np.zeros((n, m), dtype=float)
+        for p, (a, b) in enumerate(edges):
+            count = usable[p].astype(float)
+            value = np.where(usable[p], cc[p], 0.)
+            quality_sum[a] += value
+            quality_sum[b] += value
+            quality_count[a] += count
+            quality_count[b] += count
+        np.divide(quality_sum, quality_count, out=quality_sum,
+                  where=quality_count > 0)
+        for k in range(n):
+            flat_q[k, begin:stop] = np.where(reachable[k] & (quality_count[k] > 0),
+                                              quality_sum[k], np.nan)
+    return d_out, c_out, dates, edges
+
+
 def run(args) -> dict:
     index_path = Path(args.input).resolve()
     index, scenes = input_scenes(index_path)
@@ -398,91 +506,111 @@ def run(args) -> dict:
     if args.phase_sign not in (-1, 1):
         raise ValueError('phase-sign must be +1 or -1')
 
-    run_name = datetime.now(timezone.utc).strftime("run_%Y%m%d_%H%M%S_%f")
-    output = Path(args.out) / run_name
+    # Every run gets its own immutable output directory, by default.
+    run_name = args.run_name or datetime.now(timezone.utc).strftime('run_%Y%m%d_%H%M%S_%f')
+    if not re.fullmatch(r'[A-Za-z0-9_-]+', run_name):
+        raise ValueError('--run-name may contain only letters, digits, underscore and hyphen')
+    output = Path(args.out).resolve() / run_name
     output.mkdir(parents=True, exist_ok=False)
-    t, ny, nx = len(scenes), grid['height'], grid['width']
-    est_gb = 2 * t * ny * nx * 4 / (1024**3)
-    LOG.info('Allocating two %s float32 arrays, shape (%d,%d,%d), %.3f GiB total',
-             args.component, t, ny, nx, est_gb)
-    records = []
-    with tempfile.TemporaryDirectory(prefix='.stage2-', dir=output) as temp:
-        scratch = Path(temp)
-        d = np.lib.format.open_memmap(scratch / 'displacement.npy', mode='w+', dtype='float32', shape=(t,ny,nx))
-        c = np.lib.format.open_memmap(scratch / 'coherence.npy', mode='w+', dtype='float32', shape=(t,ny,nx))
-        for i, (path, scene) in enumerate(scenes):
-            LOG.info('Processing pair %d/%d: %s', i+1, t, scene['scene'].get('granule_name', path.parent.name))
-            d[i], c[i], stats = process_pair(path, scene, args, grid)
-            stats['time_index'] = i
-            stats['source_manifest'] = str(path)
-            records.append(stats)
-            LOG.info('Pair %d: %d valid displacement pixels, baseline %.2f days',
-                     i+1, stats['valid_displacement_pixels'], stats['baseline_days'])
-        d.flush(); c.flush()
-        del d, c
-        # A single 2-D affine grid maps EVERY time slice to the same location.
-        transform = grid['transform']
-        metadata = {
-            'schema_version': SCHEMA_VERSION,
-            'stage': 'geophysical_processing_stack',
-            'created_utc': datetime.now(timezone.utc).isoformat(),
-            'array_shape': [t,ny,nx],
-            'axis_order': ['time_pair', 'row', 'column'],
-            'files': {'displacement': 'displacement.npy', 'coherence': 'coherence.npy'},
-            'displacement': {
-                'unit': 'mm', 'component': args.component,
-                'meaning': 'Relative displacement between EACH GUNW reference and secondary acquisition (NOT cumulative)',
-                'phase_sign': args.phase_sign,
-                'positive_los_direction': 'toward' if args.phase_sign == -1 else 'unverified_or_away',
-                'phase_sign_verified_for_provisional_products': False,
-                'assumes_zero_horizontal_motion': args.component == 'vertical',
-                'reference_bbox_wsen': list(reference),
-                'coherence_minimum_for_displacement': args.coh_min,
-                'zero_on_reference': 'Median corrected phase on largest valid unwrapping component in reference bbox',
-            },
-            'coherence': {
-                'unit': 'dimensionless', 'range': [0,1],
-                'meaning': 'Interferometric coherence of each reference/secondary acquisition pair',
-                'masking': 'NaN outside observed/valid coherence; low coherence retained here, masked in displacement',
-            },
-            'grid': {
-                'crs': grid['crs'].to_string(),
-                'transform_affine': [transform.a, transform.b, transform.c,
-                                     transform.d, transform.e, transform.f],
-                'transform_formula': 'x=a*(col+0.5)+b*(row+0.5)+c; y=d*(col+0.5)+e*(row+0.5)+f',
-                'width': nx, 'height': ny, 'bounds_projected': grid['bbox_projected'],
-                'requested_bbox_wsen': list(bbox), 'pixel_size_m': args.resolution_m,
-                'resampling': 'nearest for pair displacement and coherence; never interpolate across disconnected unwrapping regions',
-            },
-            'acquisition_family': {'track': family[0], 'frame': family[1], 'direction': family[2],
-                                   'mode': family[3], 'polarization': family[4], 'release': family[5],
-                                   'crid': family[6]},
-            'time_axis': 'One row per GUNW acquisition pair, sorted by secondary acquisition time. Times may repeat.',
-            'pairs': records,
-            'correction_policy': {
-                'ionosphere': not args.no_ionosphere, 'troposphere': not args.no_troposphere,
-                'troposphere_constant_height_is_approximate': not args.no_troposphere,
-                'solid_earth_tides': False, 'orbital_ramp': False,
-            },
-            'scientific_warnings': [
-                'Do not treat the time axis as cumulative displacement; use acquisition-pair baselines or perform network inversion.',
-                'Single-LOS vertical estimates assume horizontal displacement is negligible.',
-                'Stable reference and phase sign must be independently validated before public warnings.',
-                'Troposphere evaluated at a constant ellipsoidal height is inadequate for precise corrections across strong relief.',
-            ],
-        }
-        (scratch / 'metadata.json').write_text(json.dumps(metadata, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-        # Publish only when all pairs were processed successfully.
-        for filename in ('displacement.npy', 'coherence.npy', 'metadata.json'):
-            os.replace(scratch / filename, output / filename)
-    LOG.info('Saved %s (shape %s)', output, (t,ny,nx))
-    return metadata
-
+    pcount, ny, nx = len(scenes), grid['height'], grid['width']
+    LOG.info('Processing %d interferogram pairs into %s', pcount, output)
+    try:
+        with tempfile.TemporaryDirectory(prefix='.stage2-', dir=output) as temp:
+            scratch = Path(temp)
+            pair_d = np.lib.format.open_memmap(scratch / 'pair_d.npy', mode='w+', dtype='float32',
+                                                shape=(pcount, ny, nx))
+            pair_c = np.lib.format.open_memmap(scratch / 'pair_c.npy', mode='w+', dtype='float32',
+                                                shape=(pcount, ny, nx))
+            records = []
+            for i, (path, scene) in enumerate(scenes):
+                LOG.info('Processing pair %d/%d: %s', i+1, pcount, scene['scene'].get('granule_name', path.parent.name))
+                pair_d[i], pair_c[i], stats = process_pair(path, scene, args, grid)
+                stats['pair_index'] = i
+                stats['source_manifest'] = str(path)
+                records.append(stats)
+            pair_d.flush(); pair_c.flush()
+            LOG.info('Inverting %d pair-wise displacement maps into cumulative dates', pcount)
+            cumulative, quality, dates, edge_indices = invert_pair_network(
+                pair_d, pair_c, records, coherence_min=args.coh_min)
+            d_file = np.lib.format.open_memmap(scratch / 'displacement.npy', mode='w+', dtype='float32',
+                                               shape=cumulative.shape)
+            c_file = np.lib.format.open_memmap(scratch / 'coherence.npy', mode='w+', dtype='float32',
+                                               shape=quality.shape)
+            d_file[:] = cumulative
+            c_file[:] = quality
+            d_file.flush(); c_file.flush()
+            del d_file, c_file, cumulative, quality, pair_d, pair_c
+            tf = grid['transform']
+            metadata = {
+                'schema_version': 2,
+                'stage': 'geophysical_processing_cumulative_stack',
+                'created_utc': datetime.now(timezone.utc).isoformat(),
+                'array_shape': [len(dates), ny, nx],
+                'axis_order': ['acquisition_date', 'row', 'column'],
+                'files': {'displacement': 'displacement.npy', 'coherence': 'coherence.npy'},
+                'displacement': {
+                    'unit': 'mm', 'component': args.component,
+                    'meaning': 'CUMULATIVE displacement relative to first acquisition date; weighted pixel-wise inversion of GUNW pair differences',
+                    'reference_date': dates[0], 'phase_sign': args.phase_sign,
+                    'positive_los_direction': 'toward' if args.phase_sign == -1 else 'unverified_or_away',
+                    'phase_sign_verified_for_provisional_products': False,
+                    'assumes_zero_horizontal_motion': args.component == 'vertical',
+                    'reference_bbox_wsen': list(reference),
+                    'coherence_minimum_for_displacement': args.coh_min,
+                },
+                'coherence': {
+                    'unit': 'dimensionless', 'range': [0, 1],
+                    'meaning': 'Mean original GUNW pair coherence among usable pair edges incident to each acquisition date, a SUPPORT PROXY, not single-acquisition coherence',
+                    'reference_date_has_coherence_proxy_not_independent_measurement': True,
+                },
+                'grid': {
+                    'crs': grid['crs'].to_string(),
+                    'transform_affine': [tf.a, tf.b, tf.c, tf.d, tf.e, tf.f],
+                    'transform_formula': 'x=a*(col+0.5)+b*(row+0.5)+c; y=d*(col+0.5)+e*(row+0.5)+f',
+                    'width': nx, 'height': ny, 'bounds_projected': grid['bbox_projected'],
+                    'requested_bbox_wsen': list(bbox), 'pixel_size_m': args.resolution_m,
+                    'resampling': 'nearest-neighbor on each phase-connected pair; no interpolation across masked regions',
+                },
+                'acquisition_family': {
+                    'track': family[0], 'frame': family[1], 'direction': family[2],
+                    'mode': family[3], 'polarization': family[4], 'release': family[5], 'crid': family[6],
+                },
+                'dates': dates,
+                'time_axis': 'Unique UTC acquisition dates; displacement[0] is zero where connected to first date',
+                'pairs': records,
+                'inversion': {
+                    'method': 'pixelwise weighted least squares anchored at first acquisition date',
+                    'weights': 'coherence squared (heuristic)',
+                    'missing_data': 'NaN for acquisition dates disconnected from reference at each pixel',
+                    'edge_indices': [list(pair) for pair in edge_indices],
+                    'cumulative_is_not_sum_when_pairs_overlap': True,
+                },
+                'correction_policy': {
+                    'ionosphere': not args.no_ionosphere, 'troposphere': not args.no_troposphere,
+                    'troposphere_constant_height_is_approximate': not args.no_troposphere,
+                    'solid_earth_tides': False, 'orbital_ramp': False,
+                },
+                'scientific_warnings': [
+                    'Phase sign and stable reference not independently validated for public hazard warnings.',
+                    'A single LOS observation does not uniquely determine vertical motion.',
+                    'Coherence.npy after inversion represents incident-pair quality summary, not independent image coherence.',
+                    'Time-series uncertainties are not yet estimated; no tropospheric correction when disabled.',
+                ],
+            }
+            (scratch / 'metadata.json').write_text(json.dumps(metadata, indent=2, allow_nan=False)+'\n', encoding='utf-8')
+            for file in ('displacement.npy', 'coherence.npy', 'metadata.json'):
+                os.replace(scratch / file, output / file)
+        LOG.info('Saved cumulative stack %s (shape %s)', output, tuple(metadata['array_shape']))
+        return metadata
+    except Exception:
+        LOG.error('Processing failed, leaving output directory %s for investigation', output)
+        raise
 
 def main() -> int:
-    p = argparse.ArgumentParser(description='Stack corrected GUNW pair displacement/coherence arrays')
+    p = argparse.ArgumentParser(description='Invert connected GUNW pairs into a cumulative acquisition-date displacement stack')
     p.add_argument('--input', default='data/raw/index.json', help='Stage 1 acquisition index')
-    p.add_argument('--out', default='data/processed/', help='Directory holding the three outputs')
+    p.add_argument('--out', default='data/processed', help='Parent directory for timestamped run output')
+    p.add_argument('--run-name', help='Optional unique output folder name; default is a UTC timestamp')
     p.add_argument('--bbox', nargs=4, type=float, metavar=('W','S','E','N'),
                    help='Output AOI; default is Stage 1 request bbox')
     p.add_argument('--ref-bbox', nargs=4, type=float, required=True, metavar=('W','S','E','N'),
