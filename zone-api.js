@@ -65,7 +65,7 @@ function parseZoneResponse(payload) {
     return {
       id: zone.id, name: `Zone ${zone.id}`, level,
       label: level === 'unknown' ? 'Unavailable' : level[0].toUpperCase() + level.slice(1),
-      polygons, demo: false,
+      polygons,
       losRate: summary.los_velocity_mm_per_year, cumulative: summary.cumulative_shift_mm,
       acceleration: summary.acceleration_mm_per_year2, coherence: summary.latest_pair_mean_coherence,
       pairStart: summary.latest_pair_reference_time, pairEnd: summary.latest_pair_secondary_time,

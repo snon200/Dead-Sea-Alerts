@@ -6,13 +6,7 @@ Help users explore possible ground subsidence around the Dead Sea and its relati
 
 ## Current implementation
 
-The dashboard uses vanilla JavaScript and Leaflet. Use `vercel dev` from the repository root to serve the frontend and Python API together. A static server can be used to explore the illustrative demo, but cannot execute the API:
-
-```sh
-python -m http.server 8000
-```
-
-Open `http://localhost:8000/index.html` and select **Show illustrative demo** after the API request fails. Leaflet, OpenStreetMap tiles, and infrastructure features require internet access.
+The dashboard uses vanilla JavaScript and Leaflet. Use `vercel dev` from the repository root to serve the frontend and Python API together. A static server cannot execute the API. Leaflet, OpenStreetMap tiles, and infrastructure features require internet access.
 
 The interface has three regions:
 
@@ -21,7 +15,18 @@ The interface has three regions:
 - **Zone details:** a collapsible panel with the selected zone's measurements, infrastructure context, displacement trend, and data provenance. Use the arrow at the panel edge to collapse or reopen it. Only categories with mapped features are listed; an empty-state message appears if none are found. Measurement inputs are collapsed by default and include a brief explanation; information buttons explain the individual metrics and inputs.
 - On narrow screens, opening one panel closes the other so their controls remain accessible.
 
-On load, the dashboard requests `GET /api/v1/zones`. It displays loading, empty and error states and offers retry; it does not silently substitute fixtures. The API calculations are not connected yet, so it currently returns 503. Users may explicitly choose the labeled illustrative demo. Its nine zones, polygons, classifications, time series, and measurements are embedded fixtures, **not NISAR observations, validated calculations, or actionable risk assessments**. Some zones were placed around mapped features solely to test the interface; their risk levels do not describe the actual sites. API results support Polygon and MultiPolygon geometry, missing measurements and dated cumulative series; zone names currently use IDs. The basemap is separate from the overlays.
+On load, the dashboard requests `GET /api/v1/zones` and displays loading, empty and error states. If the request fails, reload the page to retry. API results support Polygon and MultiPolygon geometry, missing measurements and dated cumulative series; zone names currently use IDs. The basemap is separate from the overlays. Results are exploratory and are not an operational hazard assessment.
+
+Measurements and coordinates are rounded to two decimal places for display. Coordinates marked with `~` are approximate; map geometry and feature locations retain their original precision.
+
+For local development, `python scripts/dashboard_server.py` serves the dashboard and the real zones API on `127.0.0.1:8000`. Set `ZONE_DATA_SOURCE=demo` before running it to use the nine synthetic demonstration zones instead. In PowerShell:
+
+```powershell
+$env:ZONE_DATA_SOURCE = "demo"
+python scripts/dashboard_server.py
+```
+
+Clear the variable (`Remove-Item Env:ZONE_DATA_SOURCE`) to return to the default API source. In a POSIX shell, use `ZONE_DATA_SOURCE=demo python scripts/dashboard_server.py`. The local server binds only to localhost; Vercel deployments always use the real API, regardless of this variable. Demo zone names, values, classifications, and dates are synthetic; infrastructure features still come from OpenStreetMap.
 
 ### Infrastructure data
 
@@ -38,7 +43,7 @@ The [NISAR Data User Guide](https://nisar-docs.asf.alaska.edu/availability-overv
 1. Investigate reliable access to OpenStreetMap infrastructure data, considering request limits, caching, and a preprocessed regional dataset if appropriate.
 2. Identify and obtain suitable NISAR observations for the study area through NASA Earthdata or ASF, and establish a reproducible processing pipeline.
 3. Derive and validate displacement time series and regional subsidence zones, recording acquisition dates, units, uncertainty, and data provenance.
-4. Develop and validate risk scenarios and infrastructure exposure calculations against relevant research, including [Nof et al. (2019)](https://doi.org/10.3390/rs11010089). Do not treat the current fixture values or classifications as research-validated thresholds.
-5. Replace the illustrative zones and measurements with processed data and connect the details panel to the inputs and calculations behind each result.
+4. Develop and validate risk scenarios and infrastructure exposure calculations against relevant research, including [Nof et al. (2019)](https://doi.org/10.3390/rs11010089). Do not treat current results as research-validated thresholds.
+5. Continue connecting the details panel to the inputs and calculations behind each result.
 
 See the [product requirements document](./product_requirements_document_prd_project_hail_miriam%20%281%29.md) for the broader product vision and [README](./README.md) for the challenge and data resources. Scientific claims and proposed thresholds in the PRD require validation before operational use.

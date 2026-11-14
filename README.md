@@ -8,7 +8,7 @@ Dead Sea Alerts is an interactive map for exploring ground deformation around th
 
 Built by [Team Project Hail Miriam](https://www.spaceappschallenge.org/2026/find-a-team/project-hail-miriam/) for the 2026 NASA Space Apps Challenge, **Dancing with the SARs**.
 
-> **Important:** Dashboard example zones and measurements are illustrative. This project is not a validated hazard assessment or a safety warning system.
+> **Important:** Dashboard zones and measurements are exploratory. This project is not a validated hazard assessment or a safety warning system.
 
 The team brings together builders, data enthusiasts and storytellers to make NISAR observations accessible. Team listing: Tel Aviv, Israel; languages: English and Hebrew.
 
@@ -65,9 +65,11 @@ For local endpoint testing use `vercel dev` from the project directory (a plain 
 
 ### Run locally
 
-Run `vercel dev` from the repository root and open its local URL. The dashboard includes illustrative zones and measurements. A plain static HTTP server serves the frontend but cannot run the Python API. The map uses OpenStreetMap tiles; neither illustrative nor experimental data is an operational warning.
+Run `vercel dev` from the repository root and open its local URL. A plain static HTTP server serves the frontend but cannot run the Python API. The map uses OpenStreetMap tiles; experimental data is not an operational warning.
 
-The dashboard requests OpenStreetMap features for each zone's bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. The demo zone outlines and measurements are synthetic. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory during the session; selected ways may extend outside a zone. If a request fails or times out, use the displayed Retry button. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
+Alternatively, run `python scripts/dashboard_server.py` for a localhost-only server. It defaults to the real API; set `ZONE_DATA_SOURCE=demo` before starting it to display synthetic demo zones locally. See [Dashboard](./DASHBOARD.md) for commands.
+
+The dashboard requests OpenStreetMap features for each zone's bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory during the session; selected ways may extend outside a zone. If an infrastructure request fails or times out, use the displayed Retry button. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
 
 ## Sources
 
