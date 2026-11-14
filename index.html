@@ -94,11 +94,9 @@
     .zone-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0;
       overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 2px 2px; }
     .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 10px; line-height: 1.4; }
-    .zone-source-status { flex: none; margin-bottom: 8px; border: 1px solid #dfe6ee; border-radius: 9px;
-      background: #f7f9fc; padding: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
-    .zone-source-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
-    .zone-source-status[data-state="demo"] { border-color: #f0dfb8; color: #78653b; background: #fffaf0; }
-    .zone-source-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
+    .zone-source-status[data-state="error"] { color: #a53443; }
+    .zone-source-status[data-state="demo"] { color: #876622; }
     .zone-card {
       flex: none; width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
       border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
@@ -291,13 +289,7 @@
             <span class="count" id="zoneCount" aria-live="polite"></span>
           </div>
           <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
-          <div class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">
-            <span id="zoneSourceText">Loading zone data…</span>
-            <div class="zone-source-actions">
-              <button class="layer-action" id="retryZones" type="button" hidden>Retry API</button>
-              <button class="layer-action" id="showDemoZones" type="button" hidden>Show illustrative demo</button>
-            </div>
-          </div>
+          <p class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">Loading zone data…</p>
           <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
           <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones" tabindex="0"></div>
           <section class="layer-section" aria-labelledby="osmLayersHeading">
@@ -357,82 +349,13 @@
     const OSM_MAP_URL = 'https://api.openstreetmap.org/api/0.6/map.json';
     const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
     const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
-
-    // All values below are synthetic UI fixtures; they are not derived from NISAR.
-    const DEMO_ZONES = [
-      {
-        id: 'ein-gedi', name: 'Ein Gedi · Route 90', level: 'high', label: 'High',
-        polygon: [[31.42040,35.38035],[31.41790,35.38315],[31.41540,35.38035],[31.41790,35.37755]],
-        summary: 'Subsidence zone near the Ein Gedi section of Route 90.',
-        asset: 'Route 90', losRate: -42.6, cumulative: -18.4, acceleration: -3.2,
-        coherence: 0.81, nearestAsset: 185, observations: 6,
-        series: [0,-1.7,-4.0,-6.8,-10.0,-13.7,-18.4]
-      },
-      {
-        id: 'mineral-beach', name: 'Mineral Beach · North coast', level: 'elevated', label: 'Elevated',
-        polygon: [[31.71835,35.45403],[31.71585,35.45683],[31.71335,35.45403],[31.71585,35.45123]],
-        summary: 'Zone near the northern Dead Sea shoreline and access roads.',
-        asset: 'Access road', losRate: -26.8, cumulative: -11.2, acceleration: -1.4,
-        coherence: 0.73, nearestAsset: 420, observations: 6,
-        series: [0,-0.8,-2.0,-3.7,-5.7,-8.2,-11.2]
-      },
-      {
-        id: 'zeelim-south', name: 'Ze’elim · Southern fan', level: 'watch', label: 'Watch',
-        polygon: [[31.23764,35.36689],[31.23514,35.36969],[31.23264,35.36689],[31.23514,35.36409]],
-        summary: 'Zone on the southern alluvial-fan margin.',
-        asset: 'Utility corridor', losRate: -16.3, cumulative: -6.9, acceleration: -0.5,
-        coherence: 0.68, nearestAsset: 860, observations: 6,
-        series: [0,-0.4,-1.1,-2.0,-3.2,-4.8,-6.9]
-      },
-      {
-        id: 'south-basin', name: 'Southern basin · Reference', level: 'low', label: 'Low',
-        polygon: [[31.06891,35.37508],[31.06641,35.37788],[31.06391,35.37508],[31.06641,35.37228]],
-        summary: 'Low-change reference area for comparing observations.',
-        asset: 'No assigned asset', losRate: -3.1, cumulative: -1.3, acceleration: 0.1,
-        coherence: 0.77, nearestAsset: null, observations: 6,
-        series: [0,-0.2,-0.4,-0.6,-0.8,-1.0,-1.3]
-      },
-      {
-        id: 'ein-gedi-kibbutz', name: 'Ein Gedi · Kibbutz', level: 'elevated', label: 'Elevated',
-        polygon: [[31.45500,35.38600],[31.45250,35.38880],[31.45000,35.38600],[31.45250,35.38320]],
-        summary: 'Zone near the Ein Gedi kibbutz and local roads.',
-        asset: 'Kibbutz buildings', losRate: -23.4, cumulative: -10.1, acceleration: -1.2,
-        coherence: 0.79, nearestAsset: 95, observations: 6,
-        series: [0,-0.7,-1.9,-3.3,-5.2,-7.4,-10.1]
-      },
-      {
-        id: 'ein-bokek', name: 'Ein Bokek · Hotel district', level: 'watch', label: 'Watch',
-        polygon: [[31.20094,35.36365],[31.19844,35.36645],[31.19594,35.36365],[31.19844,35.36085]],
-        summary: 'Zone near the Ein Bokek hotel district and access roads.',
-        asset: 'Hotel district', losRate: -14.8, cumulative: -6.4, acceleration: -0.6,
-        coherence: 0.75, nearestAsset: 130, observations: 6,
-        series: [0,-0.4,-1.0,-1.9,-3.1,-4.6,-6.4]
-      },
-      {
-        id: 'lisan-pump', name: 'Lisan · Utility corridor', level: 'elevated', label: 'Elevated',
-        polygon: [[31.33160,35.40290],[31.32910,35.40570],[31.32660,35.40290],[31.32910,35.40010]],
-        summary: 'Illustrative test zone around mapped pumping and utility infrastructure.',
-        asset: 'Utility corridor', losRate: -21.2, cumulative: -9.1, acceleration: -1.0,
-        coherence: 0.76, nearestAsset: 100, observations: 6,
-        series: [0,-0.6,-1.7,-3.0,-4.7,-6.8,-9.1]
-      },
-      {
-        id: 'ein-gedi-reservoir', name: 'Ein Gedi · Reservoirs', level: 'watch', label: 'Watch',
-        polygon: [[31.44740,35.38720],[31.44490,35.39000],[31.44240,35.38720],[31.44490,35.38440]],
-        summary: 'Illustrative test zone around mapped reservoirs near Ein Gedi.',
-        asset: 'Reservoirs', losRate: -12.4, cumulative: -5.3, acceleration: -0.4,
-        coherence: 0.75, nearestAsset: 100, observations: 6,
-        series: [0,-0.3,-0.8,-1.5,-2.5,-3.8,-5.3]
-      },
-      {
-        id: 'north-well', name: 'Northern shore · Well', level: 'watch', label: 'Watch',
-        polygon: [[31.74472,35.41704],[31.74222,35.41984],[31.73972,35.41704],[31.74222,35.41424]],
-        summary: 'Illustrative test zone around an OSM-mapped water well.',
-        asset: 'Water well', losRate: -10.2, cumulative: -4.5, acceleration: -0.3,
-        coherence: 0.74, nearestAsset: 100, observations: 6,
-        series: [0,-0.3,-0.7,-1.3,-2.1,-3.2,-4.5]
-      }
-    ];
+    const DEMO_ZONE_NAMES = {
+      'ein-gedi': 'Ein Gedi · Route 90', 'mineral-beach': 'Mineral Beach · North coast',
+      'zeelim-south': 'Ze’elim · Southern fan', 'south-basin': 'Southern basin · Reference',
+      'ein-gedi-kibbutz': 'Ein Gedi · Kibbutz', 'ein-bokek': 'Ein Bokek · Hotel district',
+      'lisan-pump': 'Lisan · Utility corridor', 'ein-gedi-reservoir': 'Ein Gedi · Reservoirs',
+      'north-well': 'Northern shore · Well'
+    };
 
     const EXTRA_LAYERS = [
       { key: 'bridges', label: 'Bridges', fallback: 'Bridge', color: '#e87834', count: 'bridgeCount', toggle: 'toggleBridges',
@@ -458,7 +381,7 @@
     let RISK_ZONES = [];
     const state = {
       selectedId: null,
-      zoneSource: 'loading',
+      demo: false,
       show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true },
       sidebar: { left: true, right: true },
       osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
@@ -504,13 +427,11 @@
     let pinnedMetricHelp = null;
     let zoneRequest = null;
 
-    function setZoneSourceStatus(message, source, retry, demo) {
+    function setZoneSourceStatus(message, source) {
       const status = document.getElementById('zoneSourceStatus');
       status.dataset.state = source;
-      document.getElementById('zoneSourceText').textContent = message;
-      document.getElementById('retryZones').hidden = !retry;
-      document.getElementById('showDemoZones').hidden = !demo;
-      state.zoneSource = source;
+      status.textContent = message;
+      status.hidden = source === 'ready';
     }
 
     function replaceZones(zones) {
@@ -545,7 +466,8 @@
       if (zoneRequest) zoneRequest.abort();
       const controller = new AbortController();
       zoneRequest = controller;
-      setZoneSourceStatus('Loading zone data…', 'loading', false, false);
+      state.demo = false;
+      setZoneSourceStatus('Loading zone data…', 'loading');
       replaceZones([]);
       const timeout = setTimeout(() => controller.abort(), 20000);
       try {
@@ -553,26 +475,20 @@
         if (!response.ok) throw new Error(`Zone API returned HTTP ${response.status}`);
         const zones = parseZoneResponse(await response.json());
         if (zoneRequest !== controller) return;
-        setZoneSourceStatus(zones.length ? 'Experimental zone data; not for safety decisions.' :
-          'No zones found in the current data.', 'ready', true, true);
+        state.demo = response.headers.get('X-Zone-Source') === 'demo';
+        if (state.demo) zones.forEach(zone => { zone.name = DEMO_ZONE_NAMES[zone.id] || zone.name; });
+        setZoneSourceStatus(state.demo ? 'Illustrative demo: zones and measurements are synthetic.' : '', state.demo ? 'demo' : 'ready');
         replaceZones(zones);
       } catch (error) {
         if (zoneRequest !== controller) return;
         console.error('Could not load zone data:', error);
-        setZoneSourceStatus('Zone data is unavailable. Retry or open the illustrative demo.', 'error', true, true);
+        setZoneSourceStatus('Zone data is unavailable. Reload the page to retry.', 'error');
         renderZoneList();
         renderDetails();
       } finally {
         clearTimeout(timeout);
         if (zoneRequest === controller) zoneRequest = null;
       }
-    }
-
-    function showDemoZones() {
-      if (zoneRequest) zoneRequest.abort();
-      zoneRequest = null;
-      setZoneSourceStatus('Illustrative demo: zones and measurements are synthetic, not NISAR data.', 'demo', true, false);
-      replaceZones(DEMO_ZONES.map(zone => ({ ...zone, polygons: [[zone.polygon]], demo: true })));
     }
 
     function selectedZone() {
@@ -588,7 +504,7 @@
 
     function coordRange(zone) {
       const b = polygonBounds(zone);
-      return `Lat ${b.south.toFixed(4)}–${b.north.toFixed(4)} · Lon ${b.west.toFixed(4)}–${b.east.toFixed(4)}`;
+      return `Lat ~${formatMeasurement(b.south)}–${formatMeasurement(b.north)} · Lon ~${formatMeasurement(b.west)}–${formatMeasurement(b.east)}`;
     }
 
     function ringAreaKm2(polygon) {
@@ -635,7 +551,7 @@
             <span class="zone-title">${escapeHtml(zone.name)}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
-          <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${zoneAreaKm2(zone).toFixed(2)} km²</span></span>
+          <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${formatMeasurement(zoneAreaKm2(zone), 'km²')}</span></span>
           <span class="zone-coords">${coordRange(zone)}</span>
         </button>
       `).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
@@ -645,35 +561,35 @@
     }
 
     function formatMeasurement(value, unit = '') {
-      return value === null || value === undefined ? 'Unavailable' : `${value}${unit ? ` ${unit}` : ''}`;
+      return value === null || value === undefined ? 'Unavailable' : `${value.toFixed(2)}${unit ? ` ${unit}` : ''}`;
     }
 
     function renderChart(zone) {
       if (!zone.series || !zone.series.length) return '<p class="empty-state">Displacement history unavailable.</p>';
       const width = 300, height = 88, pad = 12;
-      const values = zone.demo ? zone.series : zone.series.map(point => point.value);
+      const values = zone.series.map(point => point.value);
       const min = Math.min(...values, 0), max = Math.max(...values, 0);
       const span = (max - min) || 1;
-      const firstTime = zone.demo ? 0 : Date.parse(zone.series[0].time);
-      const lastTime = zone.demo ? values.length - 1 : Date.parse(zone.series[zone.series.length - 1].time);
+      const firstTime = Date.parse(zone.series[0].time);
+      const lastTime = Date.parse(zone.series[zone.series.length - 1].time);
       const points = values.map((value, index) => {
-        const time = zone.demo ? index : Date.parse(zone.series[index].time);
+        const time = Date.parse(zone.series[index].time);
         const x = pad + (lastTime === firstTime ? 0 : (time - firstTime) / (lastTime - firstTime)) * (width - pad * 2);
         const y = pad + (max - value) * (height - pad * 2) / span;
         return [x, y];
       });
       const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
       const dots = points.map(([x, y], index) => {
-        const label = zone.demo ? `Observation ${index + 1}` : zone.series[index].time;
-        return `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"><title>${escapeHtml(label)}: ${values[index]} mm</title></circle>`;
+        const label = zone.series[index].time;
+        return `<circle cx="${x}" cy="${y}" r="2.5" fill="${COLORS[zone.level]}"><title>${escapeHtml(label)}: ${formatMeasurement(values[index], 'mm')}</title></circle>`;
       }).join('');
-      const firstLabel = zone.demo ? 'Earlier' : zone.series[0].time.slice(0, 10);
-      const lastLabel = zone.demo ? 'Latest' : zone.series[zone.series.length - 1].time.slice(0, 10);
-      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${min} to ${max}">
+      const firstLabel = zone.series[0].time.slice(0, 10);
+      const lastLabel = zone.series[zone.series.length - 1].time.slice(0, 10);
+      return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${formatMeasurement(min)} to ${formatMeasurement(max)}">
         <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${width-pad}" y="9" fill="#718096" font-size="8" text-anchor="end">${max} mm</text>
-        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="8" text-anchor="end">${min} mm</text>
+        <text x="${width-pad}" y="9" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(max, 'mm')}</text>
+        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(min, 'mm')}</text>
         ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">${firstLabel}</text>
         <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">${lastLabel}</text>
       </svg>`;
@@ -712,7 +628,7 @@
       if (!zone) {
         header.innerHTML = '<div class="eyebrow">Zone details</div>';
         document.getElementById('detailContent').innerHTML =
-          '<p class="empty-state">No zone selected. Load zone data or open the illustrative demo.</p>';
+          '<p class="empty-state">No zone selected.</p>';
         return;
       }
       header.innerHTML = `
@@ -722,13 +638,13 @@
         </div>
       `;
       document.getElementById('detailContent').innerHTML = `
-        <p class="detail-description">${zone.demo ? escapeHtml(zone.summary) : 'Experimental zone from the processing API.'}</p>
-        <p class="detail-description detail-disclaimer">${zone.demo ? 'Illustrative zones and measurements' : 'Experimental measurements and classifications'}; not for safety decisions.</p>
+        <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
+        <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
         <div class="metric-grid">
           <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
           <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${formatMeasurement(zone.cumulative)}${zone.cumulative === null ? '' : '<span class="metric-unit">mm</span>'}</div></div>
           <div class="metric"><div class="metric-label">Trend${metricHelp('trend', 'trend', 'How quickly the movement speed toward or away from the satellite changes each year.')}</div><div class="metric-value">${formatMeasurement(zone.acceleration)}${zone.acceleration === null ? '' : '<span class="metric-unit">mm/yr²</span>'}</div></div>
-          <div class="metric"><div class="metric-label">Zone area${metricHelp('area', 'zone area', 'The area inside the risk-zone outline.')}</div><div class="metric-value">${zoneAreaKm2(zone).toFixed(2)}<span class="metric-unit">km²</span></div></div>
+          <div class="metric"><div class="metric-label">Zone area${metricHelp('area', 'zone area', 'The area inside the risk-zone outline.')}</div><div class="metric-value">${formatMeasurement(zoneAreaKm2(zone))}<span class="metric-unit">km²</span></div></div>
         </div>
         <details class="measurement-details">
           <summary class="section-title">Measurement inputs
@@ -736,11 +652,9 @@
           </summary>
           <table class="data-table"><tbody>
             <tr><th>Coordinate range${metricHelp('coordinates', 'coordinate range', 'The latitude and longitude limits of the zone.')}</th><td>${coordRange(zone)}</td></tr>
-            <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${zone.coherence === null ? 'Unavailable' : zone.coherence.toFixed(2)}</td></tr>
-            ${zone.demo ? '' : `<tr><th>Coherence pair</th><td>${zone.pairStart && zone.pairEnd ? `${escapeHtml(zone.pairStart)} – ${escapeHtml(zone.pairEnd)}` : 'Unavailable'}</td></tr>`}
+            <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${formatMeasurement(zone.coherence)}</td></tr>
+            <tr><th>Coherence pair</th><td>${zone.pairStart && zone.pairEnd ? `${escapeHtml(zone.pairStart)} – ${escapeHtml(zone.pairEnd)}` : 'Unavailable'}</td></tr>
             <tr><th>Observations${metricHelp('observations', 'observations', 'The number of observation dates represented for this zone.')}</th><td>${zone.observations === null ? 'Unavailable' : `${zone.observations} epochs`}</td></tr>
-            ${zone.demo ? `<tr><th>Nearest asset${metricHelp('asset-distance', 'nearest asset', 'Estimated distance to the nearest infrastructure asset.')}</th><td>${zone.nearestAsset === null ? 'none' : `${zone.nearestAsset} m`}</td></tr>
-            <tr><th>Asset context${metricHelp('asset-context', 'asset context', 'The type of nearby infrastructure considered for this zone.')}</th><td>${escapeHtml(zone.asset)}</td></tr>` : ''}
           </tbody></table>
         </details>
         <h3 class="section-title">Displacement trend${metricHelp('chart', 'displacement trend', 'How movement toward or away from the satellite changes over time.')}</h3>
@@ -751,7 +665,7 @@
         </section>
         <details class="method-details">
           <summary>Data provenance &amp; method</summary>
-          <div class="method-card">${zone.demo ? 'The displayed values and zone outlines are illustrative, not NISAR observations.' : 'Measurements are relative line-of-sight observations; positive values are toward the satellite. The phase sign and reference need validation.'} This is not an operational hazard assessment. Model features and thresholds require validation against the paper and measured data.
+          <div class="method-card">${state.demo ? 'Demo values and dates are synthetic, not NISAR observations.' : 'Measurements are relative line-of-sight observations; positive values are toward the satellite. The phase sign and reference need validation.'} This is not an operational hazard assessment. Model features and thresholds require validation against the paper and measured data.
             <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
           </div>
         </details>
@@ -1088,7 +1002,7 @@
             const point = featureCoordinates(element, zone);
             return `<li><button type="button" class="feature-link" data-feature-key="${escapeHtml(`${element.type}/${element.id}`)}">` +
               `${escapeHtml(featureName(element, fallback))}` +
-              `<span class="feature-coordinates">${point[0].toFixed(5)}, ${point[1].toFixed(5)}</span></button>` +
+              `<span class="feature-coordinates">~${formatMeasurement(point[0])}, ${formatMeasurement(point[1])}</span></button>` +
               (element.tags.man_made === 'pumping_station' && (element.tags['description:en'] || element.tags.description)
                 ? `<span class="feature-coordinates">OSM note: ${escapeHtml(element.tags['description:en'] || element.tags.description)}</span>` : '') +
               '</li>';
@@ -1290,8 +1204,6 @@
     document.getElementById('selectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, true));
     document.getElementById('deselectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, false));
     document.getElementById('retryOsm').addEventListener('click', requestOsm);
-    document.getElementById('retryZones').addEventListener('click', loadZones);
-    document.getElementById('showDemoZones').addEventListener('click', showDemoZones);
 
     renderZoneList();
     renderDetails();

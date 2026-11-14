@@ -6,12 +6,10 @@ open it in Swagger Editor to inspect the full schema and example.
 
 ## Current status
 
-The static dashboard and Python function are intended to share a Vercel domain.
-The dashboard requests the API on load and offers an explicitly labeled
-illustrative demo when desired. The endpoint and response contract exist, but
-calculations are not connected: `GET /api/v1/zones` currently returns HTTP 503.
-The example in the specification contains fictional values, not results from
-the pipeline.
+The static dashboard and Python function share a Vercel domain. The dashboard
+requests the API on load. The endpoint reads a precomputed zones export; if the
+export is unavailable it returns HTTP 503. The example in the specification
+contains fictional values, not results from the pipeline.
 
 ```text
 Processed NISAR data -> get_zones() -> GET /api/v1/zones -> dashboard
@@ -86,7 +84,7 @@ API field. `schema_version` describes the response format, not a dataset.
 Responses:
 
 - **200:** calculations succeeded. `zones: []` means no zones were found.
-- **503:** the calculation service is not connected yet. The current error code
+- **503:** the precomputed zones export is unavailable. The error code
   is `calculations_unavailable`.
 - **500:** calculation or JSON serialization failed; the server logs the
   details and returns `internal_error` without exposing them.
@@ -168,7 +166,11 @@ error, so Vercel routing and packaging still need verification in a suitable
 environment or preview deployment.
 
 The frontend calls the relative path with `fetch('/api/v1/zones')` and displays
-loading, empty and error states. The demo is shown only when explicitly selected
-and is labeled synthetic. API zone names currently use their IDs until a
-geographic naming source is added. Run the frontend contract tests with
+loading, empty and error states. Reload the page to retry a failed request.
+API zone names currently use their IDs until a geographic naming source is added.
+Run the frontend contract tests with
 `node --test tests/zone-api.test.js`.
+
+The localhost-only `scripts/dashboard_server.py` can return labeled synthetic
+demo zones when started with `ZONE_DATA_SOURCE=demo`. Its default is the real
+API. This switch is implemented only in the local server, not the deployed route.

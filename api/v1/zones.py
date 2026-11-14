@@ -11,11 +11,13 @@ LOG = logging.getLogger(__name__)
 
 
 class handler(BaseHTTPRequestHandler):
-    def _send_json(self, status: int, payload: dict) -> None:
+    def _send_json(self, status: int, payload: dict, *, source: str | None = None) -> None:
         body = json.dumps(payload, allow_nan=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
+        if source:
+            self.send_header("X-Zone-Source", source)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
