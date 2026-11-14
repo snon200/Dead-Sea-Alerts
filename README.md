@@ -1,4 +1,4 @@
-# Project Hail Miriam
+# Dead Sea Alerts
 
 <img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/3ef2dacb-0954-46cb-a59e-2a3e749b3fd2" />
 
