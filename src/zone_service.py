@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import math
 import os
 from datetime import datetime, timezone
@@ -214,6 +215,21 @@ def _zone_id(geometry: dict, acquisition_family: dict, stable_id: str | None) ->
     return "zone-" + hashlib.sha256(signature.encode()).hexdigest()[:16]
 
 
+def _precise_zone_id(geometry: dict, acquisition_family: dict) -> str:
+    """Geometry-derived fallback when distinct polygons collide at 5 decimals.
+
+    Preserve the original five-decimal ID for normal cases for backwards
+    compatibility, but hash exact serialized coordinates for colliding shapes.
+    The fallback is still independent of the processing run and detector ID.
+    """
+    key = {
+        "family": {k: acquisition_family.get(k) for k in ("track", "frame", "direction", "polarization")},
+        "geometry": geometry,
+    }
+    signature = json.dumps(key, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return "zone-" + hashlib.sha256(signature.encode()).hexdigest()[:32]
+
+
 def _raw_coherence_rasters(raw_root: Path, granule_id: str) -> list[Path]:
     """Resolve original Harmony pair coherence; do NOT use Stage 2 date proxy."""
     candidates: list[Path] = []
@@ -344,7 +360,8 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
 
     transform = Affine(*grid["transform_affine"])
     zones: list[Zone] = []
-    used_ids: set[str] = set()
+    used_geometry_by_id: dict[str, str] = {}
+    duplicate_features = 0
     for feature in geojson["features"]:
         if not isinstance(feature, dict) or feature.get("type") != "Feature":
             raise ValueError("Invalid GeoJSON feature")
@@ -353,10 +370,34 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
         props = feature.get("properties") or {}
         if props.get("source_run", run_name) != run_name:
             raise ValueError("Feature belongs to a different processing run")
-        identifier = _zone_id(geometry, meta.get("acquisition_family", {}), props.get("stable_id"))
-        if identifier in used_ids:
-            raise ValueError(f"Duplicate zone identity: {identifier}")
-        used_ids.add(identifier)
+        stable_id = props.get("stable_id")
+        family = meta.get("acquisition_family", {})
+        identifier = _zone_id(geometry, family, stable_id)
+        # Stage 3 can emit the same footprint for separate temporal anomaly
+        # tracks. The API models geographic zones, not individual tracks, so
+        # identical polygons share one region history and should appear once.
+        # A different shape may collide because _zone_id rounds to 5 decimals:
+        # preserve it with a precise, still run-independent geometry hash.
+        geometry_key = json.dumps(geometry, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        if identifier in used_geometry_by_id:
+            if used_geometry_by_id[identifier] == geometry_key:
+                duplicate_features += 1
+                continue
+            if stable_id:
+                raise ValueError(
+                    f"Conflicting explicit stable_id {identifier!r} for different polygons"
+                )
+            identifier = _precise_zone_id(geometry, family)
+            if identifier in used_geometry_by_id:
+                if used_geometry_by_id[identifier] == geometry_key:
+                    duplicate_features += 1
+                    continue
+                raise ValueError(f"Unexpected precise geometry ID collision: {identifier}")
+            logging.warning(
+                "Different polygons had the same rounded zone ID; used precise ID %s",
+                identifier,
+            )
+        used_geometry_by_id[identifier] = geometry_key
         projected = transform_geom("EPSG:4326", grid["crs"], geometry)
         footprint = geometry_mask(
             [projected], out_shape=displacement.shape[1:], transform=transform, invert=True
@@ -412,6 +453,11 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
         }
         _validate_zone(zone)
         zones.append(zone)
+    if duplicate_features:
+        logging.warning(
+            "Collapsed %d repeated Stage 3 polygon record(s) into %d distinct API zone(s)",
+            duplicate_features, len(zones),
+        )
     return zones
 
 
