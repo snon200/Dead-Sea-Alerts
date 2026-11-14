@@ -6,13 +6,13 @@ Help users explore possible ground subsidence around the Dead Sea and its relati
 
 ## Current implementation
 
-The dashboard is a single-page application in `index.html`, using vanilla JavaScript and Leaflet. Serve the repository over HTTP and open `index.html` in a browser, for example:
+The dashboard uses vanilla JavaScript and Leaflet. Use `vercel dev` from the repository root to serve the frontend and Python API together. A static server can be used to explore the illustrative demo, but cannot execute the API:
 
 ```sh
 python -m http.server 8000
 ```
 
-Open `http://localhost:8000/index.html`. Leaflet, OpenStreetMap tiles, and infrastructure features require internet access.
+Open `http://localhost:8000/index.html` and select **Show illustrative demo** after the API request fails. Leaflet, OpenStreetMap tiles, and infrastructure features require internet access.
 
 The interface has three regions:
 
@@ -21,11 +21,11 @@ The interface has three regions:
 - **Zone details:** a collapsible panel with the selected zone's measurements, infrastructure context, displacement trend, and data provenance. Use the arrow at the panel edge to collapse or reopen it. Only categories with mapped features are listed; an empty-state message appears if none are found. Measurement inputs are collapsed by default and include a brief explanation; information buttons explain the individual metrics and inputs.
 - On narrow screens, opening one panel closes the other so their controls remain accessible.
 
-The nine zones, polygons, classifications, time series, and measurement values are illustrative fixtures embedded in `index.html`. Each polygon covers approximately 0.1–0.2 km²; displayed areas are calculated from the coordinates. They are **not NISAR observations, validated calculations, or actionable risk assessments**. Some zones were placed around mapped features solely to test the interface; their risk levels do not describe the actual sites. The basemap itself is separate from the overlays.
+On load, the dashboard requests `GET /api/v1/zones`. It displays loading, empty and error states and offers retry; it does not silently substitute fixtures. The API calculations are not connected yet, so it currently returns 503. Users may explicitly choose the labeled illustrative demo. Its nine zones, polygons, classifications, time series, and measurements are embedded fixtures, **not NISAR observations, validated calculations, or actionable risk assessments**. Some zones were placed around mapped features solely to test the interface; their risk levels do not describe the actual sites. API results support Polygon and MultiPolygon geometry, missing measurements and dated cumulative series; zone names currently use IDs. The basemap is separate from the overlays.
 
 ### Infrastructure data
 
-The dashboard requests OpenStreetMap map data for each risk polygon's bounding box once per page load. Overlays include roads, pumping stations, buildings, bridges, power lines and substations, pipelines and water facilities or reservoirs, and hotels and selected public facilities. Only features intersecting a zone are selected, but returned ways can extend outside the zone. Pipelines may carry substances other than water, or have no substance recorded. The selected-zone panel lists intersecting features with clickable coordinates that locate them on the map; intersections do not establish damage. Features can appear in more than one category, and separate OSM objects may represent the same site. One of the mapped pumping-station objects has an OSM description identifying it as abandoned. Data may be incomplete or outdated, including where the map API does not return a crossing way or a feature is represented as a relation. Layer counts show unique OSM objects loaded across zones, including intersecting linear features. Basemap features are part of the tiles and remain visible when overlays are hidden. Successful results are cached in memory until the page is reloaded. If a request fails, Retry requests only unsuccessful zones; successful zones, the basemap, and illustrative zones remain available.
+The dashboard requests OpenStreetMap map data for each risk polygon's bounding box after zones load. Overlays include roads, pumping stations, buildings, bridges, power lines and substations, pipelines and water facilities or reservoirs, and hotels and selected public facilities. Only features intersecting a zone are selected, but returned ways can extend outside the zone. Pipelines may carry substances other than water, or have no substance recorded. The selected-zone panel lists intersecting features with clickable coordinates that locate them on the map; intersections do not establish damage. Features can appear in more than one category, and separate OSM objects may represent the same site. One of the mapped pumping-station objects has an OSM description identifying it as abandoned. Data may be incomplete or outdated, including where the map API does not return a crossing way or a feature is represented as a relation. Layer counts show unique OSM objects loaded across zones, including intersecting linear features. Basemap features are part of the tiles and remain visible when overlays are hidden. Successful results are cached in memory until the page is reloaded or the zone source changes. If a request fails, Retry requests only unsuccessful zones; successful zones and the basemap remain available.
 
 The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) states that its editing API is not intended for read-only applications. This limited request is not a suitable long-term or production data source; use an appropriate read-only provider or regional extract before wider deployment. The previously used Overpass endpoint could not be reached reliably in the current development environment.
 

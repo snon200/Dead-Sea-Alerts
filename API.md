@@ -7,14 +7,15 @@ open it in Swagger Editor to inspect the full schema and example.
 ## Current status
 
 The static dashboard and Python function are intended to share a Vercel domain.
-The dashboard still uses illustrative fixtures and does **not** call the API.
-The endpoint and response contract exist, but calculations are not connected:
-`GET /api/v1/zones` currently returns HTTP 503. The example in the specification
-contains fictional values, not results from the pipeline.
+The dashboard requests the API on load and offers an explicitly labeled
+illustrative demo when desired. The endpoint and response contract exist, but
+calculations are not connected: `GET /api/v1/zones` currently returns HTTP 503.
+The example in the specification contains fictional values, not results from
+the pipeline.
 
 ```text
 Processed NISAR data -> get_zones() -> GET /api/v1/zones -> dashboard
-                         ^ Almog's integration                  ^ future work
+                         ^ Almog's integration
 ```
 
 Relevant files:
@@ -166,7 +167,8 @@ On the current Windows setup, `vercel dev` encountered a symlink-permission
 error, so Vercel routing and packaging still need verification in a suitable
 environment or preview deployment.
 
-Once implemented, the frontend can call the relative path with
-`fetch('/api/v1/zones')`, check `response.ok`, and render the returned data.
-It should show loading, empty and error states rather than silently displaying
-fictional zones if the request fails.
+The frontend calls the relative path with `fetch('/api/v1/zones')` and displays
+loading, empty and error states. The demo is shown only when explicitly selected
+and is labeled synthetic. API zone names currently use their IDs until a
+geographic naming source is added. Run the frontend contract tests with
+`node --test tests/zone-api.test.js`.
