@@ -46,23 +46,34 @@
     .brand-mark img { position: absolute; width: 181.5px; max-width: none; left: -15px; top: -24px; }
     .brand-wordmark { flex: 0 1 160px; min-width: 0; aspect-ratio: 1035 / 246; }
     .brand-wordmark img { position: absolute; width: 193.24%; max-width: none; left: -77.78%; top: -176.83%; }
-    .top-actions { display: flex; flex-shrink: 0; gap: 8px; align-items: center; }
-    .top-button, .icon-button, .refresh-button {
+    .credits { max-width: 210px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: right; }
+    .credits a { color: #126782; }
+    .icon-button, .refresh-button {
       border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 8px 10px;
       cursor: pointer; transition: background .15s, border-color .15s;
     }
-    .top-button:hover, .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
-    .top-button { color: #34445a; font-size: 12px; }
+    .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
     .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
     .workspace {
       --left-width: 286px;
       --right-width: 350px;
-      flex: 1; min-height: 0; display: grid;
+      position: relative; flex: 1; min-height: 0; display: grid;
       grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
       transition: grid-template-columns .22s ease;
     }
     .workspace.left-collapsed { --left-width: 0px; }
     .workspace.right-collapsed { --right-width: 0px; }
+    .sidebar-toggle {
+      position: absolute; top: 50%; z-index: 650; transform: translateY(-50%); display: grid; place-items: center;
+      width: 32px; height: 48px; padding: 0; border: 1px solid #d5e1e9;
+      background: #fff; color: #126782; cursor: pointer;
+      box-shadow: 0 3px 12px rgb(25 42 61 / 18%); transition: background .15s, border-color .15s;
+    }
+    .sidebar-toggle:hover { background: #edf7fa; border-color: #9dcbd8; }
+    .sidebar-toggle svg { width: 18px; height: 18px; }
+    .sidebar-toggle.left[aria-expanded="false"] svg, .sidebar-toggle.right[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .sidebar-toggle.left { left: var(--left-width); border-radius: 0 10px 10px 0; }
+    .sidebar-toggle.right { right: var(--right-width); border-radius: 10px 0 0 10px; }
     .sidebar {
       min-width: 0; min-height: 0; display: flex; flex-direction: column;
       background: var(--panel); overflow: hidden;
@@ -210,21 +221,22 @@
       .workspace { --left-width: 250px; --right-width: 310px; }
     }
     @media (max-width: 850px) {
-      .workspace { position: relative; display: block; }
+      .workspace { --left-width: min(88vw, 350px); --right-width: min(88vw, 350px); display: block; }
       .map-column { position: absolute; inset: 0; }
       .sidebar { position: absolute; top: 0; bottom: 0; z-index: 600; width: min(88vw, 350px); box-shadow: 0 0 30px #0008; }
       .left-sidebar { left: 0; }
       .right-sidebar { right: 0; }
       .sidebar.collapsed { display: none; }
+      .sidebar-toggle.left { left: max(0px, calc(var(--left-width) - 32px)); }
+      .sidebar-toggle.right { right: max(0px, calc(var(--right-width) - 32px)); }
       .topbar { min-height: 58px; padding: 8px 10px; }
-      .top-button { padding: 7px; font-size: 10px; }
+      .credits { max-width: 150px; font-size: 10px; }
       .map-toolbar { top: 10px; left: 10px; right: 10px; }
       .map-status { max-width: 165px; }
     }
     @media (max-width: 420px) {
       .topbar { gap: 6px; }
-      .top-actions { gap: 5px; }
-      .top-button { max-width: 82px; padding-inline: 5px; line-height: 1.2; }
+      .credits { max-width: 125px; }
       .map-chip { max-width: 145px; }
       .map-legend { bottom: 30px; }
     }
@@ -260,13 +272,12 @@
           <img src="dead_sea_alerts_logo_full.jpeg" alt="">
         </div>
       </div>
-      <nav class="top-actions" aria-label="Dashboard controls">
-        <button class="top-button" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true">Hide risks</button>
-        <button class="top-button" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true">Hide details</button>
-      </nav>
+      <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
     </header>
 
     <main class="workspace">
+      <button class="sidebar-toggle left" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true" aria-label="Hide risk zones" title="Hide risk zones"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
+      <button class="sidebar-toggle right" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true" aria-label="Hide zone details" title="Hide zone details"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
         <div class="sidebar-scroll">
           <div class="sidebar-heading">
@@ -1028,6 +1039,10 @@
     }
 
     function setSidebar(side, visible) {
+      const otherSide = side === 'left' ? 'right' : 'left';
+      if (visible && window.matchMedia('(max-width: 850px)').matches && state.sidebar[otherSide]) {
+        setSidebar(otherSide, false);
+      }
       state.sidebar[side] = visible;
       const isLeft = side === 'left';
       if (!isLeft && !visible) hideMetricHelp();
@@ -1037,7 +1052,9 @@
       sidebar.classList.toggle('collapsed', !visible);
       workspace.classList.toggle(`${side}-collapsed`, !visible);
       button.setAttribute('aria-expanded', String(visible));
-      button.textContent = visible ? (isLeft ? 'Hide risks' : 'Hide details') : (isLeft ? 'Show risks' : 'Show details');
+      const label = `${visible ? 'Hide' : 'Show'} ${isLeft ? 'risk zones' : 'zone details'}`;
+      button.setAttribute('aria-label', label);
+      button.title = label;
       setTimeout(() => map.invalidateSize({ pan: false }), 240);
     }
 
@@ -1078,10 +1095,16 @@
       if (event.key === 'Escape') hideMetricHelp();
     });
     document.getElementById('detailContent').addEventListener('scroll', hideMetricHelp);
-    window.addEventListener('resize', hideMetricHelp);
+    window.addEventListener('resize', () => {
+      hideMetricHelp();
+      if (window.matchMedia('(max-width: 850px)').matches && state.sidebar.left && state.sidebar.right) {
+        setSidebar('right', false);
+      }
+    });
 
     document.getElementById('toggleLeft').addEventListener('click', () => setSidebar('left', !state.sidebar.left));
     document.getElementById('toggleRight').addEventListener('click', () => setSidebar('right', !state.sidebar.right));
+    if (window.matchMedia('(max-width: 850px)').matches) setSidebar('right', false);
     document.getElementById('detailContent').addEventListener('click', event => {
       const button = event.target.closest('button[data-feature-key]');
       if (!button) return;
