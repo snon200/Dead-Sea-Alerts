@@ -47,7 +47,7 @@ See [Dashboard](./DASHBOARD.md) for the purpose, current implementation, limitat
 
 ### Zones API
 
-The [OpenAPI specification](./openapi.json) describes `GET /api/v1/zones` and can be opened in Swagger Editor. The Python endpoint is in `api/v1/zones.py`; its processing integration point is `src/zone_service.py::get_zones()`.
+The [OpenAPI specification](./openapi.json) describes `GET /api/v1/zones` and can be opened in Swagger Editor. See the [backend integration guide](./API.md) for the contract and implementation handoff. The Python endpoint is in `api/v1/zones.py`; its processing integration point is `src/zone_service.py::get_zones()`.
 
 The integration is not implemented yet, so the endpoint returns HTTP 503 rather than fictional results. Almog can implement `get_zones()` using the typed return contract and OpenAPI specification. Return an empty list only when processing succeeds and detects no zones. Use `null` for unavailable measurements or classifications; never turn NaN into JSON. The latest detector produces exploratory deformation anomalies, review priorities and per-date quality proxies, not necessarily the API's risk categories or latest-pair coherence. Do not treat them as equivalent without a defined method. Its output may contain MultiPolygon geometry and uses mm/day and mm/day², so compatible LOS results need unit conversion.
 
