@@ -1,0 +1,179 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dead Sea Alerts API",
+    "version": "1.0.0",
+    "description": "Exploratory deformation data; not an operational hazard warning system. Values are relative to the processing reference and require scientific validation."
+  },
+  "paths": {
+    "/api/v1/zones": {
+      "get": {
+        "operationId": "getZones",
+        "summary": "Get calculated zones and their cumulative displacement histories",
+        "responses": {
+          "200": {
+            "description": "Calculated zones. An empty array means processing succeeded but found no zones.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ZonesResponse" },
+                "example": {
+                  "schema_version": "1.0",
+                  "zones": [{
+                    "id": "zone-001",
+                    "geometry": {
+                      "type": "Polygon",
+                      "coordinates": [[[35.38, 31.45], [35.39, 31.45], [35.39, 31.46], [35.38, 31.46], [35.38, 31.45]]]
+                    },
+                    "risk_level": "elevated",
+                    "summary": {
+                      "los_velocity_mm_per_year": -60.88,
+                      "cumulative_shift_mm": -4.0,
+                      "acceleration_mm_per_year2": 0.0,
+                      "latest_pair_mean_coherence": 0.72,
+                      "latest_pair_reference_time": "2026-07-03T00:00:00Z",
+                      "latest_pair_secondary_time": "2026-07-15T00:00:00Z"
+                    },
+                    "cumulative_series": [
+                      { "time": "2026-06-21T00:00:00Z", "displacement_mm": 0.0 },
+                      { "time": "2026-07-03T00:00:00Z", "displacement_mm": -2.0 },
+                      { "time": "2026-07-15T00:00:00Z", "displacement_mm": -4.0 }
+                    ]
+                  }]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Zone calculations failed.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "503": {
+            "description": "Zone calculations are not connected yet.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ZonesResponse": {
+        "type": "object",
+        "required": ["schema_version", "zones"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["1.0"] },
+          "zones": { "type": "array", "items": { "$ref": "#/components/schemas/Zone" } }
+        }
+      },
+      "Zone": {
+        "type": "object",
+        "required": ["id", "geometry", "risk_level", "summary", "cumulative_series"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "Zone identifier; stable when possible." },
+          "geometry": { "$ref": "#/components/schemas/Geometry" },
+          "risk_level": {
+            "type": "string", "nullable": true, "enum": ["high", "elevated", "watch", "low", null],
+            "description": "Experimental classification, or null when unavailable."
+          },
+          "summary": { "$ref": "#/components/schemas/Summary" },
+          "cumulative_series": {
+            "type": "array", "nullable": true,
+            "description": "Ordered cumulative LOS movement relative to the first point, or null if unavailable.",
+            "items": { "$ref": "#/components/schemas/CumulativePoint" }
+          }
+        }
+      },
+      "Geometry": {
+        "description": "GeoJSON WGS84 polygon or multipolygon. Positions are [longitude, latitude]; rings must be closed.",
+        "oneOf": [
+          { "$ref": "#/components/schemas/Polygon" },
+          { "$ref": "#/components/schemas/MultiPolygon" }
+        ]
+      },
+      "Position": {
+        "type": "array", "minItems": 2, "maxItems": 2,
+        "items": { "type": "number" },
+        "description": "[longitude, latitude] in degrees."
+      },
+      "Ring": {
+        "type": "array", "minItems": 4,
+        "items": { "$ref": "#/components/schemas/Position" }
+      },
+      "PolygonCoordinates": {
+        "type": "array", "minItems": 1,
+        "items": { "$ref": "#/components/schemas/Ring" }
+      },
+      "Polygon": {
+        "type": "object", "required": ["type", "coordinates"],
+        "properties": {
+          "type": { "type": "string", "enum": ["Polygon"] },
+          "coordinates": { "$ref": "#/components/schemas/PolygonCoordinates" }
+        }
+      },
+      "MultiPolygon": {
+        "type": "object", "required": ["type", "coordinates"],
+        "properties": {
+          "type": { "type": "string", "enum": ["MultiPolygon"] },
+          "coordinates": {
+            "type": "array", "minItems": 1,
+            "items": { "$ref": "#/components/schemas/PolygonCoordinates" }
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "required": [
+          "los_velocity_mm_per_year", "cumulative_shift_mm", "acceleration_mm_per_year2",
+          "latest_pair_mean_coherence", "latest_pair_reference_time", "latest_pair_secondary_time"
+        ],
+        "properties": {
+          "los_velocity_mm_per_year": {
+            "type": "number", "nullable": true,
+            "description": "LOS velocity in mm/year. Positive is toward the satellite."
+          },
+          "cumulative_shift_mm": {
+            "type": "number", "nullable": true,
+            "description": "Cumulative LOS movement in mm relative to the series start. Positive is toward the satellite."
+          },
+          "acceleration_mm_per_year2": {
+            "type": "number", "nullable": true,
+            "description": "Change in LOS velocity in mm/year². Positive is toward the satellite."
+          },
+          "latest_pair_mean_coherence": {
+            "type": "number", "nullable": true, "minimum": 0, "maximum": 1,
+            "description": "Mean coherence for the latest acquisition pair, not a per-date proxy."
+          },
+          "latest_pair_reference_time": {
+            "type": "string", "format": "date-time", "nullable": true,
+            "description": "Earlier acquisition time for the latest pair."
+          },
+          "latest_pair_secondary_time": {
+            "type": "string", "format": "date-time", "nullable": true,
+            "description": "Later acquisition time for the latest pair."
+          }
+        }
+      },
+      "CumulativePoint": {
+        "type": "object", "required": ["time", "displacement_mm"],
+        "properties": {
+          "time": { "type": "string", "format": "date-time", "description": "Observation time." },
+          "displacement_mm": {
+            "type": "number", "description": "Cumulative LOS movement in mm. Positive is toward the satellite."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object", "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object", "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
