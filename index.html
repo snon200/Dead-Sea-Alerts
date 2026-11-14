@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Hail Miriam | NISAR Macro-Subsidence & Infrastructure Risk Monitor</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #090d16;
+      color: #f1f5f9;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .leaflet-container {
+      background: #060911;
+      font-family: 'Inter', sans-serif;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 10px;
+    }
+    .leaflet-popup-tip {
+      background: #0f172a;
+    }
+    input[type="range"].pass-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e293b;
+      height: 6px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    input[type="range"].pass-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100">
+
+  <!-- Clean Top Header -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/95 px-5 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 font-bold mono text-sm">
+        SAR
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight text-white">PROJECT HAIL MIRIAM</span>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+            NISAR L-Band GUNW (80m Macro-Scale)
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">
+          Dead Sea Regional Land Subsidence & Infrastructure Susceptibility System
+        </p>
+      </div>
+    </div>
+
+    <!-- Mission Telemetry Strip -->
+    <div class="hidden lg:flex items-center gap-6 text-xs">
+      <div>
+        <span class="text-slate-400 block text-[10px] uppercase">Product Layer</span>
+        <span class="mono font-semibold text-slate-200">NISAR L2 GUNW (Unwrapped Phase)</span>
+      </div>
+      <div class="h-6 w-px bg-slate-800"></div>
+      <div>
+        <span class="text-slate-400 block text-[10px] uppercase">Orbit Cycle</span>
+        <span class="mono font-semibold text-emerald-400">12-Day Repeat (Pass #8 Active)</span>
+      </div>
+      <div class="h-6 w-px bg-slate-800"></div>
+      <div>
+        <span class="text-slate-400 block text-[10px] uppercase">Macro Detection Scale</span>
+        <span class="mono font-semibold text-amber-300">200m – 1,200m Subsidence Bowls</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btnExportGeoJSON" class="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        <span>Export Risk GeoJSON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Focused Workspace -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+
+    <!-- LEFT COLUMN (3 cols): Macro Susceptibility Zones & GIS Layers -->
+    <aside class="lg:col-span-3 border-r border-slate-800 bg-slate-900/60 flex flex-col overflow-y-auto p-4 gap-4">
+      
+      <!-- Regional Corridors List -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Macro Subsidence Zones (AOIs)</h2>
+          <span class="text-[11px] mono text-slate-400">5 Sectors</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          Select a regional subsidence bowl ($300\text{--}1,200\text{ m}$ scale) to inspect infrastructure exposure:
+        </p>
+        <div id="zoneList" class="flex flex-col gap-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Focused GIS Infrastructure Layers -->
+      <div class="border-t border-slate-800 pt-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">GIS & Geological Layers</h3>
+        <div class="space-y-2 text-xs">
+          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-sm bg-rose-500/60 border border-rose-400"></span>
+              <span>NISAR Macro Subsidence Polygons</span>
+            </span>
+            <input type="checkbox" id="layerPolygons" checked class="accent-sky-400">
+          </label>
+
+          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-0.5 bg-amber-400"></span>
+              <span>Route 90 Highway & DSW Conduits</span>
+            </span>
+            <input type="checkbox" id="layerInfra" checked class="accent-sky-400">
+          </label>
+
+          <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+            <span class="flex items-center gap-2">
+              <span class="w-3 h-0.5 border-b-2 border-dashed border-fuchsia-400"></span>
+              <span>Subsurface Salt Edge (Halite Limit)</span>
+            </span>
+            <input type="checkbox" id="layerSaltEdge" checked class="accent-sky-400">
+          </label>
+        </div>
+      </div>
+
+      <!-- Macro Concept Note -->
+      <div class="mt-auto p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+        <div class="font-semibold text-sky-300 mb-1">Why Macro-Scale Detection?</div>
+        Individual sinkholes ($5\text{--}20\text{ m}$) form inside broader **subsidence bowls ($200\text{--}1,000\text{ m}$)** caused by subsurface salt dissolution. NISAR’s $24\text{ cm}$ L-band radar maps these wide bowls every 12 days to flag high-risk corridors before collapse.
+      </div>
+    </aside>
+
+    <!-- CENTER COLUMN (5 cols): Interactive Map + 12-Day Timeline Bar -->
+    <section class="lg:col-span-5 flex flex-col bg-slate-950 relative overflow-hidden">
+      <!-- Map Container -->
+      <div id="mapContainer" class="flex-1 w-full relative">
+        <!-- Map Legend Overlay -->
+        <div class="absolute bottom-4 left-4 z-[400] bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 text-xs shadow-xl w-60">
+          <div class="font-bold text-slate-200 mb-2">GSI / NISAR Macro Alert Level</div>
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-rose-500 inline-block"></span>Critical Risk</span>
+              <span class="mono text-slate-400">&gt;100 mm/yr</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-orange-500 inline-block"></span>Accelerating</span>
+              <span class="mono text-slate-400">40–100 mm/yr</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span>Watch Zone</span>
+              <span class="mono text-slate-400">15–40 mm/yr</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span>Stable Corridor</span>
+              <span class="mono text-slate-400">&lt;10 mm/yr</span>
+            </div>
+          </div>
+          <div class="mt-2 pt-2 border-t border-slate-800 space-y-1 text-[10px] text-slate-400">
+            <div class="flex items-center gap-2">
+              <span class="w-4 h-0.5 bg-amber-400 inline-block"></span> Route 90 Highway Corridor
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-4 h-0.5 border-b-2 border-dashed border-fuchsia-400 inline-block"></span> Western Salt Layer Boundary
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom 12-Day NISAR Pass Timeline Scrubber -->
+      <div class="h-24 border-t border-slate-800 bg-slate-900/95 px-5 py-3 flex flex-col justify-between shrink-0">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button id="btnPlayPasses" class="px-3 py-1 rounded-md bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition">
+              ▶ Play 12-Day Passes
+            </button>
+            <span class="text-xs font-medium text-slate-300">NISAR Acquisition Timeline (2026 Observation Window)</span>
+          </div>
+          <span id="passDateBadge" class="text-xs mono font-semibold text-sky-300 bg-sky-500/10 px-2.5 py-0.5 rounded border border-sky-500/20">
+            Pass 8/8 • Sep 09, 2026
+          </span>
+        </div>
+
+        <input type="range" id="passSlider" min="0" max="7" step="1" value="7" class="pass-slider w-full">
+
+        <div class="grid grid-cols-8 text-[10px] mono text-slate-400 text-center">
+          <span>Jun 17</span>
+          <span>Jun 29</span>
+          <span>Jul 11</span>
+          <span>Jul 23</span>
+          <span>Aug 04</span>
+          <span>Aug 16</span>
+          <span>Aug 28</span>
+          <span class="text-sky-300 font-bold">Sep 09</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN (4 cols): Focused Macro Zone Telemetry & Chart -->
+    <section class="lg:col-span-4 border-l border-slate-800 bg-slate-900/60 flex flex-col overflow-y-auto p-4 gap-4">
+      
+      <!-- Selected Zone Header & Alert Pill -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400 block">Selected Macro Sector</span>
+            <h2 id="detailTitle" class="text-base font-bold text-white">Ein Gedi & Route 90 Bypass Corridor</h2>
+          </div>
+          <span id="detailAlertBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
+            CRITICAL RISK
+          </span>
+        </div>
+        <p id="detailSummary" class="text-xs text-slate-300 leading-relaxed">
+          Elongated macro-subsidence bowl (850m x 350m) obliquely intersecting Route 90. Driven by rapid halite dissolution along concealed fault lineaments.
+        </p>
+
+        <!-- 3 Focused Macro KPIs -->
+        <div class="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-800">
+          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 uppercase block">LOS Velocity</span>
+            <span id="kpiVelocity" class="text-sm font-extrabold text-rose-400 mono">-159 mm/yr</span>
+          </div>
+          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 uppercase block">Bowl Footprint</span>
+            <span id="kpiFootprint" class="text-sm font-extrabold text-white mono">850 × 350 m</span>
+          </div>
+          <div class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 uppercase block">L-Band Coherence</span>
+            <span id="kpiCoherence" class="text-sm font-extrabold text-emerald-400 mono">0.89 (High)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cumulative Regional Displacement Chart -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Macro Bowl Subsidence Time-Series</h3>
+            <p class="text-[11px] text-slate-400">Cumulative LOS Displacement (mm) vs. Stable Reference</p>
+          </div>
+          <span id="kpiCumPass" class="text-xs mono font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+            -36.6 mm (84d)
+          </span>
+        </div>
+        <div class="h-48 w-full mt-1">
+          <canvas id="macroChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Infrastructure Exposure & Decision Support -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col justify-between gap-3">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2.5">Infrastructure Exposure & Mitigation</h3>
+          
+          <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[11px]">Threatened Asset</span>
+              <span id="detailAsset" class="font-semibold text-amber-300">Route 90 Highway (KM 234)</span>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <span class="text-slate-400 block text-[11px]">Sediment / Salt Depth</span>
+              <span id="detailGeology" class="font-semibold text-slate-200">Alluvial Fan • 22m Depth</span>
+            </div>
+          </div>
+
+          <div class="text-xs font-semibold text-slate-300 mb-1.5">Recommended Planning Actions:</div>
+          <ul id="detailActions" class="space-y-1.5 text-xs text-slate-300">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Reference: Nof et al. (GSI) & NISAR L2 GUNW Spec</span>
+          <span class="mono text-sky-400">EPSG:4326</span>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // Macro-Scale Subsidence Corridors grounded in Geological Survey of Israel (GSI) case studies (Nof et al., 2019)
+    const MACRO_ZONES = [
+      {
+        id: 'ein-gedi-corridor',
+        name: 'Ein Gedi & Route 90 Corridor',
+        alertLevel: 'CRITICAL RISK',
+        alertColor: '#ef4444',
+        badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        velocityMmYr: -159,
+        footprint: '850 × 350 m',
+        coherence: '0.89 (High)',
+        asset: 'Route 90 Highway & Bypass',
+        geology: 'Alluvial Fan • Salt at 22m',
+        center: [31.412, 35.388],
+        // Polygon coordinates representing a ~850m macro subsidence trough crossing Route 90
+        polygon: [
+          [31.416, 35.385],
+          [31.417, 35.390],
+          [31.409, 35.393],
+          [31.407, 35.388]
+        ],
+        summary: 'Elongated macro-subsidence trough (850m × 350m) crossing Route 90 obliquely from NNW to SSE. NISAR L-band maintains high coherence over adjacent date orchards, detecting accelerated precursory sinking along the western salt margin.',
+        actions: [
+          'Enforce traffic diversion to the western Route 90 bypass corridor outside the active InSAR bowl.',
+          'Inspect geosynthetic road reinforcement sheets for perimeter tensile cracking.',
+          'Flag 150m buffer around the active GUNW polygon as No-Build Statutory Red Zone.'
+        ],
+        series: [0, -5.2, -10.8, -15.9, -21.4, -26.8, -31.7, -36.6],
+        baseline: [0, -0.6, -1.1, -1.7, -2.2, -2.8, -3.3, -3.9]
+      },
+      {
+        id: 'zeelim-dsw-south',
+        name: 'Ze’elim Fan South (DSW P88 Corridor)',
+        alertLevel: 'ACCELERATING',
+        alertColor: '#f97316',
+        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+        velocityMmYr: -78,
+        footprint: '1,100 × 480 m',
+        coherence: '0.92 (High)',
+        asset: 'DSW Brine Conduits & P88 Station',
+        geology: 'Mudflat / Gravel Transition • 30m',
+        center: [31.298, 35.372],
+        polygon: [
+          [31.304, 35.368],
+          [31.305, 35.377],
+          [31.293, 35.378],
+          [31.292, 35.369]
+        ],
+        summary: 'Wide regional subsidence zone (>1 km length) across the southern Ze’elim alluvial fan and mudflat boundary. Active ground deformation directly intersects proposed southern pipeline alignments for Dead Sea Works (DSW).',
+        actions: [
+          'Disqualify southern alternative sites for new DSW pumping infrastructure due to active macro-subsidence.',
+          'Relocate water conduit corridors northward into the verified stable gravel fan sector (Site P9 North).',
+          'Monitor post-flash-flood dissolution spikes using 12-day NISARGUNW interferograms.'
+        ],
+        series: [0, -2.5, -5.1, -7.8, -10.4, -13.1, -15.6, -18.0],
+        baseline: [0, -0.4, -0.8, -1.2, -1.5, -1.9, -2.3, -2.7]
+      },
+      {
+        id: 'mineral-beach-shalem',
+        name: 'Mineral Beach & Access Road Zone',
+        alertLevel: 'CRITICAL RISK',
+        alertColor: '#ef4444',
+        badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        velocityMmYr: -112,
+        footprint: '620 × 290 m',
+        coherence: '0.86 (High)',
+        asset: 'Mineral Beach Access Road & Parking',
+        geology: 'Alluvial / Lacustrine • Salt at 25m',
+        center: [31.556, 35.401],
+        polygon: [
+          [31.560, 35.398],
+          [31.561, 35.404],
+          [31.552, 35.405],
+          [31.551, 35.399]
+        ],
+        summary: 'Progressive northward-migrating subsidence lineament separating Route 90 from the Mineral Beach resort complex. Precursory macro-bowl sinking preceded parking lot and access road collapse.',
+        actions: [
+          'Maintain full closure of the eastern access road and resort perimeter within the red InSAR polygon.',
+          'Combine NISAR L-band macro-polygons with borehole/nanoseismic monitoring near vegetated structures.',
+          'Update Megillot Regional Council statutory susceptibility map from fixed radius to InSAR contour.'
+        ],
+        series: [0, -3.7, -7.4, -11.1, -14.8, -18.5, -22.1, -25.8],
+        baseline: [0, -0.5, -0.9, -1.4, -1.8, -2.3, -2.7, -3.1]
+      },
+      {
+        id: 'hever-south-fan',
+        name: 'Nahal Hever South Alluvial Fan',
+        alertLevel: 'WATCH ZONE',
+        alertColor: '#eab308',
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        velocityMmYr: -43,
+        footprint: '540 × 310 m',
+        coherence: '0.94 (Very High)',
+        asset: 'Power Lines & Regional Service Roads',
+        geology: 'Coarse Fluvial Gravel • Salt at 19m',
+        center: [31.365, 35.377],
+        polygon: [
+          [31.369, 35.374],
+          [31.370, 35.381],
+          [31.361, 35.381],
+          [31.360, 35.374]
+        ],
+        summary: 'Thick, stiff alluvial fan overburden delays immediate surface collapse while subsurface salt cavities expand over multi-year periods, creating a clean 500m-wide precursory subsidence bowl.',
+        actions: [
+          'Maintain Yellow Watch Alert; restrict heavy machinery and utility pole installation inside bowl.',
+          'Track consecutive 12-day NISAR passes for non-linear velocity acceleration (trigger for Orange Alert).'
+        ],
+        series: [0, -1.4, -2.9, -4.3, -5.8, -7.2, -8.6, -10.0],
+        baseline: [0, -0.3, -0.5, -0.8, -1.1, -1.3, -1.6, -1.8]
+      },
+      {
+        id: 'zeelim-p9-north-stable',
+        name: 'Ze’elim North (DSW P9 Approved Site)',
+        alertLevel: 'STABLE CORRIDOR',
+        alertColor: '#10b981',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        velocityMmYr: -4,
+        footprint: '700 × 400 m',
+        coherence: '0.95 (Very High)',
+        asset: 'DSW P9 Pumping Station & Conduit',
+        geology: 'Consolidated Gravel Fan • Stable',
+        center: [31.324, 35.374],
+        polygon: [
+          [31.328, 35.370],
+          [31.329, 35.379],
+          [31.320, 35.379],
+          [31.319, 35.370]
+        ],
+        summary: 'Verified stable corridor selected by the Geological Survey of Israel for the P9 pumping station construction. InSAR time-series confirms absence of regional dissolution subsidence along the pipeline track.',
+        actions: [
+          'Cleared for critical DSW pumping station (P9) and water conduit operation.',
+          'Continue routine automated 12-day NISAR background verification.'
+        ],
+        series: [0, -0.1, -0.3, -0.4, -0.5, -0.7, -0.8, -0.9],
+        baseline: [0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7]
+      }
+    ];
+
+    const PASS_DATES = [
+      'Jun 17, 2026',
+      'Jun 29, 2026',
+      'Jul 11, 2026',
+      'Jul 23, 2026',
+      'Aug 04, 2026',
+      'Aug 16, 2026',
+      'Aug 28, 2026',
+      'Sep 09, 2026'
+    ];
+
+    let state = {
+      selectedId: 'ein-gedi-corridor',
+      passIndex: 7,
+      playing: false,
+      timer: null,
+      showPolygons: true,
+      showInfra: true,
+      showSaltEdge: true
+    };
+
+    let map, polygonGroup, infraGroup, saltGroup, chartInstance;
+
+    function getActiveZone() {
+      return MACRO_ZONES.find(z => z.id === state.selectedId) || MACRO_ZONES[0];
+    }
+
+    function initMap() {
+      map = L.map('mapContainer', {
+        center: [31.410, 35.390],
+        zoom: 11,
+        zoomControl: true
+      });
+
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Project Hail Miriam (NISAR Macro Demo)',
+        maxZoom: 17
+      }).addTo(map);
+
+      polygonGroup = L.layerGroup().addTo(map);
+      infraGroup = L.layerGroup().addTo(map);
+      saltGroup = L.layerGroup().addTo(map);
+
+      drawStaticLayers();
+      drawMacroPolygons();
+    }
+
+    function drawStaticLayers() {
+      infraGroup.clearLayers();
+      saltGroup.clearLayers();
+
+      if (state.showInfra) {
+        // Route 90 Highway Corridor
+        const route90 = [
+          [31.600, 35.408],
+          [31.556, 35.399],
+          [31.480, 35.392],
+          [31.412, 35.388],
+          [31.365, 35.375],
+          [31.324, 35.368],
+          [31.280, 35.363]
+        ];
+        L.polyline(route90, {
+          color: '#fbbf24',
+          weight: 3.5,
+          opacity: 0.9
+        }).bindTooltip('Route 90 National Highway Corridor', { sticky: true }).addTo(infraGroup);
+      }
+
+      if (state.showSaltEdge) {
+        // Western edge of subsurface Holocene salt layer (controls sinkhole susceptibility)
+        const saltEdge = [
+          [31.595, 35.395],
+          [31.555, 35.394],
+          [31.412, 35.383],
+          [31.365, 35.370],
+          [31.295, 35.364]
+        ];
+        L.polyline(saltEdge, {
+          color: '#e879f9',
+          weight: 2.5,
+          dashArray: '6, 6',
+          opacity: 0.85
+        }).bindTooltip('Western Subsurface Salt (Halite) Pinch-Out Boundary', { sticky: true }).addTo(saltGroup);
+      }
+    }
+
+    function drawMacroPolygons() {
+      polygonGroup.clearLayers();
+      if (!state.showPolygons) return;
+
+      const passScale = 0.55 + 0.45 * ((state.passIndex + 1) / 8);
+
+      MACRO_ZONES.forEach(zone => {
+        const isSelected = zone.id === state.selectedId;
+
+        // Draw macro regional polygon
+        const poly = L.polygon(zone.polygon, {
+          color: zone.alertColor,
+          weight: isSelected ? 3 : 1.8,
+          fillColor: zone.alertColor,
+          fillOpacity: isSelected ? 0.42 * passScale : 0.25 * passScale
+        }).addTo(polygonGroup);
+
+        // Inner core bowl contour
+        L.circle(zone.center, {
+          radius: 140 * passScale,
+          color: zone.alertColor,
+          weight: 1.5,
+          dashArray: '3, 3',
+          fillColor: zone.alertColor,
+          fillOpacity: 0.35
+        }).addTo(polygonGroup);
+
+        const cumVal = zone.series[state.passIndex].toFixed(1);
+        poly.bindTooltip(`
+          <div class="text-xs">
+            <div class="font-bold text-white">${zone.name}</div>
+            <div class="text-slate-300">Footprint: <strong>${zone.footprint}</strong></div>
+            <div class="text-sky-300">Rate: <strong>${zone.velocityMmYr} mm/yr</strong> | Pass #${state.passIndex + 1}: <strong>${cumVal} mm</strong></div>
+          </div>
+        `, { sticky: true });
+
+        poly.on('click', () => {
+          selectZone(zone.id, true);
+        });
+      });
+    }
+
+    function renderZoneList() {
+      const container = document.getElementById('zoneList');
+      container.innerHTML = MACRO_ZONES.map(zone => {
+        const active = zone.id === state.selectedId;
+        return `
+          <button data-id="${zone.id}" class="zone-btn w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 ${
+            active
+              ? 'bg-slate-800/90 border-sky-400 shadow-md shadow-sky-500/10'
+              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+          }">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-white truncate">${zone.name}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full border font-bold shrink-0 ${zone.badgeClass}">
+                ${zone.alertLevel}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Scale: ${zone.footprint}</span>
+              <span class="mono font-semibold text-slate-200">${zone.velocityMmYr} mm/yr</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.zone-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectZone(btn.getAttribute('data-id'), true));
+      });
+    }
+
+    function updateChart() {
+      const zone = getActiveZone();
+      const labels = ['Jun 17', 'Jun 29', 'Jul 11', 'Jul 23', 'Aug 04', 'Aug 16', 'Aug 28', 'Sep 09'];
+      const radii = zone.series.map((_, idx) => idx === state.passIndex ? 6 : 3.5);
+
+      if (!chartInstance) {
+        const ctx = document.getElementById('macroChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Macro Subsidence Bowl (LOS mm)',
+                data: zone.series,
+                borderColor: zone.alertColor,
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.25,
+                pointRadius: radii
+              },
+              {
+                label: 'Stable Reference Margin',
+                data: zone.baseline,
+                borderColor: '#64748b',
+                borderDash: [4, 4],
+                borderWidth: 1.5,
+                fill: false,
+                pointRadius: 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#cbd5e1', font: { family: 'Inter', size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#94a3b8', font: { size: 10 } },
+                grid: { color: 'rgba(148, 163, 184, 0.08)' }
+              },
+              y: {
+                ticks: { color: '#94a3b8', font: { size: 10 } },
+                grid: { color: 'rgba(148, 163, 184, 0.08)' }
+              }
+            }
+          }
+        });
+      } else {
+        chartInstance.data.datasets[0].data = zone.series;
+        chartInstance.data.datasets[0].borderColor = zone.alertColor;
+        chartInstance.data.datasets[0].pointRadius = radii;
+        chartInstance.data.datasets[1].data = zone.baseline;
+        chartInstance.update();
+      }
+    }
+
+    function syncUI() {
+      const zone = getActiveZone();
+
+      document.getElementById('detailTitle').textContent = zone.name;
+      const badge = document.getElementById('detailAlertBadge');
+      badge.textContent = zone.alertLevel;
+      badge.className = `px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${zone.badgeClass}`;
+
+      document.getElementById('detailSummary').textContent = zone.summary;
+      document.getElementById('kpiVelocity').textContent = `${zone.velocityMmYr} mm/yr`;
+      document.getElementById('kpiFootprint').textContent = zone.footprint;
+      document.getElementById('kpiCoherence').textContent = zone.coherence;
+      document.getElementById('kpiCumPass').textContent = `${zone.series[state.passIndex].toFixed(1)} mm (Pass #${state.passIndex + 1})`;
+
+      document.getElementById('detailAsset').textContent = zone.asset;
+      document.getElementById('detailGeology').textContent = zone.geology;
+
+      document.getElementById('detailActions').innerHTML = zone.actions.map(act => `
+        <li class="flex items-start gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+          <span class="text-sky-400 font-bold">•</span>
+          <span>${act}</span>
+        </li>
+      `).join('');
+
+      document.getElementById('passDateBadge').textContent = `Pass ${state.passIndex + 1}/8 • ${PASS_DATES[state.passIndex]}`;
+      document.getElementById('passSlider').value = state.passIndex;
+
+      renderZoneList();
+      drawMacroPolygons();
+      updateChart();
+    }
+
+    function selectZone(id, fly = false) {
+      state.selectedId = id;
+      const zone = getActiveZone();
+      if (fly && map) {
+        map.flyTo(zone.center, 13, { duration: 0.8 });
+      }
+      syncUI();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      syncUI();
+
+      document.getElementById('passSlider').addEventListener('input', e => {
+        state.passIndex = Number(e.target.value);
+        syncUI();
+      });
+
+      document.getElementById('btnPlayPasses').addEventListener('click', e => {
+        const btn = e.currentTarget;
+        if (state.playing) {
+          clearInterval(state.timer);
+          state.playing = false;
+          btn.textContent = '▶ Play 12-Day Passes';
+        } else {
+          state.playing = true;
+          btn.textContent = '⏸ Pause Timeline';
+          state.timer = setInterval(() => {
+            state.passIndex = (state.passIndex + 1) % 8;
+            syncUI();
+          }, 1000);
+        }
+      });
+
+      document.getElementById('layerPolygons').addEventListener('change', e => {
+        state.showPolygons = e.target.checked;
+        drawMacroPolygons();
+      });
+      document.getElementById('layerInfra').addEventListener('change', e => {
+        state.showInfra = e.target.checked;
+        drawStaticLayers();
+      });
+      document.getElementById('layerSaltEdge').addEventListener('change', e => {
+        state.showSaltEdge = e.target.checked;
+        drawStaticLayers();
+      });
+
+      document.getElementById('btnExportGeoJSON').addEventListener('click', () => {
+        const zone = getActiveZone();
+        const geojson = {
+          type: 'FeatureCollection',
+          metadata: {
+            project: 'Project Hail Miriam - NASA Space Apps 2026',
+            sensor: 'NISAR L-Band GUNW (80m Macro Subsidence)',
+            passDate: PASS_DATES[state.passIndex]
+          },
+          features: [
+            {
+              type: 'Feature',
+              properties: {
+                id: zone.id,
+                name: zone.name,
+                alertLevel: zone.alertLevel,
+                velocityMmYr: zone.velocityMmYr,
+                footprint: zone.footprint,
+                threatenedAsset: zone.asset
+              },
+              geometry: {
+                type: 'Polygon',
+                coordinates: [zone.polygon.map(pt => [pt[1], pt[0]])]
+              }
+            }
+          ]
+        };
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${zone.id}-macro-risk.geojson`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  </script>
+</body>
+</html>
