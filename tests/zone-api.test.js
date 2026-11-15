@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
 const {
-  parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames,
+  parseZoneResponse, regionalOsmData, assignZonePlaceNames, zoneWithinOsmCoverage,
   osmInfrastructureQuery, osmInfrastructureElements
 } = require('../zone-api.js');
 
@@ -56,52 +56,51 @@ test('rejects invalid measurements and unordered history', () => {
   assert.throws(() => parseZoneResponse(payload), /displacement point/);
 });
 
-test('only uses complete cache entries for the exact current geometry', () => {
+test('renders regional features and recomputes intersections for changed zones', () => {
   const [zone] = parseZoneResponse(example());
-  const element = { type: 'node', id: 1, lat: 31.45, lon: 35.38, tags: {} };
+  const inside = { type: 'node', id: 1, lat: 31.451, lon: 35.381, tags: {} };
+  const outsideZone = { type: 'node', id: 2, lat: 31.47, lon: 35.40, tags: {} };
   const cache = {
-    schema_version: '2.0',
-    elements: { 'node/1': element },
-    zones: { [zone.id]: { geometry: structuredClone(zone.geometry), elements: ['node/1'] } }
+    schema_version: '3.0', elements: { 'node/1': inside, 'node/2': outsideZone },
+    coverage: { type: 'Polygon', coordinates: [[[35.3, 31.4], [35.5, 31.4], [35.5, 31.6], [35.3, 31.6], [35.3, 31.4]]] }
   };
-  assert.deepEqual(cachedOsmFeatures(cache, zone), [element]);
-  assert.deepEqual(cachedOsmFeatures(cache, { ...zone, name: 'Updated name' }), [element]);
-  const changed = structuredClone(zone);
-  changed.geometry.coordinates[0][0][0] += 0.001;
-  assert.throws(() => cachedOsmFeatures(cache, changed), /Outdated/);
-  assert.throws(() => cachedOsmFeatures(cache, { ...zone, id: 'new-zone' }), /Missing/);
-  cache.zones.removed = structuredClone(cache.zones[zone.id]);
-  assert.deepEqual(cachedOsmFeatures(cache, zone), [element]);
-  delete cache.elements['node/1'];
-  assert.throws(() => cachedOsmFeatures(cache, zone), /Missing infrastructure element/);
-  cache.elements['node/1'] = { ...element, lat: null };
-  assert.throws(() => cachedOsmFeatures(cache, zone), /Invalid infrastructure element/);
-  cache.zones[zone.id].elements = [];
-  assert.deepEqual(cachedOsmFeatures(cache, zone), []);
-  cache.schema_version = '1.0';
-  assert.throws(() => cachedOsmFeatures(cache, zone), /Unsupported/);
+  const result = regionalOsmData(cache, [zone]);
+  assert.deepEqual(result.elements, [inside, outsideZone]);
+  assert.deepEqual(result.results[zone.id], [inside]);
+  assert.deepEqual(result.outsideCoverage, []);
+  const changedPayload = example();
+  changedPayload.zones[0].geometry.coordinates = [[[35.39, 31.46], [35.41, 31.46], [35.41, 31.48], [35.39, 31.46]]];
+  const [changed] = parseZoneResponse(changedPayload);
+  assert.deepEqual(regionalOsmData(cache, [changed]).results[zone.id], [outsideZone]);
+  assert.deepEqual(regionalOsmData(cache, []).elements, [inside, outsideZone]);
+  cache.elements['node/1'] = { ...inside, lat: null };
+  assert.throws(() => regionalOsmData(cache, [zone]), /Invalid infrastructure element/);
+  cache.elements['node/1'] = { ...inside, tags: { name: null } };
+  assert.throws(() => regionalOsmData(cache, [zone]), /Invalid infrastructure element/);
 });
 
-test('invalidates changes inside multipolygons and holes', () => {
-  const payload = example();
-  const outer = payload.zones[0].geometry.coordinates[0];
-  const hole = [[35.381, 31.451], [35.382, 31.451], [35.382, 31.452], [35.381, 31.451]];
-  payload.zones[0].geometry = { type: 'MultiPolygon', coordinates: [[outer, hole], [outer]] };
-  const [zone] = parseZoneResponse(payload);
+test('marks incomplete coverage even where a segment crosses a concave boundary', () => {
+  const ring = [[0, 0], [0, 4], [4, 4], [4, 3], [1, 3], [1, 1], [4, 1], [4, 0], [0, 0]];
+  const zone = { id: 'partial', polygons: [[[[2, 0.5], [2, 3.5], [3, 3.5], [2, 0.5]]]] };
+  assert.equal(zoneWithinOsmCoverage(zone, ring), false);
   const cache = {
-    schema_version: '2.0', elements: {},
-    zones: { [zone.id]: { geometry: structuredClone(zone.geometry), elements: [] } }
+    schema_version: '3.0', elements: { 'node/1': { type: 'node', id: 1, lat: 2, lon: 0.5, tags: {} } },
+    coverage: { type: 'Polygon', coordinates: [ring.map(([lat, lon]) => [lon, lat])] }
   };
-  assert.deepEqual(cachedOsmFeatures(cache, zone), []);
-  cache.zones[zone.id].geometry.coordinates[0][1][0][0] += 0.001;
-  assert.throws(() => cachedOsmFeatures(cache, zone), /Outdated/);
+  const result = regionalOsmData(cache, [zone]);
+  assert.deepEqual(result.outsideCoverage, ['partial']);
+  assert.equal(result.results.partial.length, 1);
 });
 
-test('the checked-in infrastructure cache covers the current zone export', () => {
+test('the checked-in infrastructure cache matches the study area', () => {
   const zones = parseZoneResponse(require('../data/api/zones.json'));
   const cache = require('../data/api/osm-cache.json');
+  const area = JSON.parse(require('node:fs').readFileSync('data/api/osm-study-area.geojson', 'utf8'));
   assert.ok(zones.length > 0);
-  for (const zone of zones) assert.ok(Array.isArray(cachedOsmFeatures(cache, zone)));
+  assert.deepEqual(cache.coverage, area.features[0].geometry);
+  const result = regionalOsmData(cache, zones);
+  assert.ok(result.elements.length > 0);
+  assert.equal(Object.keys(result.results).length, zones.length);
 });
 
 test('names zones from nearby places, with stable distinct labels', () => {

@@ -310,7 +310,7 @@
                 <button class="layer-action" id="deselectAllLayers" type="button" aria-label="Deselect all map layers">Deselect all</button>
               </div>
             </div>
-            <p class="intro compact-intro">Overlays intersect zones but may extend beyond them. Basemap features remain visible when layers are hidden.</p>
+            <p class="intro compact-intro">Overlays cover the study area, including outside zones. Basemap features remain visible when layers are hidden.</p>
             <p class="loading-indicator" id="sidebarOsmLoading" role="status" hidden>Loading infrastructure…</p>
             <div class="layer-list">
               <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads<small class="layer-count" id="roadCount">Loading...</small></span><input id="toggleRoads" type="checkbox" checked></label>
@@ -360,7 +360,7 @@
   <script>
     'use strict';
 
-    const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
+    const DEAD_SEA_BOUNDS = { south: 30.90, west: 35.25, north: 31.82, east: 35.65 };
     const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
     const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
     const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
@@ -408,9 +408,10 @@
       selectedId: null,
       demo: false,
       zonesLoading: false,
+      zonesFailed: false,
       show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true, dams: true, industrial: true, emergency: true, hazards: true },
       sidebar: { left: true, right: true },
-      osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
+      osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], partialZones: new Set(), regionalLoaded: false, generation: 0, controller: null }
     };
 
     const studyBounds = L.latLngBounds(
@@ -468,6 +469,8 @@
       state.osm.results = Object.create(null);
       state.osm.errors = Object.create(null);
       state.osm.elements = [];
+      state.osm.partialZones = new Set();
+      state.osm.regionalLoaded = false;
       clearOsmLayers();
       clearSelectedFeature();
       RISK_ZONES = zones;
@@ -479,7 +482,7 @@
       renderDetails();
       drawRiskZones();
       updateRiskLabelVisibility();
-      if (zones.length) {
+      if (zones.length || (!state.zonesLoading && !state.demo)) {
         updateLayerCounts([], 'Loading...');
         requestOsm();
       } else if (state.zonesLoading) {
@@ -528,6 +531,7 @@
       zoneRequest = controller;
       state.demo = false;
       state.zonesLoading = true;
+      state.zonesFailed = false;
       setZoneSourceStatus('Loading zone data…', 'loading');
       replaceZones([]);
       const timeout = setTimeout(() => controller.abort(), 20000);
@@ -545,11 +549,12 @@
         if (zoneRequest !== controller) return;
         console.error('Could not load zone data:', error);
         state.zonesLoading = false;
+        state.zonesFailed = true;
         setZoneSourceStatus('Zone data is unavailable. Reload the page to retry.', 'error');
         updateLayerCounts([], 'Unavailable');
-        setOsmStatus('Zone data is unavailable.', 'error');
         renderZoneList();
         renderDetails();
+        requestOsm();
       } finally {
         clearTimeout(timeout);
         if (zoneRequest === controller) zoneRequest = null;
@@ -630,12 +635,14 @@
       const selectedLayers = Object.keys(state.show).filter(key => state.show[key]);
       const allSelected = selectedLayers.length === Object.keys(state.show).length;
       const zones = filteredRiskZones();
-      const incomplete = RISK_ZONES.some(zone => !state.osm.results[zone.id]);
+      const incomplete = RISK_ZONES.some(zone => !state.osm.results[zone.id]) || state.osm.partialZones.size > 0;
       const status = document.getElementById('zoneFilterStatus');
       status.hidden = allSelected || !selectedLayers.length || !incomplete;
       status.textContent = status.hidden ? '' : Object.keys(state.osm.errors).length
         ? 'Only loaded zones are shown. Some zones could not load; use Retry.'
-        : 'Only loaded zones are shown while infrastructure loads.';
+        : state.osm.partialZones.size
+          ? 'Some zones extend beyond OSM coverage; matching features may be missing.'
+          : 'Only loaded zones are shown while infrastructure loads.';
       document.getElementById('zoneCount').textContent = allSelected
         ? `${zones.length} zones` : `${zones.length} / ${RISK_ZONES.length} zones`;
       list.innerHTML = [...zones]
@@ -992,63 +999,10 @@
         buildingCount: elements.filter(LAYER_MATCHES.buildings).length
       };
       EXTRA_LAYERS.forEach(layer => { counts[layer.count] = elements.filter(layer.matches).length; });
+      const partial = state.osm.partialZones.size || RISK_ZONES.some(zone => !state.osm.results[zone.id]);
       Object.entries(counts).forEach(([id, count]) => {
-        document.getElementById(id).textContent = message || `${count} inside risk zones`;
+        document.getElementById(id).textContent = message || `${count} inside risk zones${partial ? ' (partial)' : ''}`;
       });
-    }
-
-    function pointOnSegment(point, a, b) {
-      const cross = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
-      return Math.abs(cross) < 1e-10 &&
-        point[0] >= Math.min(a[0], b[0]) - 1e-10 && point[0] <= Math.max(a[0], b[0]) + 1e-10 &&
-        point[1] >= Math.min(a[1], b[1]) - 1e-10 && point[1] <= Math.max(a[1], b[1]) + 1e-10;
-    }
-
-    function pointInPolygon(point, polygon) {
-      let inside = false;
-      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const a = polygon[j], b = polygon[i];
-        if (pointOnSegment(point, a, b)) return true;
-        if ((a[0] > point[0]) !== (b[0] > point[0]) &&
-            point[1] < (b[1] - a[1]) * (point[0] - a[0]) / (b[0] - a[0]) + a[1]) inside = !inside;
-      }
-      return inside;
-    }
-
-    function segmentsIntersect(a, b, c, d) {
-      const direction = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-      const abC = direction(a, b, c), abD = direction(a, b, d);
-      const cdA = direction(c, d, a), cdB = direction(c, d, b);
-      if (pointOnSegment(c, a, b) || pointOnSegment(d, a, b) ||
-          pointOnSegment(a, c, d) || pointOnSegment(b, c, d)) return true;
-      return ((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
-        ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0));
-    }
-
-    function pointInZone(point, zone) {
-      return zone.polygons.some(rings => {
-        if (!pointInPolygon(point, rings[0])) return false;
-        return !rings.slice(1).some(ring => {
-          if (ring.some((vertex, index) => pointOnSegment(point, vertex, ring[(index + 1) % ring.length]))) return false;
-          return pointInPolygon(point, ring);
-        });
-      });
-    }
-
-    function featureIntersectsZone(element, zone) {
-      if (element.type === 'node') return pointInZone([element.lat, element.lon], zone);
-      const points = element.geometry.map(point => [point.lat, point.lon]);
-      if (points.some(point => pointInZone(point, zone))) return true;
-      for (let i = 1; i < points.length; i++) {
-        for (const ring of zone.polygons.flat()) {
-          for (let j = 0; j < ring.length; j++) {
-            if (segmentsIntersect(points[i - 1], points[i], ring[j], ring[(j + 1) % ring.length])) return true;
-          }
-        }
-      }
-      const first = points[0], last = points[points.length - 1];
-      return points.length >= 4 && first[0] === last[0] && first[1] === last[1] &&
-        zone.polygons.some(rings => pointInPolygon(rings[0][0], points));
     }
 
     function featureCoordinates(element, zone) {
@@ -1081,14 +1035,16 @@
       if (state.osm.errors[zone.id]) return '<p class="detail-description">Infrastructure could not be loaded for this zone. Use Retry to try again.</p>';
       const features = state.osm.results[zone.id];
       if (!features) return '<p class="loading-indicator" role="status">Loading infrastructure for this zone…</p>';
+      const coverageNote = state.osm.partialZones.has(zone.id)
+        ? ' This zone extends beyond the regional OSM dataset; features may be missing.' : '';
       const groups = [
         ['Roads', 'Road', features.filter(LAYER_MATCHES.roads)],
         ['Pumping stations', 'Pumping station', features.filter(LAYER_MATCHES.pumps)],
         ['Buildings', 'Building', features.filter(LAYER_MATCHES.buildings)],
         ...EXTRA_LAYERS.map(layer => [layer.label, layer.fallback, features.filter(layer.matches)])
       ].filter(([, , items]) => items.length);
-      if (!groups.length) return '<p class="detail-description">No supported mapped features found in this zone. OSM coverage may be incomplete.</p>';
-      return `<p class="detail-description">Mapped features intersecting the zone; intersection does not establish damage. OSM coverage may be incomplete or outdated.</p>` +
+      if (!groups.length) return `<p class="detail-description">No supported mapped features found in the available data for this zone.${coverageNote} OSM coverage may be incomplete.</p>`;
+      return `<p class="detail-description">Mapped features intersecting the zone; intersection does not establish damage.${coverageNote} OSM coverage may be incomplete or outdated.</p>` +
         groups.map(([label, fallback, items]) => `<details class="method-details"><summary>${label} · ${items.length}</summary>` +
           `<ul class="feature-list">${items.map(element => {
             const point = featureCoordinates(element, zone);
@@ -1112,8 +1068,9 @@
     function refreshOsmDisplay() {
       const unique = new Map();
       Object.values(state.osm.results).flat().forEach(element => unique.set(`${element.type}/${element.id}`, element));
-      state.osm.elements = [...unique.values()];
-      updateLayerCounts(state.osm.elements, Object.keys(state.osm.results).length ? null : 'Loading...');
+      if (state.demo) state.osm.elements = [...unique.values()];
+      updateLayerCounts([...unique.values()], state.zonesFailed ? 'Unavailable' :
+        state.osm.regionalLoaded || Object.keys(state.osm.results).length ? null : 'Loading...');
       renderCachedOsmData();
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
@@ -1127,33 +1084,66 @@
     async function loadOsmCache(generation) {
       const controller = new AbortController();
       state.osm.controller = controller;
-      const timeout = setTimeout(() => controller.abort(), 20000);
+      const timeout = setTimeout(() => controller.abort(), 120000);
+      let placesAttempted = false;
       try {
-        const response = await fetch('/api/v1/osm', { signal: controller.signal });
-        if (!response.ok) throw new Error(`OSM API returned HTTP ${response.status}`);
-        const payload = await response.json();
-        if (generation !== state.osm.generation) return 0;
-        if (!payload || payload.schema_version !== '1.0') throw new Error('Unsupported OSM API response');
-        loadPlaceNames(payload.places);
-        let hits = 0;
-        RISK_ZONES.forEach(zone => {
-          if (state.osm.results[zone.id]) return;
-          try {
-            state.osm.results[zone.id] = cachedOsmFeatures(payload.infrastructure, zone);
-            delete state.osm.errors[zone.id];
-            hits++;
-          } catch (error) {
-            console.error(`Could not load cached infrastructure for ${zone.name}:`, error);
-            state.osm.errors[zone.id] = error.message;
+        let payload = null, offset = 0, revision = null;
+        const elements = Object.create(null);
+        do {
+          const query = revision === null ? '' : `?${new URLSearchParams({ offset, revision })}`;
+          const response = await fetch(`/api/v1/osm${query}`, { signal: controller.signal });
+          if (!response.ok) throw new Error(`OSM API returned HTTP ${response.status}`);
+          const page = await response.json();
+          if (generation !== state.osm.generation) return 0;
+          const pageCount = page && page.infrastructure && page.infrastructure.elements &&
+            typeof page.infrastructure.elements === 'object' && !Array.isArray(page.infrastructure.elements)
+            ? Object.keys(page.infrastructure.elements).length : -1;
+          if (!page || page.schema_version !== '1.0' || !page.infrastructure || !page.pagination ||
+              page.pagination.offset !== offset || typeof page.pagination.revision !== 'string' ||
+              (revision !== null && page.pagination.revision !== revision) ||
+              pageCount < 0 || !Number.isSafeInteger(page.pagination.total) || page.pagination.total < offset ||
+              (page.pagination.next_offset === null
+                ? offset + pageCount !== page.pagination.total
+                : !pageCount || page.pagination.next_offset !== offset + pageCount ||
+                  page.pagination.next_offset >= page.pagination.total)) {
+            throw new Error('Unsupported or invalid OSM API page');
           }
-        });
+          if (!payload) {
+            payload = page;
+            revision = page.pagination.revision;
+          } else if (page.pagination.total !== payload.pagination.total ||
+              page.infrastructure.schema_version !== payload.infrastructure.schema_version ||
+              JSON.stringify(page.infrastructure.coverage) !== JSON.stringify(payload.infrastructure.coverage)) {
+            throw new Error('Inconsistent OSM API pages');
+          }
+          for (const [key, element] of Object.entries(page.infrastructure.elements)) {
+            if (Object.hasOwn(elements, key)) throw new Error('Duplicate OSM element across pages');
+            elements[key] = element;
+          }
+          offset = page.pagination.next_offset;
+        } while (offset !== null);
+        payload.infrastructure.elements = elements;
+        if (!state.zonesFailed) {
+          loadPlaceNames(payload.places);
+          placesAttempted = true;
+        }
+        const regional = regionalOsmData(payload.infrastructure, RISK_ZONES);
+        state.osm.elements = regional.elements;
+        state.osm.results = regional.results;
+        state.osm.partialZones = new Set(regional.outsideCoverage);
+        state.osm.regionalLoaded = true;
+        state.osm.errors = Object.create(null);
         refreshOsmDisplay();
-        return hits;
+        return RISK_ZONES.length;
       } catch (error) {
         if (generation !== state.osm.generation) return 0;
         console.error('Precomputed OSM cache unavailable:', error);
-        setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
-        RISK_ZONES.filter(zone => !state.osm.results[zone.id]).forEach(zone => {
+        if (!state.zonesFailed && !placesAttempted) setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
+        state.osm.regionalLoaded = false;
+        state.osm.elements = [];
+        state.osm.results = Object.create(null);
+        state.osm.partialZones = new Set();
+        RISK_ZONES.forEach(zone => {
           state.osm.errors[zone.id] = error.message;
         });
         refreshOsmDisplay();
@@ -1167,7 +1157,7 @@
     async function requestOsm() {
       if (state.osm.loading) return;
       let pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
-      if (!pending.length) return;
+      if (!pending.length && (state.demo || state.osm.regionalLoaded)) return;
       const generation = state.osm.generation;
       state.osm.loading = true;
       pending.forEach(zone => delete state.osm.errors[zone.id]);
@@ -1215,14 +1205,17 @@
         if (generation === state.osm.generation) state.osm.loading = false;
       }
       if (generation !== state.osm.generation) return;
-      if (Object.keys(state.osm.errors).length) {
+      if (Object.keys(state.osm.errors).length || (!state.demo && !state.osm.regionalLoaded)) {
         if (!Object.keys(state.osm.results).length) updateLayerCounts([], 'Unavailable');
         setOsmStatus(state.demo
           ? 'Some zones could not load infrastructure. Loaded zones remain available.'
-          : 'Infrastructure cache is unavailable or outdated for some zones. Contact the project maintainers.',
+          : 'Regional infrastructure could not be loaded. Use Retry or contact the project maintainers.',
           'error', true);
       } else {
-        setOsmStatus('Infrastructure loaded for all risk zones.', 'ready');
+        setOsmStatus(state.osm.partialZones.size
+          ? `${state.osm.partialZones.size} zones extend beyond regional OSM coverage; results may be incomplete.`
+          : state.zonesFailed ? 'Regional infrastructure loaded; zone data unavailable.'
+            : 'Regional infrastructure loaded.', state.osm.partialZones.size ? 'error' : 'ready');
       }
     }
 

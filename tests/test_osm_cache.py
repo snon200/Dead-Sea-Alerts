@@ -8,25 +8,40 @@ from scripts.build_osm_cache import _overpass_elements, build_cache
 
 
 class OsmCacheTests(unittest.TestCase):
-    def test_build_records_geometry_and_intersections(self):
+    def test_build_keeps_features_in_the_region_independent_of_zones(self):
         geometry = {
             "type": "Polygon",
             "coordinates": [[[35, 31], [36, 31], [36, 32], [35, 32], [35, 31]]],
         }
-        zones = [{"id": "inside", "geometry": geometry}]
         features = [
             {"type": "node", "id": 1, "lat": 31.5, "lon": 35.5, "tags": {"power": "substation"}},
             {"type": "node", "id": 2, "lat": 33, "lon": 35.5, "tags": {"power": "substation"}},
+            {"type": "way", "id": 3, "geometry": [{"lat": 31.5, "lon": 34}, {"lat": 31.5, "lon": 37}], "tags": {"highway": "road"}},
         ]
         with tempfile.TemporaryDirectory() as directory:
-            zones_path = Path(directory) / "zones.json"
+            area_path = Path(directory) / "area.geojson"
             out_path = Path(directory) / "cache.json"
-            zones_path.write_text(json.dumps({"zones": zones}), encoding="utf-8")
+            area_path.write_text(json.dumps({"type": "FeatureCollection", "features": [{"geometry": geometry}]}), encoding="utf-8")
             with patch("scripts.build_osm_cache.fetch_overpass", return_value=features):
-                cache = build_cache(zones_path, out_path)
-            self.assertEqual(cache["schema_version"], "2.0")
-            self.assertEqual(cache["zones"]["inside"], {"geometry": geometry, "elements": ["node/1"]})
+                cache = build_cache(area_path, out_path)
+            self.assertEqual(cache["schema_version"], "3.0")
+            self.assertEqual(cache["coverage"], geometry)
+            self.assertEqual(set(cache["elements"]), {"node/1", "way/3"})
             self.assertEqual(json.loads(out_path.read_text(encoding="utf-8")), cache)
+
+    def test_invalid_source_does_not_replace_cache(self):
+        area = {"type": "FeatureCollection", "features": [{"geometry": {
+            "type": "Polygon", "coordinates": [[[35, 31], [36, 31], [36, 32], [35, 31]]]
+        }}]}
+        with tempfile.TemporaryDirectory() as directory:
+            area_path, out_path = Path(directory) / "area.geojson", Path(directory) / "cache.json"
+            area_path.write_text(json.dumps(area), encoding="utf-8")
+            out_path.write_text("existing", encoding="utf-8")
+            with patch("scripts.build_osm_cache.fetch_overpass", return_value=[
+                {"type": "way", "id": 1, "tags": {"highway": "road"}, "geometry": []}
+            ]), self.assertRaises(ValueError):
+                build_cache(area_path, out_path)
+            self.assertEqual(out_path.read_text(encoding="utf-8"), "existing")
 
     def test_incomplete_overpass_response_is_not_cached_as_empty(self):
         for payload in ({}, {"elements": [], "remark": "runtime error: timeout"}):

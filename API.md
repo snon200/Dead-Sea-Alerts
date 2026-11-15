@@ -15,17 +15,25 @@ date; each retained zone still includes its full displacement history.
 
 ```text
 Processed NISAR data -> zones.json -> GET /api/v1/zones -> dashboard
-zones.json + OSM -> precomputed OSM files -> GET /api/v1/osm -> dashboard
+fixed study polygon + OSM -> precomputed OSM files -> GET /api/v1/osm -> dashboard
 ```
 
-`GET /api/v1/osm` returns `{"schema_version": "1.0", "infrastructure": {...}, "places": {...}}`,
-containing the precomputed infrastructure cache and area-name dataset. It
+`GET /api/v1/osm` returns `{"schema_version": "1.0", "infrastructure": {...}, "places": {...}, "pagination": {...}}`,
+containing one page of the precomputed infrastructure and the area-name dataset. It
 returns 503 if either file is missing and 500 if the data cannot be read or is
 malformed. No OSM network request or cache regeneration occurs in the handler.
-After exporting zones, run `python scripts/build_osm_cache.py` and
-`python scripts/build_osm_places.py`, then commit all three files together. The
-place builder requires at least one zone. Refresh the OSM files periodically
-as well; their generation is manual.
+Responses are limited to 3 MiB. Start without parameters, then request each
+`pagination.next_offset` with `?offset=<next_offset>&revision=<revision>` from
+the first page until `next_offset` is `null`. Combine the pages' element maps.
+`pagination.total` is the number of elements across all pages. A changed
+dataset returns 409 and requires restarting at the first page; invalid
+pagination parameters return 400.
+Infrastructure schema `3.0` includes a GeoJSON coverage polygon and regional
+elements keyed by `type/id`, rather than per-zone entries. The browser computes
+intersections against the current zones; intersections may be incomplete outside
+the polygon. OSM generation is manual and independent of zone exports. Refresh
+both files periodically and after changing the polygon; see the
+[pipeline guide](./NISAR_PIPELINE_GUIDE.md).
 
 Relevant files:
 
@@ -180,7 +188,8 @@ environment or preview deployment.
 
 The frontend calls the relative path with `fetch('/api/v1/zones')` and displays
 loading, empty and error states. Reload the page to retry a failed request.
-API zone names currently use their IDs until a geographic naming source is added.
+Zone names use nearby places when the place dataset covers their search radius,
+and otherwise use IDs.
 Run the frontend contract tests with
 `node --test tests/zone-api.test.js`.
 

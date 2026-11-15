@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
-"""Precompute OpenStreetMap infrastructure cache for all zones in data/api/zones.json.
-
-Fetches matching OSM nodes and ways once from Overpass API for the study area
-bounding box, intersects them with each zone polygon, and writes a deduplicated
-cache file at data/api/osm-cache.json so the dashboard does not get rate-limited
-by live OSM API calls.
-"""
+"""Build a regional OpenStreetMap infrastructure dataset independent of zones."""
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 import urllib.parse
@@ -233,6 +228,7 @@ def fetch_overpass(south: float, west: float, north: float, east: float) -> list
 (
   way["highway"]({bbox});
   way["building"]({bbox});
+  node["building"~"^(hotel|school|hospital)$"]({bbox});
   way["bridge"]["bridge"!="no"]({bbox});
   node["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
   way["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
@@ -266,101 +262,128 @@ out body geom;"""
     return list(merged.values())
 
 
-def build_cache(zones_path: Path, out_path: Path) -> dict:
-    zones_payload = json.loads(zones_path.read_text(encoding="utf-8"))
-    zones = zones_payload["zones"]
-    if not zones:
-        cache = {
-            "schema_version": "2.0",
-            "source": "OpenStreetMap (Overpass API precomputed cache)",
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "elements": {},
-            "zones": {},
-        }
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(cache, separators=(",", ":")), encoding="utf-8")
-        return cache
+def load_study_area(path: Path) -> dict:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    features = payload.get("features") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection" or not isinstance(features, list) or len(features) != 1:
+        raise ValueError("Study area must contain one GeoJSON feature")
+    geometry = features[0].get("geometry")
+    if not isinstance(geometry, dict) or geometry.get("type") != "Polygon":
+        raise ValueError("Study area must be a GeoJSON Polygon")
+    rings = geometry.get("coordinates")
+    if not isinstance(rings, list) or len(rings) != 1:
+        raise ValueError("Study area must have one exterior ring and no holes")
+    for ring in rings:
+        if not isinstance(ring, list) or len(ring) < 4 or ring[0] != ring[-1]:
+            raise ValueError("Study area has an invalid ring")
+        for point in ring:
+            if (not isinstance(point, list) or len(point) != 2 or
+                any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in point) or
+                abs(point[0]) > 180 or abs(point[1]) > 90):
+                raise ValueError("Study area has an invalid coordinate")
+    return geometry
 
-    parsed_zones = []
-    seen_ids = set()
-    min_lat, min_lon, max_lat, max_lon = 90.0, 180.0, -90.0, -180.0
-    for zone in zones:
-        if not isinstance(zone.get("id"), str) or not zone["id"].strip() or zone["id"] in seen_ids:
-            raise ValueError("Invalid or duplicate zone identifier")
-        seen_ids.add(zone["id"])
-        polys = _zone_polygons(zone)
-        zb = _zone_bbox(polys)
-        min_lat = min(min_lat, zb[0])
-        min_lon = min(min_lon, zb[1])
-        max_lat = max(max_lat, zb[2])
-        max_lon = max(max_lon, zb[3])
-        parsed_zones.append((zone["id"], zone["geometry"], polys, zb))
 
-    pad = 0.002
-    print(
-        f"Fetching OSM features for {len(zones)} zones in bbox "
-        f"({min_lat - pad:.4f}, {min_lon - pad:.4f}, {max_lat + pad:.4f}, {max_lon + pad:.4f})..."
-    )
-    raw_elements = fetch_overpass(min_lat - pad, min_lon - pad, max_lat + pad, max_lon + pad)
-    print(f"Downloaded {len(raw_elements)} raw OSM elements")
+def read_extracts(paths: list[Path], bbox: tuple[float, float, float, float]) -> list[dict]:
+    try:
+        import osmium
+    except ImportError as exc:
+        raise RuntimeError("Reading PBF extracts requires the 'osmium' Python package") from exc
 
-    filtered_elements = []
+    class ExtractHandler(osmium.SimpleHandler):
+        def __init__(self):
+            super().__init__()
+            self.elements = {}
+
+        def node(self, node):
+            if not node.tags or not node.location.valid():
+                return
+            lat, lon = node.location.lat, node.location.lon
+            if not (bbox[0] <= lat <= bbox[2] and bbox[1] <= lon <= bbox[3]):
+                return
+            el = {"type": "node", "id": node.id, "lat": lat, "lon": lon, "tags": dict(node.tags)}
+            if _matches_supported_layer(el):
+                self.elements[("node", node.id)] = el
+
+        def way(self, way):
+            if not way.tags:
+                return
+            el = {"type": "way", "id": way.id, "tags": dict(way.tags)}
+            if not _matches_supported_layer(el):
+                return
+            points = [{"lat": n.location.lat, "lon": n.location.lon} for n in way.nodes if n.location.valid()]
+            if not points:
+                return
+            box = _zone_bbox([[[(p["lat"], p["lon"]) for p in points]]])
+            if box[2] < bbox[0] or box[0] > bbox[2] or box[3] < bbox[1] or box[1] > bbox[3]:
+                return
+            if len(points) != len(way.nodes):
+                raise ValueError(f"Extract has missing node locations for way {way.id} near the study area")
+            el["geometry"] = points
+            self.elements[("way", way.id)] = el
+
+    reader = ExtractHandler()
+    for path in paths:
+        print(f"Reading OSM extract {path}...")
+        reader.apply_file(str(path), locations=True)
+    return list(reader.elements.values())
+
+
+def build_cache(study_area_path: Path, out_path: Path, pbf_paths: list[Path] | None = None) -> dict:
+    geometry = load_study_area(study_area_path)
+    polygons = _zone_polygons({"id": "study area", "geometry": geometry})
+    bbox = _zone_bbox(polygons)
+    if pbf_paths:
+        raw_elements = read_extracts(pbf_paths, bbox)
+        source = "OpenStreetMap (regional PBF extracts)"
+    else:
+        pad = 0.002
+        raw_elements = fetch_overpass(bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad)
+        source = "OpenStreetMap (Overpass API)"
+    print(f"Read {len(raw_elements)} candidate OSM elements")
+    elements = {}
     for el in raw_elements:
-        if el.get("type") not in ("node", "way"):
+        if el.get("type") not in ("node", "way") or not _matches_supported_layer(el):
             continue
-        if not _matches_supported_layer(el):
-            continue
-        if el["type"] == "node" and (el.get("lat") is None or el.get("lon") is None):
-            continue
-        if el["type"] == "way" and not el.get("geometry"):
-            continue
-        compact = {
-            "type": el["type"],
-            "id": el["id"],
-            "tags": el.get("tags", {}),
-        }
         if el["type"] == "node":
-            compact["lat"] = el["lat"]
-            compact["lon"] = el["lon"]
+            valid = all(isinstance(el.get(k), (int, float)) and math.isfinite(el[k]) for k in ("lat", "lon"))
         else:
-            compact["geometry"] = el["geometry"]
-        filtered_elements.append(compact)
-
-    print(f"Filtered to {len(filtered_elements)} layer-matching elements")
-
-    used_elements: dict[str, dict] = {}
-    zone_map: dict[str, dict] = {}
-    for zone_id, geometry, polys, zb in parsed_zones:
-        keys = []
-        for el in filtered_elements:
-            if _feature_intersects_zone(el, polys, zb):
-                key = f"{el['type']}/{el['id']}"
-                used_elements[key] = el
-                keys.append(key)
-        zone_map[zone_id] = {"geometry": geometry, "elements": keys}
-
+            valid = isinstance(el.get("geometry"), list) and len(el["geometry"]) >= 2 and all(
+                isinstance(p, dict) and all(isinstance(p.get(k), (int, float)) and math.isfinite(p[k]) for k in ("lat", "lon"))
+                for p in el["geometry"]
+            )
+        if not valid or not isinstance(el.get("id"), int):
+            raise ValueError("Incomplete OSM element in source data")
+        if _feature_intersects_zone(el, polygons, bbox):
+            compact = {key: el[key] for key in ("type", "id", "tags")}
+            if el["type"] == "node":
+                compact.update(lat=el["lat"], lon=el["lon"])
+            else:
+                compact["geometry"] = el["geometry"]
+            elements[f"{el['type']}/{el['id']}"] = compact
     cache = {
-        "schema_version": "2.0",
-        "source": "OpenStreetMap (Overpass API precomputed cache)",
+        "schema_version": "3.0",
+        "source": source,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "elements": used_elements,
-        "zones": zone_map,
+        "coverage": geometry,
+        "elements": elements,
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(cache, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(
         f"Wrote {out_path} ({out_path.stat().st_size / 1024:.1f} KB): "
-        f"{len(used_elements)} intersecting elements across {len(zone_map)} zones"
+        f"{len(elements)} elements intersecting the study area"
     )
     return cache
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--zones", default="data/api/zones.json")
+    parser.add_argument("--area", default="data/api/osm-study-area.geojson")
     parser.add_argument("--out", default="data/api/osm-cache.json")
+    parser.add_argument("--pbf", action="append", default=[], help="OSM PBF extract; repeat for each covering extract")
     args = parser.parse_args()
-    build_cache(Path(args.zones), Path(args.out))
+    build_cache(Path(args.area), Path(args.out), [Path(path) for path in args.pbf])
     return 0
 
 

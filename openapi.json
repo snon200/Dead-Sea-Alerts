@@ -57,10 +57,14 @@
     "/api/v1/osm": {
       "get": {
         "operationId": "getOsmData",
-        "summary": "Get precomputed infrastructure and area-name datasets",
+        "summary": "Get a page of precomputed regional infrastructure and area names",
+        "parameters": [
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Use next_offset from the previous page." },
+          { "name": "revision", "in": "query", "schema": { "type": "string" }, "description": "Required for nonzero offsets; use the revision returned by the first page." }
+        ],
         "responses": {
           "200": {
-            "description": "OpenStreetMap datasets generated offline for the zones export.",
+            "description": "OpenStreetMap datasets generated offline for the regional study area.",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/OsmResponse" }
@@ -71,6 +75,8 @@
             "description": "Precomputed OSM data is malformed or could not be read.",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
+          "400": { "description": "Invalid pagination parameters.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "The dataset changed; restart from the first page.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
           "503": {
             "description": "A precomputed OSM dataset is not deployed.",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
@@ -83,32 +89,32 @@
     "schemas": {
       "OsmResponse": {
         "type": "object",
-        "required": ["schema_version", "infrastructure", "places"],
+        "required": ["schema_version", "infrastructure", "places", "pagination"],
         "properties": {
           "schema_version": { "type": "string", "enum": ["1.0"] },
           "infrastructure": { "$ref": "#/components/schemas/OsmInfrastructure" },
-          "places": { "$ref": "#/components/schemas/OsmPlaces" }
+          "places": { "$ref": "#/components/schemas/OsmPlaces" },
+          "pagination": {
+            "type": "object",
+            "required": ["offset", "next_offset", "total", "revision"],
+            "properties": {
+              "offset": { "type": "integer", "minimum": 0 },
+              "next_offset": { "type": "integer", "nullable": true },
+              "total": { "type": "integer", "minimum": 0 },
+              "revision": { "type": "string" }
+            }
+          }
         }
       },
       "OsmInfrastructure": {
         "type": "object",
-        "required": ["schema_version", "elements", "zones"],
+        "required": ["schema_version", "coverage", "elements"],
         "properties": {
-          "schema_version": { "type": "string", "enum": ["2.0"] },
+          "schema_version": { "type": "string", "enum": ["3.0"] },
           "source": { "type": "string" },
           "generated_at": { "type": "string", "format": "date-time" },
-          "elements": { "type": "object", "additionalProperties": { "type": "object" } },
-          "zones": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "required": ["geometry", "elements"],
-              "properties": {
-                "geometry": { "$ref": "#/components/schemas/Geometry" },
-                "elements": { "type": "array", "items": { "type": "string" } }
-              }
-            }
-          }
+          "coverage": { "$ref": "#/components/schemas/Polygon" },
+          "elements": { "type": "object", "additionalProperties": { "type": "object" } }
         }
       },
       "OsmPlaces": {
