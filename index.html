@@ -47,17 +47,17 @@
     .brand-mark img { position: absolute; width: 181.5px; max-width: none; left: -15px; top: -24px; }
     .brand-wordmark { flex: 0 1 160px; min-width: 0; aspect-ratio: 1035 / 246; }
     .brand-wordmark img { position: absolute; width: 193.24%; max-width: none; left: -77.78%; top: -176.83%; }
-    .credits { max-width: 210px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: right; }
+    .credits { max-width: 210px; color: var(--muted); font-size: 13px; line-height: 1.4; text-align: right; }
     .credits a { color: #126782; }
     .icon-button, .refresh-button {
       border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 8px 10px;
       cursor: pointer; transition: background .15s, border-color .15s;
     }
     .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
-    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
+    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 19px; }
     .workspace {
-      --left-width: 286px;
-      --right-width: 350px;
+      --left-width: 312px;
+      --right-width: 380px;
       position: relative; flex: 1; min-height: 0; display: grid;
       grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
       transition: grid-template-columns .22s ease;
@@ -82,21 +82,29 @@
     .left-sidebar { grid-column: 1; border-right: 1px solid var(--border); }
     .right-sidebar { grid-column: 3; border-left: 1px solid var(--border); }
     .sidebar.collapsed { display: none; }
-    .sidebar-scroll { display: flex; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; padding: 16px; }
+    .sidebar-scroll { display: grid; flex: 1; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      overflow: hidden; min-height: 0; padding: 16px; }
     .sidebar-heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; }
     h1, h2, h3, p { margin: 0; }
-    .eyebrow { color: #718096; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-    .count { color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-    .compact-intro { margin: 7px 0 0; font-size: 10px; }
+    .eyebrow { color: #718096; font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .count { color: var(--muted); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .compact-intro { margin: 7px 0 0; font-size: 12px; }
     .source-line { margin-top: 8px; }
-    .sidebar-scroll > .intro { flex: none; }
-    .zone-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0;
-      overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 2px 2px; }
-    .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 10px; line-height: 1.4; }
-    .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
+    .zone-section, .layer-section { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+    .zone-section { padding-bottom: 8px; }
+    .zone-list { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 2px 2px; }
+    .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 12px; line-height: 1.4; }
+    .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 12px; line-height: 1.5; }
     .zone-source-status[data-state="error"] { color: #a53443; }
     .zone-source-status[data-state="demo"] { color: #876622; }
+    .loading-indicator { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .loading-indicator[hidden] { display: none; }
+    .loading-indicator::before { content: ''; width: 14px; height: 14px; flex: none; border: 2px solid #d5e4ea;
+      border-top-color: #126782; border-radius: 50%; animation: loading-spin .8s linear infinite; }
+    #sidebarOsmLoading { margin-top: 8px; }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .loading-indicator::before { animation: none; } }
     .zone-card {
       flex: none; width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
       border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
@@ -104,28 +112,30 @@
     .zone-card:hover { border-color: #b9c9d9; background: #f8fbfe; }
     .zone-card.selected { border-color: color-mix(in srgb, var(--zone-color), #fff 42%); box-shadow: inset 3px 0 var(--zone-color); background: color-mix(in srgb, var(--zone-color), #fff 95%); }
     .zone-card-top, .zone-card-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    .zone-title { color: #1c2a3d; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .zone-title { color: #1c2a3d; font-size: 14px; font-weight: 700; line-height: 1.4; }
     .level-pill { flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--zone-color), transparent 58%);
       border-radius: 999px; padding: 3px 6px; background: color-mix(in srgb, var(--zone-color), transparent 88%);
-      color: var(--zone-color); font-size: 9px; font-weight: 800; white-space: nowrap; }
-    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 10px; line-height: 1.5; }
+      color: var(--zone-color); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .exposure-pill { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 2px 7px; font-size: 12px; font-weight: 750; }
+    .exposure-pill[data-tier="critical"] { border: 1px solid #f2b4bc; background: #fff1f3; color: #b42336; }
+    .exposure-pill[data-tier="moderate"] { border: 1px solid #f0d7a7; background: #fff9eb; color: #8c5a08; }
+    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 12px; line-height: 1.5; }
     .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
-      color: #66758a; font: 9px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .layer-section { flex: none; margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border); }
+      color: #66758a; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .layer-section { padding-top: 15px; border-top: 1px solid var(--border); }
     .layer-actions { display: flex; gap: 4px; }
     .layer-action { border: 1px solid var(--border); border-radius: 6px; background: #fff;
-      padding: 4px 5px; color: #126782; cursor: pointer; font-size: 9px; white-space: nowrap; }
+      padding: 4px 5px; color: #126782; cursor: pointer; font-size: 12px; white-space: nowrap; }
     .layer-action:hover { background: #f4f8fb; }
-    .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
-      max-height: min(45vh, 300px); overflow-y: auto; margin-top: 10px; }
+    .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
     .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 3px;
-      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 5px; color: #43536a; font-size: 10px; }
+      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 5px; color: #43536a; font-size: 12px; }
     .layer-control input { flex-shrink: 0; margin: 0; accent-color: var(--accent); }
-    .layer-count { display: block; margin: 2px 0 0; color: #75849a; font-size: 9px; }
+    .layer-count { display: block; margin: 2px 0 0; color: #75849a; font-size: 12px; }
     .layer-control .swatch { width: 7px; height: 7px; margin-right: 4px; }
     .swatch { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
     .panel-note { margin-top: 16px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0;
-      padding: 10px; color: #78653b; font-size: 10px; line-height: 1.55; }
+      padding: 10px; color: #78653b; font-size: 12px; line-height: 1.55; }
     .panel-note strong { color: #77530d; }
 
     .map-column { grid-column: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; background: #17212b; }
@@ -137,25 +147,25 @@
       border: 1px solid #dfe6ee; border-radius: 9px; background: rgb(255 255 255 / 94%);
       box-shadow: 0 3px 14px rgb(0 0 0 / 23%); padding: 8px 10px; backdrop-filter: blur(8px);
     }
-    .map-chip { color: #24344a; font-size: 11px; font-weight: 700; }
-    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 9px; font-weight: 500; }
-    .map-status { max-width: min(250px, calc(100% - 40px)); color: #53637a; font-size: 10px; line-height: 1.45; pointer-events: auto; }
+    .map-chip { color: #24344a; font-size: 13px; font-weight: 700; }
+    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 12px; font-weight: 500; }
+    .map-status { max-width: min(250px, calc(100% - 40px)); color: #53637a; font-size: 12px; line-height: 1.45; pointer-events: auto; }
     .map-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
     .map-status[data-state="loading"] { color: #876622; }
     .retry-osm { margin-top: 6px; border: 0; border-radius: 5px; background: #f5e5e7;
-      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 10px; }
+      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     #map { flex: 1; min-height: 0; width: 100%; z-index: 1; }
     .map-legend {
       position: absolute; z-index: 500; bottom: 34px; left: 12px; display: grid; gap: 6px;
       max-width: 220px; border: 1px solid #dfe6ee; border-radius: 10px; background: rgb(255 255 255 / 94%);
       padding: 9px 11px; box-shadow: 0 3px 14px rgb(25 42 61 / 12%); pointer-events: none;
     }
-    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 10px; font-weight: 750; }
-    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 9px; }
+    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 12px; font-weight: 750; }
+    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 12px; }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--legend-color); }
     .source-link { color: #88d9ee; text-decoration: none; }
     .source-link:hover { text-decoration: underline; }
-    .leaflet-container { background: #d7e1e8; font: 11px Inter, ui-sans-serif, sans-serif; }
+    .leaflet-container { background: #d7e1e8; font: 13px Inter, ui-sans-serif, sans-serif; }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #1c2a3d; }
     .leaflet-popup-content-wrapper { border: 1px solid #d7e0e9; }
     .leaflet-tooltip { border: 1px solid #d7e0e9; background: #fff; color: #1c2a3d; }
@@ -165,61 +175,61 @@
     .risk-map-label-text { position: absolute; top: 0; left: 8px; transform: translateY(-50%);
       border: 1px solid #d7e0e9; border-left: 3px solid var(--zone-color); border-radius: 5px;
       background: #fff; color: #1c2a3d; padding: 2px 5px; box-shadow: 0 1px 4px #0004;
-      font-size: 10px; font-weight: 700; line-height: 11px; white-space: nowrap; }
+      font-size: 11px; font-weight: 700; line-height: 11px; white-space: nowrap; }
     .risk-map-label-left .risk-map-label-text { right: 12px; left: auto; }
     .risk-map-label:focus-visible .risk-map-label-text { outline: 2px solid var(--accent); outline-offset: 2px; }
     .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #a9ddff;
-      border-radius: 50%; background: #12324b; color: white; font-size: 13px; box-shadow: 0 1px 5px #0008; }
+      border-radius: 50%; background: #12324b; color: white; font-size: 15px; box-shadow: 0 1px 5px #0008; }
     .poi-label { color: white; font-weight: 700; }
 
     .detail-header { padding: 16px; border-bottom: 1px solid var(--border); }
     .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .detail-risk { display: flex; align-items: center; }
-    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 17px; line-height: 1.28; }
+    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 19px; line-height: 1.28; }
     .detail-scroll { overflow: auto; min-height: 0; padding: 14px 16px 18px; }
-    .detail-description { color: #66758a; font-size: 11px; line-height: 1.6; }
+    .detail-description { color: #66758a; font-size: 13px; line-height: 1.6; }
     .detail-disclaimer { margin-top: 6px; }
-    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 10px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 12px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
     .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
     .metric { min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 10px; }
-    .metric-label { color: #718096; font-size: 9px; }
-    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .metric-unit { margin-left: 3px; color: #718096; font-size: 9px; font-weight: 500; }
+    .metric-label { color: #718096; font-size: 12px; }
+    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 17px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric-unit { margin-left: 3px; color: #718096; font-size: 12px; font-weight: 500; }
     .metric-help { display: inline-flex; margin-left: 4px; vertical-align: middle; }
     .metric-help-button { display: inline-grid; place-items: center; width: 15px; height: 15px; padding: 0;
       border: 1px solid #aebdcb; border-radius: 50%; background: #fff; color: #536b80;
-      font: 700 10px/1 ui-sans-serif, sans-serif; cursor: help; }
+      font: 700 12px/1 ui-sans-serif, sans-serif; cursor: help; }
     .metric-help-tooltip { position: fixed; z-index: 1000; visibility: hidden; width: min(230px, calc(100vw - 16px));
       border: 1px solid #d7e0e9; border-radius: 7px; background: #fff; padding: 8px 10px;
-      box-shadow: 0 3px 14px #0003; color: #34445a; font: 400 11px/1.45 ui-sans-serif, sans-serif;
+      box-shadow: 0 3px 14px #0003; color: #34445a; font: 400 13px/1.45 ui-sans-serif, sans-serif;
       letter-spacing: normal; text-transform: none; pointer-events: none; }
     .metric-help-tooltip.visible { visibility: visible; }
     .measurement-summary { display: block; margin-top: 5px; color: #66758a;
-      font: 400 11px/1.5 ui-sans-serif, sans-serif; letter-spacing: normal; text-transform: none; }
+      font: 400 13px/1.5 ui-sans-serif, sans-serif; letter-spacing: normal; text-transform: none; }
     .measurement-details summary { cursor: pointer; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .data-table th, .data-table td { border-bottom: 1px solid #edf1f5; padding: 8px 3px; text-align: left; vertical-align: top; }
     .data-table th { width: 48%; color: #718096; font-weight: 500; }
-    .data-table td { color: #34445a; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .data-table td { color: #34445a; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
     .chart-wrap { height: 96px; margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 7px; }
     .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
     .detail-callout { margin-top: 12px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0; padding: 10px;
-      color: #78653b; font-size: 10px; line-height: 1.6; }
+      color: #78653b; font-size: 12px; line-height: 1.6; }
     .detail-callout strong { color: #77530d; }
     .method-card { border: 1px solid var(--border); border-radius: 9px; background: #f7f9fc; padding: 10px;
-      color: #66758a; font-size: 10px; line-height: 1.6; }
+      color: #66758a; font-size: 12px; line-height: 1.6; }
     .method-details { margin-top: 16px; }
-    .method-details summary { color: #53637a; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .method-details summary { color: #53637a; cursor: pointer; font-size: 12px; font-weight: 700; }
     .method-details .method-card { margin-top: 9px; }
     .infrastructure-section { margin-top: 16px; padding: 10px; border: 1px solid var(--border); border-radius: 9px; }
     .infrastructure-section .section-title { margin-top: 0; }
     .infrastructure-section.highlighted { border-color: #47a4bd; background: #edf8fb; }
     .feature-list { margin: 8px 0 0; padding: 0; list-style: none; }
     .feature-link { display: block; width: 100%; border: 0; background: transparent; padding: 5px 0;
-      text-align: left; color: #126782; cursor: pointer; font-size: 10px; }
+      text-align: left; color: #126782; cursor: pointer; font-size: 12px; }
     .feature-link:hover, .feature-link:focus-visible { text-decoration: underline; }
     .feature-coordinates { display: block; margin-top: 2px; color: #53637a; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .empty-state { padding: 16px 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .empty-state { padding: 16px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
     @media (max-width: 1100px) {
       .workspace { --left-width: 250px; --right-width: 310px; }
@@ -234,7 +244,7 @@
       .sidebar-toggle.left { left: max(0px, calc(var(--left-width) - 32px)); }
       .sidebar-toggle.right { right: max(0px, calc(var(--right-width) - 32px)); }
       .topbar { min-height: 58px; padding: 8px 10px; }
-      .credits { max-width: 150px; font-size: 10px; }
+      .credits { max-width: 150px; font-size: 12px; }
       .map-toolbar { top: 10px; left: 10px; right: 10px; }
       .map-status { max-width: 165px; }
     }
@@ -246,9 +256,9 @@
     }
     @media (max-height: 500px) {
       .sidebar-scroll { padding: 8px; }
-      .sidebar-scroll > .intro { display: none; }
-      .layer-section { margin-top: 8px; padding-top: 8px; }
-      .layer-section .compact-intro { font-size: 9px; line-height: 1.3; }
+      .zone-section > .intro { display: none; }
+      .layer-section { padding-top: 8px; }
+      .layer-section .compact-intro { font-size: 12px; line-height: 1.3; }
       .layer-list { gap: 3px; margin-top: 5px; }
       .layer-control { padding: 4px; }
     }
@@ -259,13 +269,161 @@
       .legend-title { margin: 0; white-space: nowrap; }
       .legend-row { gap: 3px; white-space: nowrap; }
     }
-    @media (max-height: 285px) {
-      .sidebar-scroll { overflow-y: auto; }
-      .zone-list { flex: 0 0 44px; }
+    /* Accessibility & SDG controls */
+    .skip-link {
+      position: absolute; left: -9999px; top: 8px; z-index: 2000;
+      background: #0b1220; color: #fff; padding: 8px 12px; border-radius: 7px; font-size: 14px; font-weight: 700; text-decoration: none;
+    }
+    .skip-link:focus { left: 10px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .topbar-actions { display: flex; align-items: center; gap: 6px; position: relative; }
+    .topbar-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; color: #1c2a3d;
+      padding: 6px 10px; font-size: 13px; font-weight: 650; cursor: pointer;
+    }
+    .topbar-btn:hover { background: #f4f8fb; border-color: #9bb8cc; }
+    .topbar-btn[aria-expanded="true"] { background: #eaf5f9; border-color: var(--accent); color: #0e5a73; }
+    .a11y-popover {
+      position: absolute; top: calc(100% + 8px); right: 0; z-index: 1100; width: 255px;
+      border: 1px solid #cfdbe6; border-radius: 11px; background: #fff; padding: 12px;
+      box-shadow: 0 10px 28px rgb(15 28 46 / 18%);
+    }
+    .a11y-popover[hidden] { display: none; }
+    .a11y-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #4a5a70; margin-bottom: 8px; }
+    .a11y-option {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 4px; border-radius: 6px; font-size: 14px; color: #1c2a3d; cursor: pointer;
+    }
+    .a11y-option:hover { background: #f4f8fb; }
+    .a11y-option input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+    .a11y-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #edf1f5; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .sdg-dialog {
+      max-width: 520px; width: calc(100vw - 32px); border: 1px solid #cfdbe6; border-radius: 14px;
+      padding: 0; box-shadow: 0 20px 50px rgb(15 28 46 / 28%); color: var(--text);
+    }
+    .sdg-dialog::backdrop { background: rgb(11 18 32 / 55%); backdrop-filter: blur(2px); }
+    .sdg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .sdg-head h2 { font-size: 17px; margin: 0; color: #172338; }
+    .sdg-body { padding: 14px 18px 18px; font-size: 14px; line-height: 1.55; color: #34445a; display: grid; gap: 10px; }
+    .sdg-card { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; background: #f8fafd; }
+    .sdg-card strong { display: block; color: #126782; margin-bottom: 3px; font-size: 14px; }
+
+    /* Blue "Universal Access" trigger: icon + visible label, >=44px target, AA contrast (white on #0b5cad = 6.9:1) */
+    .a11y-trigger {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid #0b5cad; border-radius: 8px; background: #0b5cad; color: #fff;
+      padding: 6px 10px; font-size: 13px; font-weight: 650; cursor: pointer; transition: background .15s;
+    }
+    .a11y-trigger:hover { background: #094a8c; border-color: #094a8c; }
+    .a11y-trigger[aria-expanded="true"] { background: #fff; color: #0b5cad; }
+    .a11y-trigger:focus-visible { outline: 3px solid #f9a24b; outline-offset: 2px; }
+    .a11y-trigger svg { width: 16px; height: 16px; flex: none; }
+    .a11y-option small { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .a11y-reset { margin-top: 8px; width: 100%; padding: 6px; border: 1px solid #b7c8d8; border-radius: 7px; background: #f4f8fb; font-size: 13px; font-weight: 650; color: #0b5cad; cursor: pointer; }
+
+    /* Legend / pattern swatches for colorblind & high-contrast */
+    .legend-line { display: inline-block; width: 26px; height: 8px; flex: none; }
+    .legend-line line { stroke-width: 3; }
+    .exposure-pill .sym { margin-right: 3px; font-size: 12px; }
+
+    /* Colorblind mode: shape-coded layer swatches (shape + color, never color alone) */
+    html.a11y-colorblind .swatch, html.a11y-high-contrast .swatch { width: 12px; height: 12px; border-radius: 0; }
+    html.a11y-colorblind .swatch[data-shape="circle"], html.a11y-high-contrast .swatch[data-shape="circle"] { border-radius: 50%; }
+    html.a11y-colorblind .swatch[data-shape="triangle"], html.a11y-high-contrast .swatch[data-shape="triangle"] { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+    html.a11y-colorblind .swatch[data-shape="diamond"], html.a11y-high-contrast .swatch[data-shape="diamond"] { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    html.a11y-colorblind .swatch[data-shape="hex"], html.a11y-high-contrast .swatch[data-shape="hex"] { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+    html.a11y-colorblind .swatch[data-shape="bar"], html.a11y-high-contrast .swatch[data-shape="bar"] { height: 5px; margin-bottom: 1px; }
+    html.a11y-colorblind .swatch[data-shape="cross"], html.a11y-high-contrast .swatch[data-shape="cross"] { clip-path: polygon(35% 0, 65% 0, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0 65%, 0 35%, 35% 35%); }
+    html.a11y-colorblind .swatch[data-shape="star"], html.a11y-high-contrast .swatch[data-shape="star"] { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+    html.a11y-colorblind .exposure-pill[data-tier="critical"] { background: #fff3e0; border-color: #d55e00; color: #7a3300; }
+    html.a11y-colorblind .exposure-pill[data-tier="moderate"] { background: #e6f1fa; border-color: #0072b2; color: #004a73; }
+
+    /* Large text mode */
+    html.a11y-large-text .intro,
+    html.a11y-large-text .detail-description,
+    html.a11y-large-text .method-card,
+    html.a11y-large-text .zone-source-status,
+    html.a11y-large-text .zone-filter-status { font-size: 16.5px; }
+    html.a11y-large-text .zone-title { font-size: 18px; }
+    html.a11y-large-text .zone-card-meta,
+    html.a11y-large-text .zone-coords,
+    html.a11y-large-text .layer-control,
+    html.a11y-large-text .data-table,
+    html.a11y-large-text .legend-row,
+    html.a11y-large-text .feature-link { font-size: 15.5px; }
+    html.a11y-large-text .metric-label,
+    html.a11y-large-text .eyebrow,
+    html.a11y-large-text .section-title,
+    html.a11y-large-text .level-pill,
+    html.a11y-large-text .exposure-pill { font-size: 14.5px; }
+    html.a11y-large-text .metric-value { font-size: 21px; }
+    html.a11y-large-text .detail-title { font-size: 23px; }
+
+    /* High contrast mode */
+    html.a11y-high-contrast {
+      --page: #ffffff;
+      --panel: #ffffff;
+      --panel-raised: #ffffff;
+      --border: #000000;
+      --muted: #000000;
+      --text: #000000;
+      --accent: #003a8c;
+      color-scheme: light;
+    }
+    html.a11y-high-contrast body { font-weight: 600; }
+    html.a11y-high-contrast .sidebar :where(p, span, small, td, th, summary, li, h1, h2, h3, label, div, button, i) { color: #000; }
+    html.a11y-high-contrast .topbar,
+    html.a11y-high-contrast .left-sidebar,
+    html.a11y-high-contrast .right-sidebar,
+    html.a11y-high-contrast .detail-header { border-color: #000; border-width: 2px; }
+    html.a11y-high-contrast a, html.a11y-high-contrast .credits a, html.a11y-high-contrast .source-link { color: #0000ee; text-decoration: underline; font-weight: 700; }
+    html.a11y-high-contrast .zone-card,
+    html.a11y-high-contrast .metric,
+    html.a11y-high-contrast .layer-control,
+    html.a11y-high-contrast .chart-wrap,
+    html.a11y-high-contrast .method-card,
+    html.a11y-high-contrast .infrastructure-section,
+    html.a11y-high-contrast .zone-source-status,
+    html.a11y-high-contrast .map-chip,
+    html.a11y-high-contrast .map-status,
+    html.a11y-high-contrast .map-legend,
+    html.a11y-high-contrast .topbar-btn,
+    html.a11y-high-contrast .layer-action { border: 2px solid #000; background: #fff; box-shadow: none; }
+    html.a11y-high-contrast .zone-card.selected { outline: 4px solid #000; outline-offset: -2px; background: #ffff99; }
+    html.a11y-high-contrast .zone-card:hover { background: #e8e8e8; }
+    html.a11y-high-contrast .level-pill { background: var(--zone-color); color: #fff !important; border: 2px solid #000; font-size: 12px; }
+    html.a11y-high-contrast .exposure-pill[data-tier="critical"] { background: #000; border-color: #000; color: #fff !important; }
+    html.a11y-high-contrast .exposure-pill[data-tier="moderate"] { background: #fff; border: 2px solid #000; color: #000 !important; }
+    html.a11y-high-contrast .a11y-trigger { background: #000; border-color: #000; color: #ffff00; }
+    html.a11y-high-contrast .a11y-trigger[aria-expanded="true"] { background: #ffff00; color: #000; }
+    html.a11y-high-contrast .a11y-popover, html.a11y-high-contrast .sdg-dialog { border: 3px solid #000; box-shadow: none; }
+    html.a11y-high-contrast .sdg-card { border: 2px solid #000; background: #fff; }
+    html.a11y-high-contrast .sdg-card strong { color: #000; }
+    html.a11y-high-contrast .leaflet-tile-pane { filter: grayscale(1) contrast(1.45) brightness(1.08); }
+    html.a11y-high-contrast .leaflet-container { background: #fff; }
+    html.a11y-high-contrast .metric-help-button { border: 2px solid #000; color: #000; }
+    html.a11y-high-contrast button:focus-visible,
+    html.a11y-high-contrast input:focus-visible,
+    html.a11y-high-contrast summary:focus-visible { outline: 4px solid #ff00ff; outline-offset: 2px; }
+    html.a11y-high-contrast input[type="checkbox"] { width: 18px; height: 18px; }
+
+    /* Reduced motion mode */
+    html.a11y-reduce-motion *,
+    html.a11y-reduce-motion *::before,
+    html.a11y-reduce-motion *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
     }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#mainWorkspace">Skip to main map &amp; zones</a>
   <div class="app">
     <header class="topbar">
       <div class="brand" role="img" aria-label="Dead Sea Alerts: SAR ground deformation detection">
@@ -276,23 +434,57 @@
           <img src="dead_sea_alerts_logo_full.jpeg" alt="">
         </div>
       </div>
-      <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
+      <div class="topbar-right">
+        <div class="topbar-actions">
+          <button type="button" class="topbar-btn" id="sdgButton" aria-haspopup="dialog">UN SDGs</button>
+          <button type="button" class="a11y-trigger" id="a11yButton" aria-expanded="false" aria-controls="a11yPanel" aria-label="Accessibility settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="6.4" r="1.9" fill="currentColor"/><path d="M6 9.4c2 .8 4 1.1 6 1.1s4-.3 6-1.1M12 10.5v3.2m0 0-2.6 5m2.6-5 2.6 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Accessibility</span>
+          </button>
+          <div class="a11y-popover" id="a11yPanel" role="region" aria-label="Accessibility settings" hidden>
+            <div class="a11y-title">Accessibility</div>
+            <label class="a11y-option"><span>Colorblind-safe mode<small>Safe palette, shapes &amp; line patterns</small></span><input type="checkbox" id="a11yColorblind"></label>
+            <label class="a11y-option"><span>Large text<small>Bigger text across the app</small></span><input type="checkbox" id="a11yLargeText"></label>
+            <label class="a11y-option"><span>High contrast<small>Black &amp; white, bold borders, grayscale map</small></span><input type="checkbox" id="a11yHighContrast"></label>
+            <label class="a11y-option"><span>Reduced motion<small>Turn off animations</small></span><input type="checkbox" id="a11yReduceMotion"></label>
+            <button type="button" class="a11y-reset" id="a11yReset">Reset to defaults</button>
+            <p class="a11y-note">Preferences are saved on this device. Risk levels are also shown by line pattern and exposure by symbols, never by color alone.</p>
+          </div>
+        </div>
+        <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
+      </div>
     </header>
 
-    <main class="workspace">
+    <dialog class="sdg-dialog" id="sdgDialog" aria-labelledby="sdgDialogTitle">
+      <div class="sdg-head">
+        <h2 id="sdgDialogTitle">UN Sustainable Development Goals (SDG) Alignment</h2>
+        <button type="button" class="topbar-btn" id="closeSdgDialog" aria-label="Close UN SDG dialog">Close</button>
+      </div>
+      <div class="sdg-body">
+        <p>Dead Sea Alerts uses NASA-ISRO NISAR L-band InSAR to detect ground subsidence early and show which infrastructure is exposed. It supports four UN SDG targets:</p>
+        <div class="sdg-card"><strong>SDG 11 · Target 11.2 — Safe &amp; sustainable transport</strong>Flags subsidence along Route 90 and bridges, helping keep the main transport corridor safe for everyone using it.</div>
+        <div class="sdg-card"><strong>SDG 11 · Target 11.5 — Reduce disaster losses</strong>Early detection of 100–1,000 m subsidence bowls before sinkhole collapse helps reduce casualties and economic losses.</div>
+        <div class="sdg-card"><strong>SDG 13 · Target 13.1 — Resilience to climate-related hazards</strong>Continuous radar monitoring strengthens adaptive capacity to water-level-driven geological hazards.</div>
+        <div class="sdg-card"><strong>SDG 13 · Target 13.3 — Awareness &amp; early warning</strong>An open, easy-to-read dashboard (with accessibility options) builds awareness and institutional capacity for early warning.</div>
+      </div>
+    </dialog>
+
+    <main class="workspace" id="mainWorkspace" tabindex="-1">
       <button class="sidebar-toggle left" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true" aria-label="Hide risk zones" title="Hide risk zones"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <button class="sidebar-toggle right" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true" aria-label="Hide zone details" title="Hide zone details"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
         <div class="sidebar-scroll">
-          <div class="sidebar-heading">
-            <h1 class="eyebrow">Risk zones</h1>
-            <span class="count" id="zoneCount" aria-live="polite"></span>
-          </div>
-          <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
-          <p class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">Loading zone data…</p>
-          <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
-          <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones" tabindex="0"></div>
-          <section class="layer-section" aria-labelledby="osmLayersHeading">
+          <section class="zone-section" aria-labelledby="riskZonesHeading" tabindex="0">
+            <div class="sidebar-heading">
+              <h1 class="eyebrow" id="riskZonesHeading">Risk zones</h1>
+              <span class="count" id="zoneCount" aria-live="polite"></span>
+            </div>
+            <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
+            <p class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">Loading zone data…</p>
+            <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
+            <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones"></div>
+          </section>
+          <section class="layer-section" aria-labelledby="osmLayersHeading" tabindex="0">
             <div class="sidebar-heading">
               <h2 class="eyebrow" id="osmLayersHeading">Map layers</h2>
               <div class="layer-actions">
@@ -300,7 +492,8 @@
                 <button class="layer-action" id="deselectAllLayers" type="button" aria-label="Deselect all map layers">Deselect all</button>
               </div>
             </div>
-            <p class="intro compact-intro">Overlays show features intersecting risk zones; mapped ways can extend beyond them. Basemap features remain visible when layers are hidden.</p>
+            <p class="intro compact-intro">Overlays cover the study area, including outside zones. Basemap features remain visible when layers are hidden.</p>
+            <p class="loading-indicator" id="sidebarOsmLoading" role="status" hidden>Loading infrastructure…</p>
             <div class="layer-list">
               <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads<small class="layer-count" id="roadCount">Loading...</small></span><input id="toggleRoads" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#67c9f2"></i>Pumping stations<small class="layer-count" id="pumpCount">Loading...</small></span><input id="togglePumps" type="checkbox" checked></label>
@@ -309,6 +502,10 @@
               <label class="layer-control"><span><i class="swatch" style="background:#dd438b"></i>Power lines & substations<small class="layer-count" id="powerCount">Loading...</small></span><input id="togglePower" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#008cb4"></i>Pipelines & water<small class="layer-count" id="waterCount">Loading...</small></span><input id="toggleWater" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#168a53"></i>Hotels & facilities<small class="layer-count" id="facilityCount">Loading...</small></span><input id="toggleFacilities" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#0284c7"></i>Dams & embankments<small class="layer-count" id="damCount">Loading...</small></span><input id="toggleDams" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#9333ea"></i>Industrial & fuel<small class="layer-count" id="industrialCount">Loading...</small></span><input id="toggleIndustrial" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#dc2626"></i>Emergency & telecom<small class="layer-count" id="emergencyCount">Loading...</small></span><input id="toggleEmergency" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#be123c"></i>Known sinkholes & hazards<small class="layer-count" id="hazardCount">Loading...</small></span><input id="toggleHazards" type="checkbox" checked></label>
             </div>
           </section>
         </div>
@@ -323,7 +520,7 @@
           </div>
         </div>
         <div id="map" aria-label="Interactive map"></div>
-        <div class="map-legend" aria-label="Risk-level legend">
+        <div class="map-legend" id="mapLegend" aria-label="Risk-level legend">
           <div class="legend-title">Risk level</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--red)"></i>High</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
@@ -345,9 +542,24 @@
   <script>
     'use strict';
 
-    const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
-    const OSM_MAP_URL = 'https://api.openstreetmap.org/api/0.6/map.json';
-    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
+    const DEAD_SEA_BOUNDS = { south: 30.90, west: 35.25, north: 31.82, east: 35.65 };
+    const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+    const DEFAULT_COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
+    const COLORBLIND_COLORS = { high: '#d55e00', elevated: '#e69f00', watch: '#0072b2', low: '#009e73', unknown: '#52606d' };
+    // Dark enough for >=4.5:1 contrast on white (used by high-contrast mode).
+    const HIGH_CONTRAST_COLORS = { high: '#a40000', elevated: '#8a4b00', watch: '#00468c', low: '#005a32', unknown: '#1a1a1a' };
+    const COLORBLIND_HC_COLORS = { high: '#8f3a00', elevated: '#7a5200', watch: '#004a7c', low: '#006b4f', unknown: '#1a1a1a' };
+    const RISK_DASH = { high: null, elevated: '10 5', watch: '2 5', low: '1 9', unknown: '14 4 2 4' };
+    const RISK_LABELS = { high: 'High', elevated: 'Elevated', watch: 'Watch', low: 'Low', unknown: 'Unavailable' };
+    let COLORS = { ...DEFAULT_COLORS };
+    function a11yOn(name) { return document.documentElement.classList.contains(`a11y-${name}`); }
+    function currentPalette() {
+      if (a11yOn('colorblind') && a11yOn('high-contrast')) return COLORBLIND_HC_COLORS;
+      if (a11yOn('colorblind')) return COLORBLIND_COLORS;
+      if (a11yOn('high-contrast')) return HIGH_CONTRAST_COLORS;
+      return DEFAULT_COLORS;
+    }
+    function usePatterns() { return a11yOn('colorblind') || a11yOn('high-contrast'); }
     const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
     const DEMO_ZONE_NAMES = {
       'ein-gedi': 'Ein Gedi · Route 90', 'mineral-beach': 'Mineral Beach · North coast',
@@ -361,14 +573,24 @@
       { key: 'bridges', label: 'Bridges', fallback: 'Bridge', color: '#e87834', count: 'bridgeCount', toggle: 'toggleBridges',
         matches: element => element.type === 'way' && !!element.tags.bridge && element.tags.bridge !== 'no' },
       { key: 'power', label: 'Power lines & substations', fallback: 'Power infrastructure', color: '#dd438b', count: 'powerCount', toggle: 'togglePower',
-        matches: element => ['line', 'minor_line', 'substation'].includes(element.tags.power) },
+        matches: element => ['line', 'minor_line', 'substation', 'plant', 'generator'].includes(element.tags.power) },
       { key: 'water', label: 'Pipelines & water', fallback: 'Water infrastructure', color: '#008cb4', count: 'waterCount', toggle: 'toggleWater',
         matches: element => ['pipeline', 'water_well', 'water_works', 'water_tower', 'wastewater_plant'].includes(element.tags.man_made) ||
           element.tags.water === 'reservoir' || element.tags.landuse === 'reservoir' },
       { key: 'facilities', label: 'Hotels & facilities', fallback: 'Facility', color: '#168a53', count: 'facilityCount', toggle: 'toggleFacilities',
         matches: element => ['hotel', 'guest_house'].includes(element.tags.tourism) ||
           ['school', 'kindergarten', 'hospital', 'clinic'].includes(element.tags.amenity) ||
-          ['hotel', 'school', 'hospital'].includes(element.tags.building) }
+          ['hotel', 'school', 'hospital'].includes(element.tags.building) },
+      { key: 'dams', label: 'Dams & embankments', fallback: 'Dam / dike', color: '#0284c7', count: 'damCount', toggle: 'toggleDams',
+        matches: element => element.tags.waterway === 'dam' || ['dyke', 'embankment'].includes(element.tags.man_made) },
+      { key: 'industrial', label: 'Industrial & fuel', fallback: 'Industrial / fuel', color: '#9333ea', count: 'industrialCount', toggle: 'toggleIndustrial',
+        matches: element => ['industrial', 'salt_pond', 'quarry'].includes(element.tags.landuse) ||
+          ['works', 'storage_tank'].includes(element.tags.man_made) || element.tags.amenity === 'fuel' },
+      { key: 'emergency', label: 'Emergency & telecom', fallback: 'Emergency / telecom', color: '#dc2626', count: 'emergencyCount', toggle: 'toggleEmergency',
+        matches: element => ['fire_station', 'police'].includes(element.tags.amenity) ||
+          element.tags.aeroway === 'helipad' || ['mast', 'tower'].includes(element.tags.man_made) },
+      { key: 'hazards', label: 'Known sinkholes & hazards', fallback: 'Sinkhole / hazard', color: '#be123c', count: 'hazardCount', toggle: 'toggleHazards',
+        matches: element => element.tags.natural === 'sinkhole' || !!element.tags.hazard }
     ];
 
     const LAYER_MATCHES = {
@@ -377,14 +599,45 @@
       buildings: element => !!(element.geometry && element.tags.building),
       ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.matches]))
     };
+    const INFRASTRUCTURE_MATCHES = Object.entries(LAYER_MATCHES)
+      .filter(([key]) => key !== 'hazards').map(([, matches]) => matches);
+
+    const LAYER_COLORS_DEFAULT = {
+      roads: '#fbbf24', pumps: '#67c9f2', buildings: '#b4a1ef',
+      ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.color]))
+    };
+    // Okabe-Ito / Tol colorblind-safe set; every layer also gets a distinct shape.
+    const LAYER_COLORS_CB = {
+      roads: '#e69f00', pumps: '#56b4e9', buildings: '#cc79a7', bridges: '#d55e00', power: '#0072b2',
+      water: '#44aa99', facilities: '#009e73', dams: '#117733', industrial: '#332288', emergency: '#882255', hazards: '#000000'
+    };
+    const LAYER_COLORS_HC = {
+      roads: '#000000', pumps: '#003a8c', buildings: '#555555', bridges: '#a40000', power: '#6a0080',
+      water: '#00468c', facilities: '#005a32', dams: '#00468c', industrial: '#6a0080', emergency: '#a40000', hazards: '#000000'
+    };
+    const LAYER_SHAPES = {
+      roads: 'bar', pumps: 'circle', buildings: 'square', bridges: 'bar', power: 'bar', water: 'bar',
+      facilities: 'diamond', dams: 'triangle', industrial: 'hex', emergency: 'cross', hazards: 'star'
+    };
+    function layerColor(key) {
+      if (a11yOn('high-contrast')) return LAYER_COLORS_HC[key];
+      if (a11yOn('colorblind')) return LAYER_COLORS_CB[key];
+      return LAYER_COLORS_DEFAULT[key];
+    }
+    function roadColor(highway) {
+      if (usePatterns()) return layerColor('roads');
+      return ['primary', 'trunk', 'motorway'].includes(highway) ? '#f5b942' : '#f2d690';
+    }
 
     let RISK_ZONES = [];
     const state = {
       selectedId: null,
       demo: false,
-      show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true },
+      zonesLoading: false,
+      zonesFailed: false,
+      show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true, dams: true, industrial: true, emergency: true, hazards: true },
       sidebar: { left: true, right: true },
-      osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
+      osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], partialZones: new Set(), regionalLoaded: false, generation: 0, controller: null }
     };
 
     const studyBounds = L.latLngBounds(
@@ -442,6 +695,8 @@
       state.osm.results = Object.create(null);
       state.osm.errors = Object.create(null);
       state.osm.elements = [];
+      state.osm.partialZones = new Set();
+      state.osm.regionalLoaded = false;
       clearOsmLayers();
       clearSelectedFeature();
       RISK_ZONES = zones;
@@ -453,12 +708,46 @@
       renderDetails();
       drawRiskZones();
       updateRiskLabelVisibility();
-      if (zones.length) {
+      if (zones.length || (!state.zonesLoading && !state.demo)) {
         updateLayerCounts([], 'Loading...');
         requestOsm();
+      } else if (state.zonesLoading) {
+        updateLayerCounts([], 'Loading...');
+        setOsmStatus('Loading zone data…', 'loading');
       } else {
         updateLayerCounts([], 'No zones');
         setOsmStatus('No zones available for infrastructure lookup.', 'ready');
+      }
+    }
+
+    async function fetchOverpass(query, signal) {
+      const response = await fetch(`${OVERPASS_URL}?${new URLSearchParams({ data: query })}`, { signal });
+      if (!response.ok) {
+        const error = new Error(`Overpass returned HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return response.json();
+    }
+
+    function loadPlaceNames(dataset) {
+      try {
+        const { outsideCoverage } = assignZonePlaceNames(RISK_ZONES, dataset);
+        setZoneSourceStatus(outsideCoverage
+          ? 'Some zones are outside the area-name dataset; their IDs are shown instead.' : '',
+          outsideCoverage ? 'error' : 'ready');
+        renderZoneList();
+        const title = document.querySelector('#detailHeader .detail-title');
+        if (title && selectedZone()) title.textContent = selectedZone().name;
+        drawRiskZones();
+        riskLabelLayer.clearLayers();
+        riskLabelMarkers.length = 0;
+        drawRiskLabels();
+        updateRiskLabelMarkers();
+        updateRiskLabelVisibility();
+      } catch (error) {
+        console.error('Could not load OSM area names:', error);
+        setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
       }
     }
 
@@ -467,6 +756,8 @@
       const controller = new AbortController();
       zoneRequest = controller;
       state.demo = false;
+      state.zonesLoading = true;
+      state.zonesFailed = false;
       setZoneSourceStatus('Loading zone data…', 'loading');
       replaceZones([]);
       const timeout = setTimeout(() => controller.abort(), 20000);
@@ -475,6 +766,7 @@
         if (!response.ok) throw new Error(`Zone API returned HTTP ${response.status}`);
         const zones = parseZoneResponse(await response.json());
         if (zoneRequest !== controller) return;
+        state.zonesLoading = false;
         state.demo = response.headers.get('X-Zone-Source') === 'demo';
         if (state.demo) zones.forEach(zone => { zone.name = DEMO_ZONE_NAMES[zone.id] || zone.name; });
         setZoneSourceStatus(state.demo ? 'Illustrative demo: zones and measurements are synthetic.' : '', state.demo ? 'demo' : 'ready');
@@ -482,9 +774,13 @@
       } catch (error) {
         if (zoneRequest !== controller) return;
         console.error('Could not load zone data:', error);
+        state.zonesLoading = false;
+        state.zonesFailed = true;
         setZoneSourceStatus('Zone data is unavailable. Reload the page to retry.', 'error');
+        updateLayerCounts([], 'Unavailable');
         renderZoneList();
         renderDetails();
+        requestOsm();
       } finally {
         clearTimeout(timeout);
         if (zoneRequest === controller) zoneRequest = null;
@@ -530,31 +826,102 @@
         (state.osm.results[zone.id] || []).some(element => selectedLayers.some(key => LAYER_MATCHES[key](element))));
     }
 
+    function zoneExposure(zone) {
+      const features = state.osm.results[zone.id];
+      if (!features || !features.length) return { tier: 0, label: '', detail: '' };
+      const criticalHits = [];
+      if (features.some(LAYER_MATCHES.hazards)) criticalHits.push('Known sinkhole/hazard');
+      if (features.some(LAYER_MATCHES.dams)) criticalHits.push('Dam/embankment');
+      if (features.some(LAYER_MATCHES.pumps)) criticalHits.push('Pumping station');
+      if (features.some(LAYER_MATCHES.bridges)) criticalHits.push('Bridge');
+      if (features.some(LAYER_MATCHES.emergency)) criticalHits.push('Emergency/telecom');
+      if (features.some(LAYER_MATCHES.industrial)) criticalHits.push('Industrial/fuel');
+      if (features.some(LAYER_MATCHES.facilities)) criticalHits.push('Hotel/public facility');
+      if (features.some(el => LAYER_MATCHES.roads(el) && ['motorway', 'trunk', 'primary'].includes(el.tags.highway))) {
+        criticalHits.push('Major highway');
+      }
+      if (criticalHits.length) {
+        const label = criticalHits[0] === 'Known sinkhole/hazard'
+          ? criticalHits[0] : `Critical infra · ${criticalHits[0]}`;
+        return { tier: 2, label, detail: criticalHits.join(', ') };
+      }
+      if (features.some(el => LAYER_MATCHES.power(el) || LAYER_MATCHES.water(el) || LAYER_MATCHES.roads(el) || LAYER_MATCHES.buildings(el))) {
+        return { tier: 1, label: 'Local infra', detail: `${features.length} mapped feature(s)` };
+      }
+      return { tier: 0, label: '', detail: '' };
+    }
+
+    function updateZoneRisk(zone) {
+      const features = state.osm.results[zone.id];
+      const hasInfrastructure = features
+        ? features.some(element => INFRASTRUCTURE_MATCHES.some(matches => matches(element)))
+        : null;
+      const adjustment = adjustRiskLevel(zone.baseLevel, hasInfrastructure, !state.osm.partialZones.has(zone.id));
+      zone.level = adjustment.level;
+      zone.label = zone.level === 'unknown' ? 'Unavailable' : zone.level[0].toUpperCase() + zone.level.slice(1);
+      zone.riskAdjustment = adjustment.reason;
+    }
+
+    function riskAdjustmentDescription(zone) {
+      if (zone.riskAdjustment === 'unknown') {
+        return 'Backend risk is unavailable; the infrastructure adjustment cannot be applied.';
+      }
+      const base = zone.baseLevel[0].toUpperCase() + zone.baseLevel.slice(1);
+      if (zone.riskAdjustment === 'unavailable') {
+        return `Backend risk: ${base}. Infrastructure data is ${state.osm.errors[zone.id] ? 'unavailable' : 'loading'}; no adjustment applied.`;
+      }
+      if (zone.riskAdjustment === 'incomplete') {
+        return `Backend risk: ${base}. OSM coverage is incomplete; absence of infrastructure cannot be confirmed.`;
+      }
+      if (zone.riskAdjustment === 'infrastructure') {
+        return `Backend risk: ${base}. Infrastructure overlaps this zone; risk ${zone.level === zone.baseLevel ? 'remains at the highest level' : 'increased by one level'}.`;
+      }
+      return `Backend risk: ${base}. No supported infrastructure found; risk ${zone.level === zone.baseLevel ? 'remains at the lowest level' : 'decreased by one level'}.`;
+    }
+
     function renderZoneList() {
+      const list = document.getElementById('zoneList');
+      list.setAttribute('aria-busy', String(state.zonesLoading));
+      if (state.zonesLoading) {
+        document.getElementById('zoneFilterStatus').hidden = true;
+        document.getElementById('zoneCount').textContent = 'Loading…';
+        list.innerHTML = '<p class="loading-indicator" role="status">Loading zones…</p>';
+        return;
+      }
       const selectedLayers = Object.keys(state.show).filter(key => state.show[key]);
       const allSelected = selectedLayers.length === Object.keys(state.show).length;
       const zones = filteredRiskZones();
-      const incomplete = RISK_ZONES.some(zone => !state.osm.results[zone.id]);
+      const incomplete = RISK_ZONES.some(zone => !state.osm.results[zone.id]) || state.osm.partialZones.size > 0;
       const status = document.getElementById('zoneFilterStatus');
       status.hidden = allSelected || !selectedLayers.length || !incomplete;
       status.textContent = status.hidden ? '' : Object.keys(state.osm.errors).length
         ? 'Only loaded zones are shown. Some zones could not load; use Retry.'
-        : 'Only loaded zones are shown while infrastructure loads.';
+        : state.osm.partialZones.size
+          ? 'Some zones extend beyond OSM coverage; matching features may be missing.'
+          : 'Only loaded zones are shown while infrastructure loads.';
       document.getElementById('zoneCount').textContent = allSelected
         ? `${zones.length} zones` : `${zones.length} / ${RISK_ZONES.length} zones`;
-      document.getElementById('zoneList').innerHTML = [...zones]
-        .sort((a, b) => RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level])
-        .map(zone => `
+      list.innerHTML = [...zones]
+        .sort((a, b) =>
+          (RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level]) ||
+          (zoneExposure(b).tier - zoneExposure(a).tier) ||
+          (Math.abs(b.losRate || 0) - Math.abs(a.losRate || 0))
+        )
+        .map(zone => {
+          const exp = zoneExposure(zone);
+          return `
         <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
           style="--zone-color:${COLORS[zone.level]}" data-zone-id="${escapeHtml(zone.id)}" aria-pressed="${zone.id === state.selectedId}">
           <span class="zone-card-top">
             <span class="zone-title">${escapeHtml(zone.name)}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
+          ${exp.tier ? `<span class="exposure-pill" data-tier="${exp.tier === 2 ? 'critical' : 'moderate'}" title="${escapeHtml(exp.detail)}"><span class="sym" aria-hidden="true">${exp.tier === 2 ? '▲' : '●'}</span>${escapeHtml(exp.label)}</span>` : ''}
           <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${formatMeasurement(zoneAreaKm2(zone), 'km²')}</span></span>
           <span class="zone-coords">${coordRange(zone)}</span>
         </button>
-      `).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
+      `;
+        }).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
       document.querySelectorAll('[data-zone-id]').forEach(button => {
         button.addEventListener('click', () => selectZone(button.dataset.zoneId, true));
       });
@@ -566,7 +933,7 @@
 
     function renderChart(zone) {
       if (!zone.series || !zone.series.length) return '<p class="empty-state">Displacement history unavailable.</p>';
-      const width = 300, height = 88, pad = 12;
+      const width = 300, height = 88, pad = 12, plotTop = 20, plotBottom = height - pad - 4;
       const values = zone.series.map(point => point.value);
       const min = Math.min(...values, 0), max = Math.max(...values, 0);
       const span = (max - min) || 1;
@@ -575,7 +942,7 @@
       const points = values.map((value, index) => {
         const time = Date.parse(zone.series[index].time);
         const x = pad + (lastTime === firstTime ? 0 : (time - firstTime) / (lastTime - firstTime)) * (width - pad * 2);
-        const y = pad + (max - value) * (height - pad * 2) / span;
+        const y = plotTop + (max - value) * (plotBottom - plotTop) / span;
         return [x, y];
       });
       const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
@@ -586,12 +953,12 @@
       const firstLabel = zone.series[0].time.slice(0, 10);
       const lastLabel = zone.series[zone.series.length - 1].time.slice(0, 10);
       return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${formatMeasurement(min)} to ${formatMeasurement(max)}">
-        <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
+        <line x1="${pad}" y1="${plotBottom}" x2="${width-pad}" y2="${plotBottom}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${width-pad}" y="9" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(max, 'mm')}</text>
-        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(min, 'mm')}</text>
-        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">${firstLabel}</text>
-        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">${lastLabel}</text>
+        <text x="${pad}" y="9" fill="#718096" font-size="10">Min ${formatMeasurement(min, 'mm')}</text>
+        <text x="${width-pad}" y="9" fill="#718096" font-size="10" text-anchor="end">Max ${formatMeasurement(max, 'mm')}</text>
+        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="10">${firstLabel}</text>
+        ${firstLabel === lastLabel ? '' : `<text x="${width-pad}" y="${height-1}" fill="#718096" font-size="10" text-anchor="end">${lastLabel}</text>`}
       </svg>`;
     }
 
@@ -625,10 +992,13 @@
       hideMetricHelp();
       const zone = selectedZone();
       const header = document.getElementById('detailHeader');
+      const content = document.getElementById('detailContent');
+      content.setAttribute('aria-busy', String(state.zonesLoading));
       if (!zone) {
         header.innerHTML = '<div class="eyebrow">Zone details</div>';
-        document.getElementById('detailContent').innerHTML =
-          '<p class="empty-state">No zone selected.</p>';
+        content.innerHTML = state.zonesLoading
+          ? '<p class="loading-indicator" role="status">Loading zone details…</p>'
+          : '<p class="empty-state">No zone selected.</p>';
         return;
       }
       header.innerHTML = `
@@ -637,9 +1007,11 @@
           <div class="detail-risk"><span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span></div>
         </div>
       `;
-      document.getElementById('detailContent').innerHTML = `
+      content.innerHTML = `
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
+        <p class="detail-description" id="riskAdjustment">${escapeHtml(riskAdjustmentDescription(zone))}</p>
+        ${state.demo ? '' : '<p class="detail-description">Area names are approximate and refer to nearby OpenStreetMap places.</p>'}
         <div class="metric-grid">
           <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
           <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${formatMeasurement(zone.cumulative)}${zone.cumulative === null ? '' : '<span class="metric-unit">mm</span>'}</div></div>
@@ -651,6 +1023,7 @@
             <span class="measurement-summary">Context for the displayed values: location, radar observations and nearby infrastructure.</span>
           </summary>
           <table class="data-table"><tbody>
+            <tr><th>Zone ID</th><td>${escapeHtml(zone.id)}</td></tr>
             <tr><th>Coordinate range${metricHelp('coordinates', 'coordinate range', 'The latitude and longitude limits of the zone.')}</th><td>${coordRange(zone)}</td></tr>
             <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${formatMeasurement(zone.coherence)}</td></tr>
             <tr><th>Coherence pair</th><td>${zone.pairStart && zone.pairEnd ? `${escapeHtml(zone.pairStart)} – ${escapeHtml(zone.pairEnd)}` : 'Unavailable'}</td></tr>
@@ -658,7 +1031,7 @@
           </tbody></table>
         </details>
         <h3 class="section-title">Displacement trend${metricHelp('chart', 'displacement trend', 'How movement toward or away from the satellite changes over time.')}</h3>
-        <div class="chart-wrap">${renderChart(zone)}</div>
+        <div class="chart-wrap" id="displacementChart">${renderChart(zone)}</div>
         <section class="infrastructure-section" id="infrastructureSection" aria-labelledby="infrastructureHeading">
           <h3 class="section-title" id="infrastructureHeading">Infrastructure intersecting zone</h3>
           <div id="zoneInfrastructure">${renderInfrastructure(zone)}</div>
@@ -678,10 +1051,12 @@
         const selected = zone.id === state.selectedId;
         const color = COLORS[zone.level];
         L.polygon(zone.polygons, {
-          color, weight: selected ? 3 : 2,
-          opacity: selected ? 1 : .86,
+          color: a11yOn('high-contrast') ? '#000000' : color,
+          weight: selected ? 4 : (a11yOn('high-contrast') ? 3 : 2),
+          dashArray: usePatterns() ? RISK_DASH[zone.level] : null,
+          opacity: selected ? 1 : .9,
           fillColor: color,
-          fillOpacity: selected ? .29 : .17
+          fillOpacity: selected ? .38 : (a11yOn('high-contrast') ? .28 : .17)
         }).bindTooltip(`${escapeHtml(zone.name)} · ${zone.label}`, { sticky: true })
           .on('click', () => selectZone(zone.id, false))
           .addTo(riskLayer);
@@ -710,10 +1085,10 @@
               if (event.key !== 'Enter' && event.key !== ' ') return;
               event.preventDefault();
               event.stopPropagation();
-              selectZone(zone.id, false);
+              selectZoneFromLabel(zone.id);
             };
           });
-          marker.on('click', () => selectZone(zone.id, false));
+          marker.on('click', () => selectZoneFromLabel(zone.id));
           marker.addTo(riskLabelLayer);
           riskLabelMarkers.push({ zoneId: zone.id, marker, preferLeft: index % 2 === 1 });
         });
@@ -726,6 +1101,20 @@
         else riskLabelLayer.removeLayer(marker);
       });
       layoutRiskLabels();
+    }
+
+    function updateRiskLabelStyles() {
+      riskLabelMarkers.forEach(({ zoneId, marker }) => {
+        const zone = RISK_ZONES.find(item => item.id === zoneId);
+        const title = `${zone.name} · ${zone.label}`;
+        marker.options.title = title;
+        const icon = marker.getElement();
+        if (icon) {
+          icon.title = title;
+          icon.style.setProperty('--zone-color', COLORS[zone.level]);
+          icon.setAttribute('aria-label', `${zone.name}, ${zone.label} risk`);
+        }
+      });
     }
 
     function layoutRiskLabels() {
@@ -763,6 +1152,14 @@
     map.on('zoomend', updateRiskLabelVisibility);
     map.on('moveend resize', layoutRiskLabels);
 
+    function selectZoneFromLabel(id) {
+      selectZone(id, true);
+      if (state.sidebar.left) {
+        const selected = document.querySelector('#zoneList .zone-card.selected');
+        if (selected) selected.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
     function selectZone(id, panToZone) {
       if (!RISK_ZONES.some(zone => zone.id === id)) return;
       clearSelectedFeature();
@@ -789,6 +1186,7 @@
       const element = document.getElementById('osmStatus');
       document.getElementById('osmStatusText').textContent = message;
       document.getElementById('retryOsm').hidden = !retry;
+      document.getElementById('sidebarOsmLoading').hidden = status !== 'loading' || state.zonesLoading;
       element.dataset.state = status;
       layoutRiskLabels();
     }
@@ -813,7 +1211,7 @@
         if (state.show.roads && LAYER_MATCHES.roads(element)) {
           const points = element.geometry.map(point => [point.lat, point.lon]);
           L.polyline(points, {
-            color: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? '#f5b942' : '#f2d690',
+            color: roadColor(tags.highway),
             weight: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? 3 : 1.8,
             opacity: .9
           }).bindTooltip(escapeHtml(tags.name || `${tags.highway} road`), { sticky: true }).addTo(osmRoadLayer);
@@ -833,7 +1231,7 @@
         }
         if (state.show.buildings && LAYER_MATCHES.buildings(element)) {
           L.polygon(element.geometry.map(point => [point.lat, point.lon]), {
-            color: '#b4a1ef', weight: 1, fillColor: '#b4a1ef', fillOpacity: .3
+            color: layerColor('buildings'), weight: 1, fillColor: layerColor('buildings'), fillOpacity: .3
           }).bindTooltip(escapeHtml(tags.name || `Building: ${tags.building}`), { sticky: true }).addTo(osmBuildingLayer);
         }
         EXTRA_LAYERS.forEach(layer => {
@@ -842,13 +1240,13 @@
           const popup = `<strong>${escapeHtml(label)}</strong><br>OpenStreetMap feature` +
             `<br><a href="https://www.openstreetmap.org/${element.type}/${element.id}" target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>`;
           if (element.type === 'node') {
-            L.circleMarker([element.lat, element.lon], { radius: 6, color: '#fff', weight: 2, fillColor: layer.color, fillOpacity: 1 })
+            L.circleMarker([element.lat, element.lon], { radius: 6, color: '#fff', weight: 2, fillColor: layerColor(layer.key), fillOpacity: 1 })
               .bindTooltip(escapeHtml(label)).bindPopup(popup).addTo(extraOsmLayers[layer.key]);
           } else {
             const points = element.geometry.map(point => [point.lat, point.lon]);
             const closed = points.length >= 4 && points[0][0] === points[points.length - 1][0] &&
               points[0][1] === points[points.length - 1][1];
-            const options = { color: layer.color, weight: 3, opacity: .95, fillColor: layer.color, fillOpacity: .3 };
+            const options = { color: layerColor(layer.key), weight: 3, opacity: .95, fillColor: layerColor(layer.key), fillOpacity: .3 };
             const shape = closed && layer.key !== 'bridges' ? L.polygon(points, options) : L.polyline(points, options);
             shape.bindTooltip(escapeHtml(label), { sticky: true }).bindPopup(popup).addTo(extraOsmLayers[layer.key]);
           }
@@ -874,89 +1272,10 @@
         buildingCount: elements.filter(LAYER_MATCHES.buildings).length
       };
       EXTRA_LAYERS.forEach(layer => { counts[layer.count] = elements.filter(layer.matches).length; });
+      const partial = state.osm.partialZones.size || RISK_ZONES.some(zone => !state.osm.results[zone.id]);
       Object.entries(counts).forEach(([id, count]) => {
-        document.getElementById(id).textContent = message || `${count} inside risk zones`;
+        document.getElementById(id).textContent = message || `${count} inside risk zones${partial ? ' (partial)' : ''}`;
       });
-    }
-
-    function mapOsmFeatures(elements) {
-      const nodes = new Map(elements.filter(element => element.type === 'node').map(node => [node.id, node]));
-      return elements.flatMap(element => {
-        const tags = element.tags || {};
-        const extra = EXTRA_LAYERS.some(layer => layer.matches({ ...element, tags }));
-        if (element.type === 'node' && (tags.man_made === 'pumping_station' || extra)) {
-          if (!Number.isFinite(element.lat) || !Number.isFinite(element.lon)) {
-            throw new Error(`Missing coordinates for node ${element.id}`);
-          }
-          return [element];
-        }
-        if (element.type !== 'way' || !(tags.highway || tags.building || tags.man_made === 'pumping_station' || extra)) return [];
-        if (!Array.isArray(element.nodes) || element.nodes.length < 2) {
-          throw new Error(`Invalid geometry for way ${element.id}`);
-        }
-        const geometry = element.nodes.map(id => {
-          const node = nodes.get(id);
-          if (!node || !Number.isFinite(node.lat) || !Number.isFinite(node.lon)) {
-            throw new Error(`Missing node ${id} for way ${element.id}`);
-          }
-          return { lat: node.lat, lon: node.lon };
-        });
-        return [{ ...element, geometry }];
-      });
-    }
-
-    function pointOnSegment(point, a, b) {
-      const cross = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
-      return Math.abs(cross) < 1e-10 &&
-        point[0] >= Math.min(a[0], b[0]) - 1e-10 && point[0] <= Math.max(a[0], b[0]) + 1e-10 &&
-        point[1] >= Math.min(a[1], b[1]) - 1e-10 && point[1] <= Math.max(a[1], b[1]) + 1e-10;
-    }
-
-    function pointInPolygon(point, polygon) {
-      let inside = false;
-      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const a = polygon[j], b = polygon[i];
-        if (pointOnSegment(point, a, b)) return true;
-        if ((a[0] > point[0]) !== (b[0] > point[0]) &&
-            point[1] < (b[1] - a[1]) * (point[0] - a[0]) / (b[0] - a[0]) + a[1]) inside = !inside;
-      }
-      return inside;
-    }
-
-    function segmentsIntersect(a, b, c, d) {
-      const direction = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-      const abC = direction(a, b, c), abD = direction(a, b, d);
-      const cdA = direction(c, d, a), cdB = direction(c, d, b);
-      if (pointOnSegment(c, a, b) || pointOnSegment(d, a, b) ||
-          pointOnSegment(a, c, d) || pointOnSegment(b, c, d)) return true;
-      return ((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
-        ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0));
-    }
-
-    function pointInZone(point, zone) {
-      return zone.polygons.some(rings => {
-        if (!pointInPolygon(point, rings[0])) return false;
-        return !rings.slice(1).some(ring => {
-          if (ring.some((vertex, index) => pointOnSegment(point, vertex, ring[(index + 1) % ring.length]))) return false;
-          return pointInPolygon(point, ring);
-        });
-      });
-    }
-
-    function featureIntersectsZone(element, zone) {
-      if (element.type === 'node') return pointInZone([element.lat, element.lon], zone);
-      const points = element.geometry.map(point => [point.lat, point.lon]);
-      if (points.some(point => pointInZone(point, zone))) return true;
-      for (let i = 1; i < points.length; i++) {
-        for (const ring of zone.polygons.flat()) {
-          for (let j = 0; j < ring.length; j++) {
-            if (segmentsIntersect(points[i - 1], points[i], ring[j], ring[(j + 1) % ring.length])) return true;
-          }
-        }
-      }
-      const first = points[0], last = points[points.length - 1];
-      return points.length >= 4 && first[0] === last[0] && first[1] === last[1] &&
-        zone.polygons.some(rings => pointInPolygon(rings[0][0], points));
     }
 
     function featureCoordinates(element, zone) {
@@ -988,15 +1307,17 @@
     function renderInfrastructure(zone) {
       if (state.osm.errors[zone.id]) return '<p class="detail-description">Infrastructure could not be loaded for this zone. Use Retry to try again.</p>';
       const features = state.osm.results[zone.id];
-      if (!features) return '<p class="detail-description">Loading infrastructure for this zone…</p>';
+      if (!features) return '<p class="loading-indicator" role="status">Loading infrastructure for this zone…</p>';
+      const coverageNote = state.osm.partialZones.has(zone.id)
+        ? ' This zone extends beyond the regional OSM dataset; features may be missing.' : '';
       const groups = [
         ['Roads', 'Road', features.filter(LAYER_MATCHES.roads)],
         ['Pumping stations', 'Pumping station', features.filter(LAYER_MATCHES.pumps)],
         ['Buildings', 'Building', features.filter(LAYER_MATCHES.buildings)],
         ...EXTRA_LAYERS.map(layer => [layer.label, layer.fallback, features.filter(layer.matches)])
       ].filter(([, , items]) => items.length);
-      if (!groups.length) return '<p class="detail-description">No supported mapped features found in this zone. OSM coverage may be incomplete.</p>';
-      return `<p class="detail-description">Mapped features intersecting the zone; intersection does not establish damage. OSM coverage may be incomplete or outdated.</p>` +
+      if (!groups.length) return `<p class="detail-description">No supported mapped features found in the available data for this zone.${coverageNote} OSM coverage may be incomplete.</p>`;
+      return `<p class="detail-description">Mapped features intersecting the zone; intersection does not establish damage.${coverageNote} OSM coverage may be incomplete or outdated.</p>` +
         groups.map(([label, fallback, items]) => `<details class="method-details"><summary>${label} · ${items.length}</summary>` +
           `<ul class="feature-list">${items.map(element => {
             const point = featureCoordinates(element, zone);
@@ -1018,53 +1339,142 @@
     }
 
     function refreshOsmDisplay() {
+      RISK_ZONES.forEach(updateZoneRisk);
       const unique = new Map();
       Object.values(state.osm.results).flat().forEach(element => unique.set(`${element.type}/${element.id}`, element));
-      state.osm.elements = [...unique.values()];
-      updateLayerCounts(state.osm.elements, Object.keys(state.osm.results).length ? null : 'Loading...');
+      if (state.demo) state.osm.elements = [...unique.values()];
+      updateLayerCounts([...unique.values()], state.zonesFailed ? 'Unavailable' :
+        state.osm.regionalLoaded || Object.keys(state.osm.results).length ? null : 'Loading...');
       renderCachedOsmData();
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
-      if (!Object.values(state.show).every(Boolean)) {
-        renderZoneList();
-        drawRiskZones();
-        updateRiskLabelMarkers();
+      renderZoneList();
+      const zone = selectedZone();
+      if (zone) {
+        const pill = document.querySelector('#detailHeader .level-pill');
+        if (pill) {
+          pill.textContent = zone.label;
+          pill.style.setProperty('--zone-color', COLORS[zone.level]);
+        }
+        const adjustment = document.getElementById('riskAdjustment');
+        if (adjustment) adjustment.textContent = riskAdjustmentDescription(zone);
+        const chart = document.getElementById('displacementChart');
+        if (chart) chart.innerHTML = renderChart(zone);
+      }
+      drawRiskZones();
+      updateRiskLabelStyles();
+      updateRiskLabelMarkers();
+    }
+
+    async function loadOsmCache(generation) {
+      const controller = new AbortController();
+      state.osm.controller = controller;
+      const timeout = setTimeout(() => controller.abort(), 120000);
+      let placesAttempted = false;
+      try {
+        let payload = null, offset = 0, revision = null;
+        const elements = Object.create(null);
+        do {
+          const query = revision === null ? '' : `?${new URLSearchParams({ offset, revision })}`;
+          const response = await fetch(`/api/v1/osm${query}`, { signal: controller.signal });
+          if (!response.ok) throw new Error(`OSM API returned HTTP ${response.status}`);
+          const page = await response.json();
+          if (generation !== state.osm.generation) return 0;
+          const pageCount = page && page.infrastructure && page.infrastructure.elements &&
+            typeof page.infrastructure.elements === 'object' && !Array.isArray(page.infrastructure.elements)
+            ? Object.keys(page.infrastructure.elements).length : -1;
+          if (!page || page.schema_version !== '1.0' || !page.infrastructure || !page.pagination ||
+              page.pagination.offset !== offset || typeof page.pagination.revision !== 'string' ||
+              (revision !== null && page.pagination.revision !== revision) ||
+              pageCount < 0 || !Number.isSafeInteger(page.pagination.total) || page.pagination.total < offset ||
+              (page.pagination.next_offset === null
+                ? offset + pageCount !== page.pagination.total
+                : !pageCount || page.pagination.next_offset !== offset + pageCount ||
+                  page.pagination.next_offset >= page.pagination.total)) {
+            throw new Error('Unsupported or invalid OSM API page');
+          }
+          if (!payload) {
+            payload = page;
+            revision = page.pagination.revision;
+          } else if (page.pagination.total !== payload.pagination.total ||
+              page.infrastructure.schema_version !== payload.infrastructure.schema_version ||
+              JSON.stringify(page.infrastructure.coverage) !== JSON.stringify(payload.infrastructure.coverage)) {
+            throw new Error('Inconsistent OSM API pages');
+          }
+          for (const [key, element] of Object.entries(page.infrastructure.elements)) {
+            if (Object.hasOwn(elements, key)) throw new Error('Duplicate OSM element across pages');
+            elements[key] = element;
+          }
+          offset = page.pagination.next_offset;
+        } while (offset !== null);
+        payload.infrastructure.elements = elements;
+        if (!state.zonesFailed) {
+          loadPlaceNames(payload.places);
+          placesAttempted = true;
+        }
+        const regional = regionalOsmData(payload.infrastructure, RISK_ZONES);
+        state.osm.elements = regional.elements;
+        state.osm.results = regional.results;
+        state.osm.partialZones = new Set(regional.outsideCoverage);
+        state.osm.regionalLoaded = true;
+        state.osm.errors = Object.create(null);
+        refreshOsmDisplay();
+        return RISK_ZONES.length;
+      } catch (error) {
+        if (generation !== state.osm.generation) return 0;
+        console.error('Precomputed OSM cache unavailable:', error);
+        if (!state.zonesFailed && !placesAttempted) setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
+        state.osm.regionalLoaded = false;
+        state.osm.elements = [];
+        state.osm.results = Object.create(null);
+        state.osm.partialZones = new Set();
+        RISK_ZONES.forEach(zone => {
+          state.osm.errors[zone.id] = error.message;
+        });
+        refreshOsmDisplay();
+        return 0;
+      } finally {
+        clearTimeout(timeout);
+        if (state.osm.controller === controller) state.osm.controller = null;
       }
     }
 
     async function requestOsm() {
       if (state.osm.loading) return;
-      const pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
-      if (!pending.length) return;
+      let pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
+      if (!pending.length && (state.demo || state.osm.regionalLoaded)) return;
       const generation = state.osm.generation;
       state.osm.loading = true;
       pending.forEach(zone => delete state.osm.errors[zone.id]);
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
+      const adjustment = document.getElementById('riskAdjustment');
+      if (adjustment && selectedZone()) adjustment.textContent = riskAdjustmentDescription(selectedZone());
       renderZoneList();
       try {
+        if (!state.demo) {
+          setOsmStatus('Loading cached infrastructure…', 'loading');
+          await loadOsmCache(generation);
+        }
+        if (generation !== state.osm.generation) return;
+        pending = state.demo ? RISK_ZONES.filter(zone => !state.osm.results[zone.id]) : [];
         for (let index = 0; index < pending.length; index++) {
           if (generation !== state.osm.generation) return;
           const zone = pending[index];
           setOsmStatus(`Loading infrastructure: ${Object.keys(state.osm.results).length}/${RISK_ZONES.length} zones…`, 'loading');
           const bounds = polygonBounds(zone);
-          const bbox = [bounds.west, bounds.south, bounds.east, bounds.north].join(',');
           const controller = new AbortController();
           state.osm.controller = controller;
           const timeout = setTimeout(() => controller.abort(), 35000);
           let throttled = false;
           try {
-            const response = await fetch(`${OSM_MAP_URL}?bbox=${bbox}`, { signal: controller.signal });
-            if (!response.ok) {
-              throttled = response.status === 429 || response.status === 503;
-              throw new Error(`OpenStreetMap returned HTTP ${response.status}`);
-            }
-            const payload = await response.json();
+            const payload = await fetchOverpass(osmInfrastructureQuery(bounds), controller.signal);
             if (generation !== state.osm.generation) return;
-            if (!Array.isArray(payload.elements)) throw new Error('Invalid OpenStreetMap response');
-            state.osm.results[zone.id] = mapOsmFeatures(payload.elements).filter(element => featureIntersectsZone(element, zone));
+            state.osm.results[zone.id] = osmInfrastructureElements(payload).filter(element => featureIntersectsZone(element, zone));
+            delete state.osm.errors[zone.id];
           } catch (error) {
             if (generation !== state.osm.generation) return;
+            throttled = error.status === 429 || error.status >= 500;
             console.error(`Could not load OpenStreetMap features for ${zone.name}:`, error);
             state.osm.errors[zone.id] = error.message;
           } finally {
@@ -1082,11 +1492,15 @@
         if (generation === state.osm.generation) state.osm.loading = false;
       }
       if (generation !== state.osm.generation) return;
-      if (Object.keys(state.osm.errors).length) {
+      if (Object.keys(state.osm.errors).length || (!state.demo && !state.osm.regionalLoaded)) {
         if (!Object.keys(state.osm.results).length) updateLayerCounts([], 'Unavailable');
-        setOsmStatus('Some zones could not load infrastructure. Loaded zones remain available.', 'error', true);
+        setOsmStatus(state.demo
+          ? 'Some zones could not load infrastructure. Loaded zones remain available.'
+          : 'Regional infrastructure could not be loaded. Use Retry or contact the project maintainers.',
+          'error', true);
       } else {
-        setOsmStatus('Infrastructure loaded for all risk zones.', 'ready');
+        setOsmStatus(state.zonesFailed ? 'Regional infrastructure loaded; zone data unavailable.'
+          : 'Regional infrastructure loaded.', 'ready');
       }
     }
 
@@ -1204,6 +1618,112 @@
     document.getElementById('selectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, true));
     document.getElementById('deselectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, false));
     document.getElementById('retryOsm').addEventListener('click', requestOsm);
+
+    // Accessibility preferences & UN SDG modal
+    (function initAccessibilityAndSdg() {
+      const STORAGE_KEY = 'dsa_a11y_prefs_v1';
+      const prefs = (() => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+      })();
+      const toggles = [
+        { id: 'a11yColorblind', key: 'colorblind', cls: 'a11y-colorblind' },
+        { id: 'a11yLargeText', key: 'largeText', cls: 'a11y-large-text' },
+        { id: 'a11yHighContrast', key: 'highContrast', cls: 'a11y-high-contrast' },
+        { id: 'a11yReduceMotion', key: 'reduceMotion', cls: 'a11y-reduce-motion' }
+      ];
+      function renderLegend() {
+        const legend = document.getElementById('mapLegend');
+        const rows = Object.keys(RISK_LABELS).map(level => {
+          const color = COLORS[level];
+          const marker = usePatterns()
+            ? `<svg class="legend-line" viewBox="0 0 26 8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="${color}" ${RISK_DASH[level] ? `stroke-dasharray="${RISK_DASH[level]}"` : ''}/></svg>`
+            : `<i class="legend-dot" style="--legend-color:${color}"></i>`;
+          return `<div class="legend-row">${marker}${RISK_LABELS[level]}</div>`;
+        }).join('');
+        legend.innerHTML = `<div class="legend-title">Risk level</div>${rows}`;
+      }
+      function paintSwatches() {
+        layerControls.forEach(control => {
+          const swatch = document.getElementById(control.toggle).closest('label').querySelector('.swatch');
+          if (!swatch) return;
+          swatch.style.background = layerColor(control.key);
+          swatch.dataset.shape = LAYER_SHAPES[control.key];
+        });
+      }
+      function applyPalette() {
+        toggles.forEach(({ cls, key }) => document.documentElement.classList.toggle(cls, !!prefs[key]));
+        COLORS = { ...currentPalette() };
+        const root = document.documentElement.style;
+        root.setProperty('--red', COLORS.high);
+        root.setProperty('--orange', COLORS.elevated);
+        root.setProperty('--yellow', COLORS.watch);
+        root.setProperty('--green', COLORS.low);
+        renderLegend();
+        paintSwatches();
+      }
+      function applyA11y() {
+        applyPalette();
+        renderZoneList();
+        renderDetails();
+        drawRiskZones();
+        renderCachedOsmData();
+        riskLabelMarkers.forEach(({ zoneId, marker }) => {
+          const z = RISK_ZONES.find(item => item.id === zoneId);
+          const el = marker.getElement();
+          if (z && el) el.style.setProperty('--zone-color', COLORS[z.level]);
+        });
+        setTimeout(() => map.invalidateSize({ pan: false }), 50);
+      }
+      toggles.forEach(({ id, key }) => {
+        const input = document.getElementById(id);
+        input.checked = !!prefs[key];
+        input.addEventListener('change', () => {
+          prefs[key] = input.checked;
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)); } catch {}
+          applyA11y();
+        });
+      });
+      document.getElementById('a11yReset').addEventListener('click', () => {
+        toggles.forEach(({ id, key }) => { prefs[key] = false; document.getElementById(id).checked = false; });
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        applyA11y();
+      });
+      applyPalette();
+
+      const a11yButton = document.getElementById('a11yButton');
+      const a11yPanel = document.getElementById('a11yPanel');
+      a11yButton.addEventListener('click', () => {
+        const open = a11yPanel.hidden;
+        a11yPanel.hidden = !open;
+        a11yButton.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('pointerdown', event => {
+        if (!a11yPanel.hidden && !a11yPanel.contains(event.target) && !a11yButton.contains(event.target)) {
+          a11yPanel.hidden = true;
+          a11yButton.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !a11yPanel.hidden) {
+          a11yPanel.hidden = true;
+          a11yButton.setAttribute('aria-expanded', 'false');
+          a11yButton.focus();
+        }
+      });
+
+      const sdgDialog = document.getElementById('sdgDialog');
+      document.getElementById('sdgButton').addEventListener('click', () => {
+        if (typeof sdgDialog.showModal === 'function') sdgDialog.showModal();
+        else sdgDialog.setAttribute('open', '');
+      });
+      document.getElementById('closeSdgDialog').addEventListener('click', () => {
+        if (typeof sdgDialog.close === 'function') sdgDialog.close();
+        else sdgDialog.removeAttribute('open');
+      });
+      sdgDialog.addEventListener('click', event => {
+        if (event.target === sdgDialog && typeof sdgDialog.close === 'function') sdgDialog.close();
+      });
+    })();
 
     renderZoneList();
     renderDetails();

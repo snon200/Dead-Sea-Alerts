@@ -10,17 +10,38 @@ The static dashboard and Python function share a Vercel domain. The dashboard
 requests the API on load. The endpoint reads a precomputed zones export; if the
 export is unavailable it returns HTTP 503. The example in the specification
 contains fictional values, not results from the pipeline.
+The export includes only detections last observed on the latest acquisition
+date; each retained zone still includes its full displacement history.
 
 ```text
-Processed NISAR data -> get_zones() -> GET /api/v1/zones -> dashboard
-                         ^ Almog's integration
+Processed NISAR data -> zones.json -> GET /api/v1/zones -> dashboard
+fixed study polygon + OSM -> precomputed OSM files -> GET /api/v1/osm -> dashboard
 ```
+
+`GET /api/v1/osm` returns `{"schema_version": "1.0", "infrastructure": {...}, "places": {...}, "pagination": {...}}`,
+containing one page of the precomputed infrastructure and the area-name dataset. It
+returns 503 if either file is missing and 500 if the data cannot be read or is
+malformed. No OSM network request or cache regeneration occurs in the handler.
+Responses are limited to 3 MiB. Start without parameters, then request each
+`pagination.next_offset` with `?offset=<next_offset>&revision=<revision>` from
+the first page until `next_offset` is `null`. Combine the pages' element maps.
+`pagination.total` is the number of elements across all pages. A changed
+dataset returns 409 and requires restarting at the first page; invalid
+pagination parameters return 400.
+Infrastructure schema `3.0` includes a GeoJSON coverage polygon and regional
+elements keyed by `type/id`, rather than per-zone entries. The browser computes
+intersections against the current zones; intersections may be incomplete outside
+the polygon. OSM generation is manual and independent of zone exports. Refresh
+both files periodically and after changing the polygon; see the
+[pipeline guide](./NISAR_PIPELINE_GUIDE.md).
 
 Relevant files:
 
 - [`api/v1/zones.py`](./api/v1/zones.py): Vercel HTTP handler. It calls
   `get_zones()`, wraps the result as `{"schema_version": "1.0", "zones": [...]}`,
   and sends JSON.
+- [`api/v1/osm.py`](./api/v1/osm.py): Vercel HTTP handler for both precomputed
+  OSM datasets.
 - [`src/zone_service.py`](./src/zone_service.py): typed `Zone` contract and
   `get_zones()` function to implement.
 - [`src/nisar_processing.py`](./src/nisar_processing.py): Stage 2 creates a
@@ -80,6 +101,9 @@ The API defines positive LOS movement as **toward** the satellite; negative is
 away. All summary keys are required, but their values may be `null`. The frontend
 will provide zone names and calculate coordinate ranges and areas; neither is an
 API field. `schema_version` describes the response format, not a dataset.
+`risk_level` is the backend base level; the dashboard may display an experimental
+one-level adjustment based on OSM infrastructure intersections. The API response
+itself is unchanged. See [DASHBOARD.md](./DASHBOARD.md) for coverage limitations.
 
 Responses:
 
@@ -167,7 +191,8 @@ environment or preview deployment.
 
 The frontend calls the relative path with `fetch('/api/v1/zones')` and displays
 loading, empty and error states. Reload the page to retry a failed request.
-API zone names currently use their IDs until a geographic naming source is added.
+Zone names use nearby places when the place dataset covers their search radius,
+and otherwise use IDs.
 Run the frontend contract tests with
 `node --test tests/zone-api.test.js`.
 

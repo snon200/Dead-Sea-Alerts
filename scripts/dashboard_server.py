@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from api.v1.zones import handler as ZonesHandler
+from api.v1.osm import handler as OsmHandler
 
 
 DEMO_DATA = [
@@ -59,11 +60,15 @@ class DashboardHandler(SimpleHTTPRequestHandler, ZonesHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def do_GET(self):
-        if urlsplit(self.path).path == "/api/v1/zones":
+        path = urlsplit(self.path).path
+        if path == "/api/v1/zones":
             if self.server.zone_source == "demo":
                 self._send_json(200, {"schema_version": "1.0", "zones": demo_zones()}, source="demo")
             else:
                 ZonesHandler.do_GET(self)
+            return
+        if path == "/api/v1/osm":
+            OsmHandler.do_GET(self)
             return
         super().do_GET()
 

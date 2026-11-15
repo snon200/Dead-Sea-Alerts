@@ -53,10 +53,93 @@
           }
         }
       }
+    },
+    "/api/v1/osm": {
+      "get": {
+        "operationId": "getOsmData",
+        "summary": "Get a page of precomputed regional infrastructure and area names",
+        "parameters": [
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Use next_offset from the previous page." },
+          { "name": "revision", "in": "query", "schema": { "type": "string" }, "description": "Required for nonzero offsets; use the revision returned by the first page." }
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenStreetMap datasets generated offline for the regional study area.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OsmResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Precomputed OSM data is malformed or could not be read.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "400": { "description": "Invalid pagination parameters.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "The dataset changed; restart from the first page.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "503": {
+            "description": "A precomputed OSM dataset is not deployed.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "OsmResponse": {
+        "type": "object",
+        "required": ["schema_version", "infrastructure", "places", "pagination"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["1.0"] },
+          "infrastructure": { "$ref": "#/components/schemas/OsmInfrastructure" },
+          "places": { "$ref": "#/components/schemas/OsmPlaces" },
+          "pagination": {
+            "type": "object",
+            "required": ["offset", "next_offset", "total", "revision"],
+            "properties": {
+              "offset": { "type": "integer", "minimum": 0 },
+              "next_offset": { "type": "integer", "nullable": true },
+              "total": { "type": "integer", "minimum": 0 },
+              "revision": { "type": "string" }
+            }
+          }
+        }
+      },
+      "OsmInfrastructure": {
+        "type": "object",
+        "required": ["schema_version", "coverage", "elements"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["3.0"] },
+          "source": { "type": "string" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "coverage": { "$ref": "#/components/schemas/Polygon" },
+          "elements": { "type": "object", "additionalProperties": { "type": "object" } }
+        }
+      },
+      "OsmPlaces": {
+        "type": "object",
+        "required": ["schema_version", "bounds", "places"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["1.0"] },
+          "source": { "type": "string" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "bounds": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } },
+          "places": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "lat", "lon"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "lat": { "type": "number" },
+                "lon": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
       "ZonesResponse": {
         "type": "object",
         "required": ["schema_version", "zones"],

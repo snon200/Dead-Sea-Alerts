@@ -287,7 +287,7 @@ def _latest_pair_quality(meta: dict, raw_root: Path, shape: tuple[int,int]):
 
 
 def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pixels: int = 1) -> list[Zone]:
-    """Offline adapter: read Stage 3 polygons and Stage 2 arrays for SAME run.
+    """Offline adapter: export latest-date Stage 3 polygons and Stage 2 data.
 
     Pixel time histories use the intersection of finite pixels across ALL
     acquisition dates within the LAST polygon geometry. This fixed footprint
@@ -335,8 +335,16 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
             or tuple(meta.get("array_shape", [])) != displacement.shape):
         raise ValueError("Stage 2 arrays are not aligned or have unexpected shape")
     dates = meta.get("dates", [])
-    if len(dates) != displacement.shape[0]:
+    if not isinstance(dates, list) or not dates or len(dates) != displacement.shape[0]:
         raise ValueError("Stage 2 date axis does not match data")
+    try:
+        parsed_dates = [datetime.strptime(day, "%Y-%m-%d").date() for day in dates]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid Stage 2 acquisition dates") from exc
+    if any(day.isoformat() != original for day, original in zip(parsed_dates, dates)) or any(
+        later <= earlier for earlier, later in zip(parsed_dates, parsed_dates[1:])
+    ):
+        raise ValueError("Stage 2 acquisition dates must be ordered ISO dates")
     grid = meta["grid"]
     if (not grid.get("crs") or len(grid.get("transform_affine", [])) != 6
             or grid.get("width") != displacement.shape[2]
@@ -377,6 +385,10 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
         props = feature.get("properties") or {}
         if props.get("source_run", run_name) != run_name:
             raise ValueError("Feature belongs to a different processing run")
+        if props.get("last_observed") not in dates:
+            raise ValueError("Feature has a missing or invalid last_observed date")
+        if props["last_observed"] != dates[-1]:
+            continue
         stable_id = props.get("stable_id")
         family = meta.get("acquisition_family", {})
         identifier = _zone_id(geometry, family, stable_id)

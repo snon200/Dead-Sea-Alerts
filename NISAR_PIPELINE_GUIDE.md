@@ -120,7 +120,30 @@ python src/view_detection.py --input "data/detection/$RUN" --scene 3 --show
 python src/zone_service.py --run "$RUN" --data-root data --out data/api/zones.json
 ```
 
-This generates the static JSON used by `GET /api/v1/zones`. Re-run this command after Stage 3 results change; the JSON file is **not updated automatically**.
+Commit and deploy the exported zones when ready. The export includes only detections last observed on the latest acquisition date; older detections remain in the Stage 3 outputs. A zone export does not require an OSM rebuild.
+
+### Step G — Refresh regional OpenStreetMap data
+
+The fixed coverage polygon is [`data/api/osm-study-area.geojson`](./data/api/osm-study-area.geojson). Regenerate **both** infrastructure and nearby place names periodically to pick up OSM changes, and whenever this polygon changes. Neither update is automatic. The builders do not depend on the zones export, including when it is empty.
+
+From the repository root, the default builders query Overpass:
+
+```powershell
+python scripts/build_osm_cache.py
+python scripts/build_osm_places.py
+```
+
+Alternatively, if Overpass is unavailable or the regional query is too large, download current [Israel/Palestine](https://download.geofabrik.de/asia/israel-and-palestine.html) and [Jordan](https://download.geofabrik.de/asia/jordan.html) PBF extracts from Geofabrik. Install the optional `osmium` package in a local Python environment, then pass **both** extracts to each builder:
+
+```powershell
+python -m pip install osmium
+python scripts/build_osm_cache.py --pbf "C:\path\israel-and-palestine-latest.osm.pbf" --pbf "C:\path\jordan-latest.osm.pbf"
+python scripts/build_osm_places.py --pbf "C:\path\israel-and-palestine-latest.osm.pbf" --pbf "C:\path\jordan-latest.osm.pbf"
+```
+
+Use extracts that together cover the entire study polygon and the place-name search margin; a smaller extract silently omits data outside its geographic coverage. The infrastructure builder retains supported nodes and ways intersecting the polygon, with complete way geometry; relations are not included. The place builder covers its bounding box plus a 10 km search margin. If either builder fails, do not deploy the incomplete update; fix the error and rerun both. Commit `data/api/osm-cache.json` and `data/api/osm-places.json` together, and include the polygon if it changed.
+
+On a visit, the dashboard loads zones from `GET /api/v1/zones` and the OSM datasets from `GET /api/v1/osm`. Production only reads deployed files. The browser computes zone intersections and flags partial coverage when a zone extends outside the polygon; counts and layer filtering may miss features there. See [DASHBOARD.md](./DASHBOARD.md) for the UI behavior and OSM limitations.
 
 ---
 
@@ -348,6 +371,8 @@ The exporter:
 5. Sets unavailable values to JSON `null`. Keeps `risk_level: null`: the detector's `watch`/`review`/`urgent_review` categories have **not** been validated as hazard risk levels.
 
 **Output:** `data/api/zones.json` (this **single file is replaced** each time you export). `GET /api/v1/zones` is served by `api/v1/zones.py` and calls `get_zones()` to read the prebuilt data; it does **not** run Stage 2/3 on a web request.
+
+OSM datasets are refreshed separately for the fixed regional polygon; see Step G. `GET /api/v1/osm` serves the precomputed data without querying Overpass during a production request.
 
 To choose a non-default cache file in PowerShell when running locally:
 
