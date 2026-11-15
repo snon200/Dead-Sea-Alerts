@@ -57,7 +57,7 @@ Explore [deadsea-alerts.earth](https://deadsea-alerts.earth/) to view the map, s
 
 ### Zones API
 
-The [OpenAPI specification](./openapi.json) describes `GET /api/v1/zones` and can be opened in Swagger Editor. See the [backend integration guide](./API.md) for the contract and implementation handoff. The Python endpoint is in `api/v1/zones.py`; its processing integration point is `src/zone_service.py::get_zones()`.
+The [OpenAPI specification](./openapi.json) describes `GET /api/v1/zones` and `GET /api/v1/osm` and can be opened in Swagger Editor. See the [backend integration guide](./API.md) for the contracts and implementation handoff. The zones endpoint is in `api/v1/zones.py`; its processing integration point is `src/zone_service.py::get_zones()`.
 
 The detector produces exploratory deformation anomalies, review priorities and per-date quality proxies. These are not automatically equivalent to risk levels or latest-pair coherence. Its results can include MultiPolygon geometry and use mm/day and mm/day²; compatible LOS values need unit conversion for the API.
 
@@ -69,7 +69,7 @@ Run `vercel dev` from the repository root and open its local URL. A plain static
 
 Alternatively, run `python scripts/dashboard_server.py` for a localhost-only server. It defaults to the real API; set `ZONE_DATA_SOURCE=demo` before starting it to display synthetic demo zones locally. See [Dashboard](./DASHBOARD.md) for commands.
 
-The dashboard requests OpenStreetMap features for each zone's bounding box and displays roads, pumping stations, buildings, bridges, power infrastructure, pipelines and water facilities, and hotels and selected public facilities intersecting each zone. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Results are cached in memory during the session; selected ways may extend outside a zone. If an infrastructure request fails or times out, use the displayed Retry button. Intersections do not establish damage. Internet access is required for Leaflet, map tiles, and OpenStreetMap features. The [OpenStreetMap API policy](https://operations.osmfoundation.org/policies/api/) says the editing API is not intended for read-only applications; a suitable data source is needed before wider deployment.
+The dashboard loads precomputed OpenStreetMap infrastructure and area names through `GET /api/v1/osm`. It displays roads, pumping stations, buildings and other mapped features intersecting each zone; stale or missing entries are unavailable rather than fetched live in production. Pipelines are not necessarily water pipelines, and mapped features may be duplicated, incomplete or outdated. Selected ways may extend outside a zone. If the request fails, use the displayed Retry button. Intersections do not establish damage. Internet access is required for Leaflet and map tiles. See [Dashboard](./DASHBOARD.md) for cache maintenance and the local demo's live requests.
 
 ## Sources
 

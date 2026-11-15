@@ -103,6 +103,42 @@ function cachedOsmFeatures(cache, zone) {
   });
 }
 
+function osmInfrastructureQuery(bounds) {
+  const bbox = [bounds.south, bounds.west, bounds.north, bounds.east].join(',');
+  const selectors = [
+    'way["highway"]', 'way["building"]', 'way["bridge"]["bridge"!="no"]',
+    'nw["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant|dyke|embankment|works|storage_tank|mast|tower)$"]',
+    'nw["power"~"^(line|minor_line|substation|plant|generator)$"]',
+    'nw["water"="reservoir"]', 'way["landuse"~"^(reservoir|industrial|salt_pond|quarry)$"]',
+    'nw["tourism"~"^(hotel|guest_house)$"]',
+    'nw["amenity"~"^(school|kindergarten|hospital|clinic|fire_station|police|fuel)$"]',
+    'nw["waterway"="dam"]', 'nw["aeroway"="helipad"]',
+    'nw["natural"="sinkhole"]', 'nw["hazard"]'
+  ];
+  return `[out:json][timeout:30];(${selectors.map(selector => `${selector}(${bbox});`).join('')});out body geom;`;
+}
+
+function overpassElements(payload) {
+  if (!payload || payload.remark || !Array.isArray(payload.elements)) {
+    throw new Error('Incomplete or invalid Overpass response');
+  }
+  return payload.elements;
+}
+
+function osmInfrastructureElements(payload) {
+  return overpassElements(payload).map(element => {
+    if (!element || !element.tags || typeof element.tags !== 'object' || Array.isArray(element.tags) ||
+        !Number.isInteger(element.id) ||
+        (element.type === 'node' && (!Number.isFinite(element.lat) || !Number.isFinite(element.lon))) ||
+        (element.type === 'way' && (!Array.isArray(element.geometry) || element.geometry.length < 2 ||
+          !element.geometry.every(point => point && Number.isFinite(point.lat) && Number.isFinite(point.lon)))) ||
+        !['node', 'way'].includes(element.type)) {
+      throw new Error('Invalid Overpass infrastructure element');
+    }
+    return element;
+  });
+}
+
 function assignZonePlaceNames(zones, dataset) {
   if (!dataset || dataset.schema_version !== '1.0' || !Array.isArray(dataset.bounds) ||
       dataset.bounds.length !== 4 ||       !dataset.bounds.every(Number.isFinite) ||
@@ -160,4 +196,7 @@ function assignZonePlaceNames(zones, dataset) {
   return { outsideCoverage };
 }
 
-if (typeof module !== 'undefined') module.exports = { parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames };
+if (typeof module !== 'undefined') module.exports = {
+  parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames,
+  osmInfrastructureQuery, osmInfrastructureElements
+};

@@ -14,15 +14,26 @@ The export includes only detections last observed on the latest acquisition
 date; each retained zone still includes its full displacement history.
 
 ```text
-Processed NISAR data -> get_zones() -> GET /api/v1/zones -> dashboard
-                         ^ Almog's integration
+Processed NISAR data -> zones.json -> GET /api/v1/zones -> dashboard
+zones.json + OSM -> precomputed OSM files -> GET /api/v1/osm -> dashboard
 ```
+
+`GET /api/v1/osm` returns `{"schema_version": "1.0", "infrastructure": {...}, "places": {...}}`,
+containing the precomputed infrastructure cache and area-name dataset. It
+returns 503 if either file is missing and 500 if the data cannot be read or is
+malformed. No OSM network request or cache regeneration occurs in the handler.
+After exporting zones, run `python scripts/build_osm_cache.py` and
+`python scripts/build_osm_places.py`, then commit all three files together. The
+place builder requires at least one zone. Refresh the OSM files periodically
+as well; their generation is manual.
 
 Relevant files:
 
 - [`api/v1/zones.py`](./api/v1/zones.py): Vercel HTTP handler. It calls
   `get_zones()`, wraps the result as `{"schema_version": "1.0", "zones": [...]}`,
   and sends JSON.
+- [`api/v1/osm.py`](./api/v1/osm.py): Vercel HTTP handler for both precomputed
+  OSM datasets.
 - [`src/zone_service.py`](./src/zone_service.py): typed `Zone` contract and
   `get_zones()` function to implement.
 - [`src/nisar_processing.py`](./src/nisar_processing.py): Stage 2 creates a

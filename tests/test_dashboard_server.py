@@ -9,14 +9,14 @@ from scripts.dashboard_server import create_server
 
 
 class DashboardServerTests(unittest.TestCase):
-    def request(self, source=None):
+    def request(self, source=None, path="/api/v1/zones"):
         server = create_server(0, source)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
             connection = http.client.HTTPConnection(*server.server_address, timeout=5)
             try:
-                connection.request("GET", "/api/v1/zones")
+                connection.request("GET", path)
                 response = connection.getresponse()
                 return response.status, response.getheader("X-Zone-Source"), json.loads(response.read())
             finally:
@@ -43,6 +43,13 @@ class DashboardServerTests(unittest.TestCase):
         with patch.dict(os.environ, {"ZONE_DATA_SOURCE": "other"}, clear=True):
             with self.assertRaisesRegex(ValueError, "ZONE_DATA_SOURCE"):
                 create_server(0)
+
+    def test_osm_endpoint_is_available_in_both_local_modes(self):
+        payload = {"schema_version": "1.0", "infrastructure": {}, "places": {}}
+        with patch("api.v1.osm.get_osm_data", return_value=payload):
+            for source in ("api", "demo"):
+                status, header, response = self.request(source, "/api/v1/osm")
+                self.assertEqual((status, header, response), (200, None, payload))
 
     def test_deployed_endpoint_ignores_local_demo_switch(self):
         from api.v1.zones import handler

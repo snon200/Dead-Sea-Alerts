@@ -118,9 +118,18 @@ python src/view_detection.py --input "data/detection/$RUN" --scene 3 --show
 
 ```powershell
 python src/zone_service.py --run "$RUN" --data-root data --out data/api/zones.json
+python scripts/build_osm_cache.py
+python scripts/build_osm_places.py
 ```
 
-This generates the static JSON used by `GET /api/v1/zones`. Re-run this command after Stage 3 results change; the JSON file is **not updated automatically**.
+Run the commands in order, and continue only if the previous command succeeded:
+
+1. Export zones from the completed NISAR processing and detection runs.
+2. Query OpenStreetMap through Overpass and build infrastructure and area-name datasets for the exported zone coordinates.
+3. Commit `data/api/zones.json`, `data/api/osm-cache.json`, and `data/api/osm-places.json` together, then push to deploy them.
+4. On a visit, the dashboard requests zones from `GET /api/v1/zones` and both OSM datasets from `GET /api/v1/osm`. Production requests only read the deployed files; they do not run the pipeline or fetch OSM data.
+
+If either OSM builder fails, do not deploy the incomplete update; fix the error and rerun it. If there are no zones, the infrastructure builder creates an empty cache and the place-name builder must be skipped because it requires at least one zone. These files are **not updated automatically**. Regenerate the OSM datasets periodically even when zone geometry has not changed, since geometry checks cannot detect changes in OpenStreetMap.
 The export includes only detections last observed on the latest acquisition date; older detections remain in the Stage 3 outputs.
 
 ---
@@ -349,6 +358,8 @@ The exporter:
 5. Sets unavailable values to JSON `null`. Keeps `risk_level: null`: the detector's `watch`/`review`/`urgent_review` categories have **not** been validated as hazard risk levels.
 
 **Output:** `data/api/zones.json` (this **single file is replaced** each time you export). `GET /api/v1/zones` is served by `api/v1/zones.py` and calls `get_zones()` to read the prebuilt data; it does **not** run Stage 2/3 on a web request.
+
+After exporting, run `python scripts/build_osm_cache.py` and `python scripts/build_osm_places.py` to prepare `data/api/osm-cache.json` and `data/api/osm-places.json`. Commit the three files together. The place builder requires at least one zone. `GET /api/v1/osm` serves the two precomputed OSM datasets without querying Overpass during a production request.
 
 To choose a non-default cache file in PowerShell when running locally:
 

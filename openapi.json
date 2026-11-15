@@ -53,10 +53,87 @@
           }
         }
       }
+    },
+    "/api/v1/osm": {
+      "get": {
+        "operationId": "getOsmData",
+        "summary": "Get precomputed infrastructure and area-name datasets",
+        "responses": {
+          "200": {
+            "description": "OpenStreetMap datasets generated offline for the zones export.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OsmResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Precomputed OSM data is malformed or could not be read.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "503": {
+            "description": "A precomputed OSM dataset is not deployed.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "OsmResponse": {
+        "type": "object",
+        "required": ["schema_version", "infrastructure", "places"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["1.0"] },
+          "infrastructure": { "$ref": "#/components/schemas/OsmInfrastructure" },
+          "places": { "$ref": "#/components/schemas/OsmPlaces" }
+        }
+      },
+      "OsmInfrastructure": {
+        "type": "object",
+        "required": ["schema_version", "elements", "zones"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["2.0"] },
+          "source": { "type": "string" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "elements": { "type": "object", "additionalProperties": { "type": "object" } },
+          "zones": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["geometry", "elements"],
+              "properties": {
+                "geometry": { "$ref": "#/components/schemas/Geometry" },
+                "elements": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      },
+      "OsmPlaces": {
+        "type": "object",
+        "required": ["schema_version", "bounds", "places"],
+        "properties": {
+          "schema_version": { "type": "string", "enum": ["1.0"] },
+          "source": { "type": "string" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "bounds": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } },
+          "places": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "lat", "lon"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "lat": { "type": "number" },
+                "lon": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
       "ZonesResponse": {
         "type": "object",
         "required": ["schema_version", "zones"],

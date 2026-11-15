@@ -97,6 +97,13 @@
     .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
     .zone-source-status[data-state="error"] { color: #a53443; }
     .zone-source-status[data-state="demo"] { color: #876622; }
+    .loading-indicator { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .loading-indicator[hidden] { display: none; }
+    .loading-indicator::before { content: ''; width: 14px; height: 14px; flex: none; border: 2px solid #d5e4ea;
+      border-top-color: #126782; border-radius: 50%; animation: loading-spin .8s linear infinite; }
+    #sidebarOsmLoading { margin-top: 8px; }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .loading-indicator::before { animation: none; } }
     .zone-card {
       flex: none; width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border);
       border-radius: 11px; background: #fff; padding: 11px; transition: border-color .15s, background .15s;
@@ -303,7 +310,8 @@
                 <button class="layer-action" id="deselectAllLayers" type="button" aria-label="Deselect all map layers">Deselect all</button>
               </div>
             </div>
-            <p class="intro compact-intro">Overlays show features intersecting risk zones; mapped ways can extend beyond them. Basemap features remain visible when layers are hidden.</p>
+            <p class="intro compact-intro">Overlays intersect zones but may extend beyond them. Basemap features remain visible when layers are hidden.</p>
+            <p class="loading-indicator" id="sidebarOsmLoading" role="status" hidden>Loading infrastructure…</p>
             <div class="layer-list">
               <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads<small class="layer-count" id="roadCount">Loading...</small></span><input id="toggleRoads" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#67c9f2"></i>Pumping stations<small class="layer-count" id="pumpCount">Loading...</small></span><input id="togglePumps" type="checkbox" checked></label>
@@ -353,7 +361,7 @@
     'use strict';
 
     const DEAD_SEA_BOUNDS = { south: 31.00, west: 35.25, north: 31.80, east: 35.65 };
-    const OSM_MAP_URL = 'https://api.openstreetmap.org/api/0.6/map.json';
+    const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
     const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
     const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
     const DEMO_ZONE_NAMES = {
@@ -399,6 +407,7 @@
     const state = {
       selectedId: null,
       demo: false,
+      zonesLoading: false,
       show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true, dams: true, industrial: true, emergency: true, hazards: true },
       sidebar: { left: true, right: true },
       osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
@@ -473,22 +482,31 @@
       if (zones.length) {
         updateLayerCounts([], 'Loading...');
         requestOsm();
+      } else if (state.zonesLoading) {
+        updateLayerCounts([], 'Loading...');
+        setOsmStatus('Loading zone data…', 'loading');
       } else {
         updateLayerCounts([], 'No zones');
         setOsmStatus('No zones available for infrastructure lookup.', 'ready');
       }
     }
 
-    async function loadPlaceNames(generation) {
+    async function fetchOverpass(query, signal) {
+      const response = await fetch(`${OVERPASS_URL}?${new URLSearchParams({ data: query })}`, { signal });
+      if (!response.ok) {
+        const error = new Error(`Overpass returned HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return response.json();
+    }
+
+    function loadPlaceNames(dataset) {
       try {
-        const response = await fetch('/data/api/osm-places.json', { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`OSM place names returned HTTP ${response.status}`);
-        const dataset = await response.json();
-        if (generation !== state.osm.generation) return;
         const { outsideCoverage } = assignZonePlaceNames(RISK_ZONES, dataset);
-        if (outsideCoverage) {
-          setZoneSourceStatus('Some zones are outside the area-name dataset; their IDs are shown instead.', 'error');
-        }
+        setZoneSourceStatus(outsideCoverage
+          ? 'Some zones are outside the area-name dataset; their IDs are shown instead.' : '',
+          outsideCoverage ? 'error' : 'ready');
         renderZoneList();
         const title = document.querySelector('#detailHeader .detail-title');
         if (title && selectedZone()) title.textContent = selectedZone().name;
@@ -499,7 +517,6 @@
         updateRiskLabelMarkers();
         updateRiskLabelVisibility();
       } catch (error) {
-        if (generation !== state.osm.generation) return;
         console.error('Could not load OSM area names:', error);
         setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
       }
@@ -510,6 +527,7 @@
       const controller = new AbortController();
       zoneRequest = controller;
       state.demo = false;
+      state.zonesLoading = true;
       setZoneSourceStatus('Loading zone data…', 'loading');
       replaceZones([]);
       const timeout = setTimeout(() => controller.abort(), 20000);
@@ -518,15 +536,18 @@
         if (!response.ok) throw new Error(`Zone API returned HTTP ${response.status}`);
         const zones = parseZoneResponse(await response.json());
         if (zoneRequest !== controller) return;
+        state.zonesLoading = false;
         state.demo = response.headers.get('X-Zone-Source') === 'demo';
         if (state.demo) zones.forEach(zone => { zone.name = DEMO_ZONE_NAMES[zone.id] || zone.name; });
         setZoneSourceStatus(state.demo ? 'Illustrative demo: zones and measurements are synthetic.' : '', state.demo ? 'demo' : 'ready');
         replaceZones(zones);
-        if (!state.demo && zones.length) loadPlaceNames(state.osm.generation);
       } catch (error) {
         if (zoneRequest !== controller) return;
         console.error('Could not load zone data:', error);
+        state.zonesLoading = false;
         setZoneSourceStatus('Zone data is unavailable. Reload the page to retry.', 'error');
+        updateLayerCounts([], 'Unavailable');
+        setOsmStatus('Zone data is unavailable.', 'error');
         renderZoneList();
         renderDetails();
       } finally {
@@ -598,6 +619,14 @@
     }
 
     function renderZoneList() {
+      const list = document.getElementById('zoneList');
+      list.setAttribute('aria-busy', String(state.zonesLoading));
+      if (state.zonesLoading) {
+        document.getElementById('zoneFilterStatus').hidden = true;
+        document.getElementById('zoneCount').textContent = 'Loading…';
+        list.innerHTML = '<p class="loading-indicator" role="status">Loading zones…</p>';
+        return;
+      }
       const selectedLayers = Object.keys(state.show).filter(key => state.show[key]);
       const allSelected = selectedLayers.length === Object.keys(state.show).length;
       const zones = filteredRiskZones();
@@ -609,7 +638,7 @@
         : 'Only loaded zones are shown while infrastructure loads.';
       document.getElementById('zoneCount').textContent = allSelected
         ? `${zones.length} zones` : `${zones.length} / ${RISK_ZONES.length} zones`;
-      document.getElementById('zoneList').innerHTML = [...zones]
+      list.innerHTML = [...zones]
         .sort((a, b) =>
           (RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level]) ||
           (zoneExposure(b).tier - zoneExposure(a).tier) ||
@@ -700,10 +729,13 @@
       hideMetricHelp();
       const zone = selectedZone();
       const header = document.getElementById('detailHeader');
+      const content = document.getElementById('detailContent');
+      content.setAttribute('aria-busy', String(state.zonesLoading));
       if (!zone) {
         header.innerHTML = '<div class="eyebrow">Zone details</div>';
-        document.getElementById('detailContent').innerHTML =
-          '<p class="empty-state">No zone selected.</p>';
+        content.innerHTML = state.zonesLoading
+          ? '<p class="loading-indicator" role="status">Loading zone details…</p>'
+          : '<p class="empty-state">No zone selected.</p>';
         return;
       }
       header.innerHTML = `
@@ -712,7 +744,7 @@
           <div class="detail-risk"><span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span></div>
         </div>
       `;
-      document.getElementById('detailContent').innerHTML = `
+      content.innerHTML = `
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
         ${state.demo ? '' : '<p class="detail-description">Area names are approximate and refer to nearby OpenStreetMap places.</p>'}
@@ -787,10 +819,10 @@
               if (event.key !== 'Enter' && event.key !== ' ') return;
               event.preventDefault();
               event.stopPropagation();
-              selectZone(zone.id, false);
+              selectZoneFromLabel(zone.id);
             };
           });
-          marker.on('click', () => selectZone(zone.id, false));
+          marker.on('click', () => selectZoneFromLabel(zone.id));
           marker.addTo(riskLabelLayer);
           riskLabelMarkers.push({ zoneId: zone.id, marker, preferLeft: index % 2 === 1 });
         });
@@ -840,6 +872,14 @@
     map.on('zoomend', updateRiskLabelVisibility);
     map.on('moveend resize', layoutRiskLabels);
 
+    function selectZoneFromLabel(id) {
+      selectZone(id, true);
+      if (state.sidebar.left) {
+        const selected = document.querySelector('#zoneList .zone-card.selected');
+        if (selected) selected.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
     function selectZone(id, panToZone) {
       if (!RISK_ZONES.some(zone => zone.id === id)) return;
       clearSelectedFeature();
@@ -866,6 +906,7 @@
       const element = document.getElementById('osmStatus');
       document.getElementById('osmStatusText').textContent = message;
       document.getElementById('retryOsm').hidden = !retry;
+      document.getElementById('sidebarOsmLoading').hidden = status !== 'loading' || state.zonesLoading;
       element.dataset.state = status;
       layoutRiskLabels();
     }
@@ -956,32 +997,6 @@
       });
     }
 
-    function mapOsmFeatures(elements) {
-      const nodes = new Map(elements.filter(element => element.type === 'node').map(node => [node.id, node]));
-      return elements.flatMap(element => {
-        const tags = element.tags || {};
-        const extra = EXTRA_LAYERS.some(layer => layer.matches({ ...element, tags }));
-        if (element.type === 'node' && (tags.man_made === 'pumping_station' || extra)) {
-          if (!Number.isFinite(element.lat) || !Number.isFinite(element.lon)) {
-            throw new Error(`Missing coordinates for node ${element.id}`);
-          }
-          return [element];
-        }
-        if (element.type !== 'way' || !(tags.highway || tags.building || tags.man_made === 'pumping_station' || extra)) return [];
-        if (!Array.isArray(element.nodes) || element.nodes.length < 2) {
-          throw new Error(`Invalid geometry for way ${element.id}`);
-        }
-        const geometry = element.nodes.map(id => {
-          const node = nodes.get(id);
-          if (!node || !Number.isFinite(node.lat) || !Number.isFinite(node.lon)) {
-            throw new Error(`Missing node ${id} for way ${element.id}`);
-          }
-          return { lat: node.lat, lon: node.lon };
-        });
-        return [{ ...element, geometry }];
-      });
-    }
-
     function pointOnSegment(point, a, b) {
       const cross = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
       return Math.abs(cross) < 1e-10 &&
@@ -1065,7 +1080,7 @@
     function renderInfrastructure(zone) {
       if (state.osm.errors[zone.id]) return '<p class="detail-description">Infrastructure could not be loaded for this zone. Use Retry to try again.</p>';
       const features = state.osm.results[zone.id];
-      if (!features) return '<p class="detail-description">Loading infrastructure for this zone…</p>';
+      if (!features) return '<p class="loading-indicator" role="status">Loading infrastructure for this zone…</p>';
       const groups = [
         ['Roads', 'Road', features.filter(LAYER_MATCHES.roads)],
         ['Pumping stations', 'Pumping station', features.filter(LAYER_MATCHES.pumps)],
@@ -1110,16 +1125,22 @@
     }
 
     async function loadOsmCache(generation) {
+      const controller = new AbortController();
+      state.osm.controller = controller;
+      const timeout = setTimeout(() => controller.abort(), 20000);
       try {
-        const response = await fetch('/data/api/osm-cache.json', { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`Infrastructure cache returned HTTP ${response.status}`);
-        const cache = await response.json();
+        const response = await fetch('/api/v1/osm', { signal: controller.signal });
+        if (!response.ok) throw new Error(`OSM API returned HTTP ${response.status}`);
+        const payload = await response.json();
         if (generation !== state.osm.generation) return 0;
+        if (!payload || payload.schema_version !== '1.0') throw new Error('Unsupported OSM API response');
+        loadPlaceNames(payload.places);
         let hits = 0;
         RISK_ZONES.forEach(zone => {
           if (state.osm.results[zone.id]) return;
           try {
-            state.osm.results[zone.id] = cachedOsmFeatures(cache, zone);
+            state.osm.results[zone.id] = cachedOsmFeatures(payload.infrastructure, zone);
+            delete state.osm.errors[zone.id];
             hits++;
           } catch (error) {
             console.error(`Could not load cached infrastructure for ${zone.name}:`, error);
@@ -1131,11 +1152,15 @@
       } catch (error) {
         if (generation !== state.osm.generation) return 0;
         console.error('Precomputed OSM cache unavailable:', error);
+        setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
         RISK_ZONES.filter(zone => !state.osm.results[zone.id]).forEach(zone => {
           state.osm.errors[zone.id] = error.message;
         });
         refreshOsmDisplay();
         return 0;
+      } finally {
+        clearTimeout(timeout);
+        if (state.osm.controller === controller) state.osm.controller = null;
       }
     }
 
@@ -1161,23 +1186,18 @@
           const zone = pending[index];
           setOsmStatus(`Loading infrastructure: ${Object.keys(state.osm.results).length}/${RISK_ZONES.length} zones…`, 'loading');
           const bounds = polygonBounds(zone);
-          const bbox = [bounds.west, bounds.south, bounds.east, bounds.north].join(',');
           const controller = new AbortController();
           state.osm.controller = controller;
           const timeout = setTimeout(() => controller.abort(), 35000);
           let throttled = false;
           try {
-            const response = await fetch(`${OSM_MAP_URL}?bbox=${bbox}`, { signal: controller.signal });
-            if (!response.ok) {
-              throttled = response.status === 429 || response.status === 503;
-              throw new Error(`OpenStreetMap returned HTTP ${response.status}`);
-            }
-            const payload = await response.json();
+            const payload = await fetchOverpass(osmInfrastructureQuery(bounds), controller.signal);
             if (generation !== state.osm.generation) return;
-            if (!Array.isArray(payload.elements)) throw new Error('Invalid OpenStreetMap response');
-            state.osm.results[zone.id] = mapOsmFeatures(payload.elements).filter(element => featureIntersectsZone(element, zone));
+            state.osm.results[zone.id] = osmInfrastructureElements(payload).filter(element => featureIntersectsZone(element, zone));
+            delete state.osm.errors[zone.id];
           } catch (error) {
             if (generation !== state.osm.generation) return;
+            throttled = error.status === 429 || error.status >= 500;
             console.error(`Could not load OpenStreetMap features for ${zone.name}:`, error);
             state.osm.errors[zone.id] = error.message;
           } finally {

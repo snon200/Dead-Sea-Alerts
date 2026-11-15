@@ -3,7 +3,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
-const { parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames } = require('../zone-api.js');
+const {
+  parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames,
+  osmInfrastructureQuery, osmInfrastructureElements
+} = require('../zone-api.js');
 
 function example() {
   return structuredClone(spec.paths['/api/v1/zones'].get.responses['200'].content['application/json'].example);
@@ -139,4 +142,17 @@ test('the checked-in place dataset names current zones without duplicate labels'
   assert.equal(result.outsideCoverage, false);
   assert.ok(zones.some(zone => zone.name.startsWith('Near ')));
   assert.equal(new Set(zones.map(zone => zone.name)).size, zones.length);
+});
+
+test('live infrastructure requests include new layers and reject incomplete data', () => {
+  const query = osmInfrastructureQuery({ south: 31, west: 35, north: 32, east: 36 });
+  assert.match(query, /31,35,32,36/);
+  assert.match(query, /waterway.*dam/);
+  assert.match(query, /natural.*sinkhole/);
+  const way = { type: 'way', id: 1, tags: { highway: 'primary' }, geometry: [
+    { lat: 31.4, lon: 35.4 }, { lat: 31.5, lon: 35.5 }
+  ] };
+  assert.deepEqual(osmInfrastructureElements({ elements: [way] }), [way]);
+  assert.throws(() => osmInfrastructureElements({ remark: 'timeout', elements: [] }), /Incomplete/);
+  assert.throws(() => osmInfrastructureElements({ elements: [{ ...way, geometry: [] }] }), /Invalid/);
 });
