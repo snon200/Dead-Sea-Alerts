@@ -101,6 +101,9 @@ The API defines positive LOS movement as **toward** the satellite; negative is
 away. All summary keys are required, but their values may be `null`. The frontend
 will provide zone names and calculate coordinate ranges and areas; neither is an
 API field. `schema_version` describes the response format, not a dataset.
+`risk_level` is the backend base level; the dashboard may display an experimental
+one-level adjustment based on OSM infrastructure intersections. The API response
+itself is unchanged. See [DASHBOARD.md](./DASHBOARD.md) for coverage limitations.
 
 Responses:
 

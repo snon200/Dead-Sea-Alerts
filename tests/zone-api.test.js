@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
 const {
-  parseZoneResponse, regionalOsmData, assignZonePlaceNames, zoneWithinOsmCoverage,
+  parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames, zoneWithinOsmCoverage,
   osmInfrastructureQuery, osmInfrastructureElements
 } = require('../zone-api.js');
 
@@ -16,8 +16,30 @@ test('adapts the documented response and converts longitude/latitude', () => {
   const [zone] = parseZoneResponse(example());
   assert.deepEqual(zone.polygons[0][0][0], [31.45, 35.38]);
   assert.equal(zone.level, 'elevated');
+  assert.equal(zone.baseLevel, 'elevated');
   assert.equal(zone.series[2].value, -4);
   assert.equal(zone.observations, 3);
+});
+
+test('adjusts backend risk one level for infrastructure and clamps at the extremes', () => {
+  const cases = [
+    ['low', 'watch', 'low'],
+    ['watch', 'elevated', 'low'],
+    ['elevated', 'high', 'watch'],
+    ['high', 'high', 'elevated']
+  ];
+  for (const [base, withInfrastructure, withoutInfrastructure] of cases) {
+    assert.deepEqual(adjustRiskLevel(base, true, true), { level: withInfrastructure, reason: 'infrastructure' });
+    assert.deepEqual(adjustRiskLevel(base, false, true), { level: withoutInfrastructure, reason: 'none' });
+  }
+});
+
+test('preserves unknown or unconfirmed risk while applying known overlaps in partial coverage', () => {
+  assert.deepEqual(adjustRiskLevel('unknown', true, true), { level: 'unknown', reason: 'unknown' });
+  assert.deepEqual(adjustRiskLevel('watch', null, false), { level: 'watch', reason: 'unavailable' });
+  assert.deepEqual(adjustRiskLevel('watch', false, false), { level: 'watch', reason: 'incomplete' });
+  assert.deepEqual(adjustRiskLevel('watch', true, false), { level: 'elevated', reason: 'infrastructure' });
+  assert.throws(() => adjustRiskLevel('watch', undefined, true), /Invalid/);
 });
 
 test('accepts multipolygons, holes and unavailable values', () => {

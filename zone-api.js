@@ -63,8 +63,9 @@ function parseZoneResponse(payload) {
     });
     const level = zone.risk_level || 'unknown';
     return {
-      id: zone.id, name: `Zone ${zone.id}`, level,
+      id: zone.id, name: `Zone ${zone.id}`, baseLevel: level, level,
       label: level === 'unknown' ? 'Unavailable' : level[0].toUpperCase() + level.slice(1),
+      riskAdjustment: level === 'unknown' ? 'unknown' : 'unavailable',
       polygons, geometry,
       losRate: summary.los_velocity_mm_per_year, cumulative: summary.cumulative_shift_mm,
       acceleration: summary.acceleration_mm_per_year2, coherence: summary.latest_pair_mean_coherence,
@@ -72,6 +73,20 @@ function parseZoneResponse(payload) {
       observations: series === null ? null : series.length, series
     };
   });
+}
+
+function adjustRiskLevel(baseLevel, hasInfrastructure, completeCoverage) {
+  const levels = ['low', 'watch', 'elevated', 'high'];
+  if (![true, false, null].includes(hasInfrastructure) || typeof completeCoverage !== 'boolean') {
+    throw new Error('Invalid risk adjustment input');
+  }
+  if (baseLevel === 'unknown') return { level: baseLevel, reason: 'unknown' };
+  const index = levels.indexOf(baseLevel);
+  if (index < 0) throw new Error('Invalid risk adjustment input');
+  if (hasInfrastructure === null) return { level: baseLevel, reason: 'unavailable' };
+  if (hasInfrastructure) return { level: levels[Math.min(index + 1, levels.length - 1)], reason: 'infrastructure' };
+  if (!completeCoverage) return { level: baseLevel, reason: 'incomplete' };
+  return { level: levels[Math.max(index - 1, 0)], reason: 'none' };
 }
 
 function pointOnSegment(point, a, b) {
@@ -302,6 +317,6 @@ function assignZonePlaceNames(zones, dataset) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  parseZoneResponse, regionalOsmData, assignZonePlaceNames,
+  parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames,
   osmInfrastructureQuery, osmInfrastructureElements, featureIntersectsZone, zoneWithinOsmCoverage
 };

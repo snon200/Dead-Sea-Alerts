@@ -602,6 +602,8 @@
       buildings: element => !!(element.geometry && element.tags.building),
       ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.matches]))
     };
+    const INFRASTRUCTURE_MATCHES = Object.entries(LAYER_MATCHES)
+      .filter(([key]) => key !== 'hazards').map(([, matches]) => matches);
 
     const LAYER_COLORS_DEFAULT = {
       roads: '#fbbf24', pumps: '#67c9f2', buildings: '#b4a1ef',
@@ -842,12 +844,42 @@
         criticalHits.push('Major highway');
       }
       if (criticalHits.length) {
-        return { tier: 2, label: `Critical infra · ${criticalHits[0]}`, detail: criticalHits.join(', ') };
+        const label = criticalHits[0] === 'Known sinkhole/hazard'
+          ? criticalHits[0] : `Critical infra · ${criticalHits[0]}`;
+        return { tier: 2, label, detail: criticalHits.join(', ') };
       }
       if (features.some(el => LAYER_MATCHES.power(el) || LAYER_MATCHES.water(el) || LAYER_MATCHES.roads(el) || LAYER_MATCHES.buildings(el))) {
         return { tier: 1, label: 'Local infra', detail: `${features.length} mapped feature(s)` };
       }
       return { tier: 0, label: '', detail: '' };
+    }
+
+    function updateZoneRisk(zone) {
+      const features = state.osm.results[zone.id];
+      const hasInfrastructure = features
+        ? features.some(element => INFRASTRUCTURE_MATCHES.some(matches => matches(element)))
+        : null;
+      const adjustment = adjustRiskLevel(zone.baseLevel, hasInfrastructure, !state.osm.partialZones.has(zone.id));
+      zone.level = adjustment.level;
+      zone.label = zone.level === 'unknown' ? 'Unavailable' : zone.level[0].toUpperCase() + zone.level.slice(1);
+      zone.riskAdjustment = adjustment.reason;
+    }
+
+    function riskAdjustmentDescription(zone) {
+      if (zone.riskAdjustment === 'unknown') {
+        return 'Backend risk is unavailable; the infrastructure adjustment cannot be applied.';
+      }
+      const base = zone.baseLevel[0].toUpperCase() + zone.baseLevel.slice(1);
+      if (zone.riskAdjustment === 'unavailable') {
+        return `Backend risk: ${base}. Infrastructure data is ${state.osm.errors[zone.id] ? 'unavailable' : 'loading'}; no adjustment applied.`;
+      }
+      if (zone.riskAdjustment === 'incomplete') {
+        return `Backend risk: ${base}. OSM coverage is incomplete; absence of infrastructure cannot be confirmed.`;
+      }
+      if (zone.riskAdjustment === 'infrastructure') {
+        return `Backend risk: ${base}. Infrastructure overlaps this zone; risk ${zone.level === zone.baseLevel ? 'remains at the highest level' : 'increased by one level'}.`;
+      }
+      return `Backend risk: ${base}. No supported infrastructure found; risk ${zone.level === zone.baseLevel ? 'remains at the lowest level' : 'decreased by one level'}.`;
     }
 
     function renderZoneList() {
@@ -981,6 +1013,7 @@
       content.innerHTML = `
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
+        <p class="detail-description" id="riskAdjustment">${escapeHtml(riskAdjustmentDescription(zone))}</p>
         ${state.demo ? '' : '<p class="detail-description">Area names are approximate and refer to nearby OpenStreetMap places.</p>'}
         <div class="metric-grid">
           <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
@@ -1001,7 +1034,7 @@
           </tbody></table>
         </details>
         <h3 class="section-title">Displacement trend${metricHelp('chart', 'displacement trend', 'How movement toward or away from the satellite changes over time.')}</h3>
-        <div class="chart-wrap">${renderChart(zone)}</div>
+        <div class="chart-wrap" id="displacementChart">${renderChart(zone)}</div>
         <section class="infrastructure-section" id="infrastructureSection" aria-labelledby="infrastructureHeading">
           <h3 class="section-title" id="infrastructureHeading">Infrastructure intersecting zone</h3>
           <div id="zoneInfrastructure">${renderInfrastructure(zone)}</div>
@@ -1071,6 +1104,20 @@
         else riskLabelLayer.removeLayer(marker);
       });
       layoutRiskLabels();
+    }
+
+    function updateRiskLabelStyles() {
+      riskLabelMarkers.forEach(({ zoneId, marker }) => {
+        const zone = RISK_ZONES.find(item => item.id === zoneId);
+        const title = `${zone.name} · ${zone.label}`;
+        marker.options.title = title;
+        const icon = marker.getElement();
+        if (icon) {
+          icon.title = title;
+          icon.style.setProperty('--zone-color', COLORS[zone.level]);
+          icon.setAttribute('aria-label', `${zone.name}, ${zone.label} risk`);
+        }
+      });
     }
 
     function layoutRiskLabels() {
@@ -1295,6 +1342,7 @@
     }
 
     function refreshOsmDisplay() {
+      RISK_ZONES.forEach(updateZoneRisk);
       const unique = new Map();
       Object.values(state.osm.results).flat().forEach(element => unique.set(`${element.type}/${element.id}`, element));
       if (state.demo) state.osm.elements = [...unique.values()];
@@ -1304,10 +1352,21 @@
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
       renderZoneList();
-      if (!Object.values(state.show).every(Boolean)) {
-        drawRiskZones();
-        updateRiskLabelMarkers();
+      const zone = selectedZone();
+      if (zone) {
+        const pill = document.querySelector('#detailHeader .level-pill');
+        if (pill) {
+          pill.textContent = zone.label;
+          pill.style.setProperty('--zone-color', COLORS[zone.level]);
+        }
+        const adjustment = document.getElementById('riskAdjustment');
+        if (adjustment) adjustment.textContent = riskAdjustmentDescription(zone);
+        const chart = document.getElementById('displacementChart');
+        if (chart) chart.innerHTML = renderChart(zone);
       }
+      drawRiskZones();
+      updateRiskLabelStyles();
+      updateRiskLabelMarkers();
     }
 
     async function loadOsmCache(generation) {
@@ -1392,6 +1451,8 @@
       pending.forEach(zone => delete state.osm.errors[zone.id]);
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
+      const adjustment = document.getElementById('riskAdjustment');
+      if (adjustment && selectedZone()) adjustment.textContent = riskAdjustmentDescription(selectedZone());
       renderZoneList();
       try {
         if (!state.demo) {
@@ -1441,10 +1502,8 @@
           : 'Regional infrastructure could not be loaded. Use Retry or contact the project maintainers.',
           'error', true);
       } else {
-        setOsmStatus(state.osm.partialZones.size
-          ? `${state.osm.partialZones.size} zones extend beyond regional OSM coverage; results may be incomplete.`
-          : state.zonesFailed ? 'Regional infrastructure loaded; zone data unavailable.'
-            : 'Regional infrastructure loaded.', state.osm.partialZones.size ? 'error' : 'ready');
+        setOsmStatus(state.zonesFailed ? 'Regional infrastructure loaded; zone data unavailable.'
+          : 'Regional infrastructure loaded.', 'ready');
       }
     }
 
