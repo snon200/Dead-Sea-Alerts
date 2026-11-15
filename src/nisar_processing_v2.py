@@ -3,11 +3,13 @@
 Run from the repository root (no CLI):
     python src/nisar_processing_v2.py
 
-Input: the .npz made by nisar_acquisition_direct.py.
+Input: any aligned acquisition-v2 .npz, including dead_sea_cropped_dem.npz.
 Output: data/processed/run_v2_.../{displacement.npy,coherence.npy,metadata.json,...}
 
 Each output displacement[k] is displacement since the FIRST acquisition date,
 not since the preceding one. Units: mm, relative to the chosen reference area.
+Optional gated temporal spike filtering changes only isolated interior-date
+outliers; the original result is also saved to displacement_unfiltered.npy.
 
 Dependencies: numpy, rasterio, matplotlib (matplotlib for diagnostics only).
 """
@@ -25,7 +27,7 @@ from rasterio.transform import Affine
 from rasterio.warp import transform_geom
 
 # ============================ EDIT HERE ===============================
-INPUT = Path("data/raw/dead_sea_cropped_dem.npz")
+INPUT = Path("data/raw/dead_sea_cropped_dem.npz")  # Change to your current processed-ready .npz
 OUTPUT_ROOT = Path("data/processed")
 
 # WGS84 longitude/latitude bounding box of a putatively stable LAND patch.
@@ -59,6 +61,17 @@ CENTER_FREQUENCY_MHZ = None
 MAKE_DIAGNOSTIC_FIGURE = True
 SHOW_FIGURE = False
 DISPLAY_LIMIT_MM = 60.0
+
+# Optional temporal *spike* removal AFTER cumulative inversion.
+# Uses a 3-acquisition median as a candidate detector, not a blanket median
+# filter. Replaces ONLY isolated interior outliers with an estimate interpolated
+# between the adjacent actual acquisition dates (handles irregular date gaps).
+# This can suppress genuine short-lived motion. Always inspect the original.
+APPLY_TEMPORAL_SPIKE_FILTER = True
+TEMPORAL_SPIKE_THRESHOLD_MM = 15.0
+TEMPORAL_NEIGHBOR_AGREEMENT_MM = 12.0
+# Empty: inspect every interior date. Otherwise only these suspicious dates.
+TEMPORAL_FILTER_ONLY_DATES = []  # e.g. ["2026-07-15"]
 # ======================================================================
 
 C_LIGHT = 299_792_458.0
@@ -224,6 +237,64 @@ def invert_network(pair_mm, pair_coh, ref_times, sec_times, block=1024):
     return disp,quality,dates,edges
 
 
+def temporal_spike_filter(cumulative, dates, *, enabled=True,
+                          spike_threshold_mm=15.0,
+                          neighbor_agreement_mm=12.0,
+                          only_dates=()):
+    """Conservative, 3-date temporal median spike screen.
+
+    A pixel at interior date t is a candidate when its value deviates from
+    median(D[t-1], D[t], D[t+1]) by >= spike_threshold_mm AND the neighboring
+    dates agree within neighbor_agreement_mm. The replacement is a time-weighted
+    interpolation between the *original*, real neighboring observations.
+
+    No missing observations are filled. t=0 and t=last are never modified.
+    All tests use the unmodified input, so changes never cascade in time.
+    Caution: a genuinely transient event with recovery is indistinguishable
+    from a measurement spike using only three observations.
+    """
+    stack = np.asarray(cumulative)
+    if stack.ndim != 3 or len(dates) != stack.shape[0]:
+        raise ValueError("Temporal filter expects cumulative (dates, rows, cols)")
+    if spike_threshold_mm <= 0 or neighbor_agreement_mm < 0:
+        raise ValueError("Temporal filter thresholds must be nonnegative (spike > 0)")
+    ordinals = np.array([date.fromisoformat(str(d)[:10]).toordinal() for d in dates],dtype=float)
+    if np.any(np.diff(ordinals) <= 0):
+        raise ValueError("Temporal filter dates must be strictly increasing")
+    date_whitelist = set(only_dates)
+    unknown = sorted(date_whitelist.difference(dates))
+    if unknown:
+        raise ValueError(f"TEMPORAL_FILTER_ONLY_DATES absent from stack: {unknown}")
+
+    filtered = stack.copy()
+    modified = np.zeros(stack.shape, dtype=bool)
+    report = []
+    for t in range(1,stack.shape[0]-1):
+        if date_whitelist and dates[t] not in date_whitelist:
+            continue
+        prev, center, nxt = stack[t-1],stack[t],stack[t+1]
+        eligible = np.isfinite(prev) & np.isfinite(center) & np.isfinite(nxt)
+        median3 = np.median(np.stack((prev,center,nxt),axis=0),axis=0)
+        outlier = (eligible & (np.abs(center-median3) >= spike_threshold_mm)
+                   & (np.abs(nxt-prev) <= neighbor_agreement_mm))
+        if enabled and np.any(outlier):
+            fraction = (ordinals[t]-ordinals[t-1])/(ordinals[t+1]-ordinals[t-1])
+            estimate = prev + fraction*(nxt-prev)
+            filtered[t][outlier] = estimate[outlier]
+            modified[t] = outlier
+        report.append({
+            "date": str(dates[t]),
+            "eligible_pixels": int(np.count_nonzero(eligible)),
+            "candidate_pixels": int(np.count_nonzero(outlier)),
+            "replaced_pixels": int(np.count_nonzero(modified[t])),
+            "replaced_pct_of_eligible": float(100*np.count_nonzero(modified[t])/
+                                               max(1,np.count_nonzero(eligible))),
+            "median_abs_change_mm": (float(np.median(np.abs(
+                (filtered[t]-center)[modified[t]]))) if np.any(modified[t]) else 0.0),
+        })
+    return filtered, modified, report
+
+
 def quicklook(raw, atmo, final, x, y, dates, destination):
     """Four-panel geographic check; UTM coordinate axes are in correct order."""
     import matplotlib.pyplot as plt
@@ -247,6 +318,33 @@ def quicklook(raw, atmo, final, x, y, dates, destination):
     if SHOW_FIGURE:
         plt.show()
     plt.close(fig)
+
+
+def select_unique_pairs(phase, coh, comps, terms, reference_times, secondary_times, ids, polygon_mask):
+    """Select one usable observation per acquisition interval from duplicated caches.
+
+    Different Harmony requests can cache the same interferogram in multiple
+    manifest folders. Prefer the copy with the largest number of usable pixels
+    inside the polygon, including whichever corrections are enabled.
+    """
+    winners = {}
+    scores = {}
+    for i, (reference, secondary) in enumerate(zip(reference_times, secondary_times)):
+        key = (reference[:10], secondary[:10])
+        valid = (polygon_mask & np.isfinite(phase[i]) & np.isfinite(coh[i]) &
+                 (coh[i] >= COHERENCE_MIN) & (coh[i] <= 1) &
+                 np.isfinite(comps[i]) & (comps[i] > 0) & (comps[i] < 65535))
+        for layer, enabled in CORRECTIONS.items():
+            if enabled:
+                valid &= np.isfinite(terms[layer][i])
+        count = int(np.count_nonzero(valid))
+        # Use mean coherence only to break coverage ties.
+        quality = float(np.mean(coh[i][valid])) if count else -1.0
+        score = (count, quality)
+        if key not in winners or score > scores[key]:
+            winners[key], scores[key] = i, score
+    keep = sorted(winners.values(), key=lambda i: (reference_times[i], secondary_times[i]))
+    return keep
 
 
 def process():
@@ -273,6 +371,21 @@ def process():
         secondary_times = list(map(str,f["secondary_times"]))
         ids = list(map(str,f["granule_ids"]))
         source_meta = json.loads(str(f["metadata_json"].item()))
+    original_pair_count = len(reference_times)
+    keep = select_unique_pairs(phase, coh, comps, terms, reference_times,
+                               secondary_times, ids, mask)
+    if len(keep) != original_pair_count:
+        print(f"Using {len(keep)} unique interferogram intervals; "
+              f"skipping {original_pair_count - len(keep)} duplicate cached pair(s)")
+        phase = phase[keep]
+        coh = coh[keep]
+        comps = comps[keep]
+        terms = {name: arr[keep] for name, arr in terms.items()}
+        reference_times = [reference_times[i] for i in keep]
+        secondary_times = [secondary_times[i] for i in keep]
+        ids = [ids[i] for i in keep]
+        if len(source_meta.get("scenes", [])) == original_pair_count:
+            source_meta["scenes"] = [source_meta["scenes"][i] for i in keep]
     if phase.ndim != 3 or phase.shape != coh.shape or comps.shape != phase.shape:
         raise ValueError("Expected aligned pair arrays of shape (pairs,rows,cols)")
     p,h,w = phase.shape
@@ -364,7 +477,24 @@ def process():
               f"N={stats['north_slope_mm_per_km']:+.3f} mm/km")
 
     cumulative,quality,dates,edges = invert_network(final_pairs,pair_coherence,reference_times,secondary_times)
-    # Keep scientific before/after comparison, but write only the final stack.
+    # Preserve untouched Stage 2 inversion: filtering happens AFTER the physical
+    # corrections, reference, ramp removal and network inversion.
+    original_cumulative = cumulative
+    cumulative,temporal_replaced,temporal_report = temporal_spike_filter(
+        original_cumulative, dates,
+        enabled=APPLY_TEMPORAL_SPIKE_FILTER,
+        spike_threshold_mm=TEMPORAL_SPIKE_THRESHOLD_MM,
+        neighbor_agreement_mm=TEMPORAL_NEIGHBOR_AGREEMENT_MM,
+        only_dates=TEMPORAL_FILTER_ONLY_DATES,
+    )
+    nchanged = int(temporal_replaced.sum())
+    print(f"Temporal spike filter: {'enabled' if APPLY_TEMPORAL_SPIKE_FILTER else 'disabled'}; "
+          f"replaced {nchanged} date-pixels")
+    for row in temporal_report:
+        if row['candidate_pixels']:
+            print(f"  {row['date']}: {row['replaced_pixels']}/{row['eligible_pixels']} replaced "
+                  f"({row['replaced_pct_of_eligible']:.2f}%)")
+    # Keep scientific before/after comparison; diagnostic quicklook is spatial.
     if MAKE_DIAGNOSTIC_FIGURE:
         raw_cum,_,_,_=invert_network(raw_pairs,pair_coherence,reference_times,secondary_times)
         atmo_cum,_,_,_=invert_network(atmo_pairs,pair_coherence,reference_times,secondary_times)
@@ -372,14 +502,25 @@ def process():
     folder=OUTPUT_ROOT/run_name
     folder.mkdir(parents=True,exist_ok=False)
     np.save(folder/"displacement.npy",cumulative)
+    np.save(folder/"displacement_unfiltered.npy",original_cumulative)
+    np.save(folder/"temporal_replaced_mask.npy",temporal_replaced.astype(np.uint8))
     np.save(folder/"coherence.npy",quality)
+    with (folder/"temporal_filter_report.csv").open("w",newline="",encoding="utf-8") as f:
+        writer=csv.DictWriter(f,fieldnames=["date","eligible_pixels","candidate_pixels",
+                                              "replaced_pixels","replaced_pct_of_eligible",
+                                              "median_abs_change_mm"])
+        writer.writeheader()
+        writer.writerows(temporal_report)
     metadata={
         "schema_version":2,"stage":"geophysical_processing_cumulative_stack",
         "created_utc":datetime.now(timezone.utc).isoformat(),
         "source_acquisition_npz":str(INPUT),
         "array_shape":list(cumulative.shape),
         "axis_order":["acquisition_date","row_north_to_south","column_west_to_east"],
-        "files":{"displacement":"displacement.npy","coherence":"coherence.npy"},
+        "files":{"displacement":"displacement.npy","coherence":"coherence.npy",
+                 "displacement_unfiltered":"displacement_unfiltered.npy",
+                 "temporal_replaced_mask":"temporal_replaced_mask.npy",
+                 "temporal_filter_report":"temporal_filter_report.csv"},
         "dates":dates,"pairs":records,
         "grid":{"crs":crs,"transform_affine":list(map(float,affine)),
                 "width":w,"height":h,"pixel_size_m":abs(float(tf.a)),
@@ -391,18 +532,35 @@ def process():
                         "meaning":"Cumulative reference-relative LOS displacement since first acquisition date",
                         "coherence_minimum_for_displacement":COHERENCE_MIN},
         "coherence":{"unit":"dimensionless",
-                     "meaning":"Mean supporting-pair coherence proxy, not a single-pair measurement"},
+                     "meaning":"Mean supporting-pair coherence proxy, not a single-pair measurement; temporal filtering does not change coherence"},
+        "temporal_filter":{
+            "enabled":APPLY_TEMPORAL_SPIKE_FILTER,
+            "method":"3-date median spike candidate with neighbor-consistency gate; replaced using date-weighted linear interpolation",
+            "spike_threshold_mm":TEMPORAL_SPIKE_THRESHOLD_MM,
+            "neighbor_agreement_mm":TEMPORAL_NEIGHBOR_AGREEMENT_MM,
+            "only_dates":list(TEMPORAL_FILTER_ONLY_DATES),
+            "replaced_total_date_pixels":nchanged,
+            "per_date":temporal_report,
+            "changes_are_estimates_not_independent_measurements":True,
+            "endpoint_dates_unchanged":True,
+            "preserves_nan_gaps":True,
+        },
         "acquisition_family":{key:source_meta["scenes"][0].get(key)
                               for key in ("track","frame","direction","mode","release","crid")},
         "inversion":{"method":"Per-pixel coherence-weighted least squares, first date fixed at zero",
                      "edge_indices":[list(pair) for pair in edges],
+                     "source_pair_count":original_pair_count,
+                     "unique_pair_count":p,
+                     "duplicate_cached_pairs_removed":original_pair_count-p,
                      "warning":"Without redundant pairs, an erroneous pair propagates to later dates"},
         "correction_policy":{"ionosphere":APPLY_IONOSPHERE,
                              "wet_troposphere":APPLY_WET_TROPO,
                              "hydrostatic_troposphere":APPLY_DRY_TROPO,
                              "solid_earth_tides":APPLY_SOLID_EARTH_TIDES,
                              "planar_ramp":APPLY_PLANAR_RAMP,
-                             "troposphere_height_model":"Per-pixel DEM ellipsoidal heights from acquisition v2",
+                             "troposphere_height_model":(
+                                 "Per-pixel DEM ellipsoidal heights" if source_meta.get("method", {}).get("elevation_available", False)
+                                 else "No DEM: cached atmospheric layers may use a constant height; see source manifests"),
                              "ramp_fit_coherence_min":RAMP_COHERENCE_MIN,
                              "ramp_exclusions_wsen":[list(b) for b in RAMP_EXCLUDE_BBOXES]},
         "scientific_warnings":[
@@ -411,6 +569,10 @@ def process():
             "A fitted planar ramp may remove genuine long-wavelength deformation",
             "No automatic unwrapping-error repair or formal uncertainty estimate",
             "Provisional products may change on reprocessing",
+            "Fast local GeoTIFF imports may have atmospheric corrections evaluated at a single height, not terrain-following",
+            "Temporal spike filtering may suppress genuine transient ground motion; review unfiltered maps and report before interpreting risks",
+            "The temporal filter cannot repair a bad interferogram edge causing a persistent step, nor validate phase unwrapping",
+            "Filtered displacement values are estimates; coherence is retained as observational support, not as validation of interpolated values",
         ],
     }
     (folder/"metadata.json").write_text(json.dumps(metadata,indent=2,allow_nan=False)+"\n",encoding="utf-8")
@@ -424,6 +586,7 @@ def process():
     if MAKE_DIAGNOSTIC_FIGURE:
         quicklook(raw_cum,atmo_cum,cumulative,x,y,dates,folder/"correction_comparison.png")
     print(f"\nSaved: {folder}\nCumulative stack: {cumulative.shape} (dates × rows × cols)")
+    print("Compare displacement.npy against displacement_unfiltered.npy and temporal_filter_report.csv")
     return folder
 
 
