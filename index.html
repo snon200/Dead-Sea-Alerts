@@ -108,6 +108,9 @@
     .level-pill { flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--zone-color), transparent 58%);
       border-radius: 999px; padding: 3px 6px; background: color-mix(in srgb, var(--zone-color), transparent 88%);
       color: var(--zone-color); font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .exposure-pill { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 2px 7px; font-size: 9px; font-weight: 750; }
+    .exposure-pill[data-tier="critical"] { border: 1px solid #f2b4bc; background: #fff1f3; color: #b42336; }
+    .exposure-pill[data-tier="moderate"] { border: 1px solid #f0d7a7; background: #fff9eb; color: #8c5a08; }
     .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 10px; line-height: 1.5; }
     .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
       color: #66758a; font: 9px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -309,6 +312,10 @@
               <label class="layer-control"><span><i class="swatch" style="background:#dd438b"></i>Power lines & substations<small class="layer-count" id="powerCount">Loading...</small></span><input id="togglePower" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#008cb4"></i>Pipelines & water<small class="layer-count" id="waterCount">Loading...</small></span><input id="toggleWater" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#168a53"></i>Hotels & facilities<small class="layer-count" id="facilityCount">Loading...</small></span><input id="toggleFacilities" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#0284c7"></i>Dams & embankments<small class="layer-count" id="damCount">Loading...</small></span><input id="toggleDams" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#9333ea"></i>Industrial & fuel<small class="layer-count" id="industrialCount">Loading...</small></span><input id="toggleIndustrial" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#dc2626"></i>Emergency & telecom<small class="layer-count" id="emergencyCount">Loading...</small></span><input id="toggleEmergency" type="checkbox" checked></label>
+              <label class="layer-control"><span><i class="swatch" style="background:#be123c"></i>Known sinkholes & hazards<small class="layer-count" id="hazardCount">Loading...</small></span><input id="toggleHazards" type="checkbox" checked></label>
             </div>
           </section>
         </div>
@@ -361,14 +368,24 @@
       { key: 'bridges', label: 'Bridges', fallback: 'Bridge', color: '#e87834', count: 'bridgeCount', toggle: 'toggleBridges',
         matches: element => element.type === 'way' && !!element.tags.bridge && element.tags.bridge !== 'no' },
       { key: 'power', label: 'Power lines & substations', fallback: 'Power infrastructure', color: '#dd438b', count: 'powerCount', toggle: 'togglePower',
-        matches: element => ['line', 'minor_line', 'substation'].includes(element.tags.power) },
+        matches: element => ['line', 'minor_line', 'substation', 'plant', 'generator'].includes(element.tags.power) },
       { key: 'water', label: 'Pipelines & water', fallback: 'Water infrastructure', color: '#008cb4', count: 'waterCount', toggle: 'toggleWater',
         matches: element => ['pipeline', 'water_well', 'water_works', 'water_tower', 'wastewater_plant'].includes(element.tags.man_made) ||
           element.tags.water === 'reservoir' || element.tags.landuse === 'reservoir' },
       { key: 'facilities', label: 'Hotels & facilities', fallback: 'Facility', color: '#168a53', count: 'facilityCount', toggle: 'toggleFacilities',
         matches: element => ['hotel', 'guest_house'].includes(element.tags.tourism) ||
           ['school', 'kindergarten', 'hospital', 'clinic'].includes(element.tags.amenity) ||
-          ['hotel', 'school', 'hospital'].includes(element.tags.building) }
+          ['hotel', 'school', 'hospital'].includes(element.tags.building) },
+      { key: 'dams', label: 'Dams & embankments', fallback: 'Dam / dike', color: '#0284c7', count: 'damCount', toggle: 'toggleDams',
+        matches: element => element.tags.waterway === 'dam' || ['dyke', 'embankment'].includes(element.tags.man_made) },
+      { key: 'industrial', label: 'Industrial & fuel', fallback: 'Industrial / fuel', color: '#9333ea', count: 'industrialCount', toggle: 'toggleIndustrial',
+        matches: element => ['industrial', 'salt_pond', 'quarry'].includes(element.tags.landuse) ||
+          ['works', 'storage_tank'].includes(element.tags.man_made) || element.tags.amenity === 'fuel' },
+      { key: 'emergency', label: 'Emergency & telecom', fallback: 'Emergency / telecom', color: '#dc2626', count: 'emergencyCount', toggle: 'toggleEmergency',
+        matches: element => ['fire_station', 'police'].includes(element.tags.amenity) ||
+          element.tags.aeroway === 'helipad' || ['mast', 'tower'].includes(element.tags.man_made) },
+      { key: 'hazards', label: 'Known sinkholes & hazards', fallback: 'Sinkhole / hazard', color: '#be123c', count: 'hazardCount', toggle: 'toggleHazards',
+        matches: element => element.tags.natural === 'sinkhole' || !!element.tags.hazard }
     ];
 
     const LAYER_MATCHES = {
@@ -382,7 +399,7 @@
     const state = {
       selectedId: null,
       demo: false,
-      show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true },
+      show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true, dams: true, industrial: true, emergency: true, hazards: true },
       sidebar: { left: true, right: true },
       osm: { loading: false, results: Object.create(null), errors: Object.create(null), elements: [], generation: 0, controller: null }
     };
@@ -557,6 +574,29 @@
         (state.osm.results[zone.id] || []).some(element => selectedLayers.some(key => LAYER_MATCHES[key](element))));
     }
 
+    function zoneExposure(zone) {
+      const features = state.osm.results[zone.id];
+      if (!features || !features.length) return { tier: 0, label: '', detail: '' };
+      const criticalHits = [];
+      if (features.some(LAYER_MATCHES.hazards)) criticalHits.push('Known sinkhole/hazard');
+      if (features.some(LAYER_MATCHES.dams)) criticalHits.push('Dam/embankment');
+      if (features.some(LAYER_MATCHES.pumps)) criticalHits.push('Pumping station');
+      if (features.some(LAYER_MATCHES.bridges)) criticalHits.push('Bridge');
+      if (features.some(LAYER_MATCHES.emergency)) criticalHits.push('Emergency/telecom');
+      if (features.some(LAYER_MATCHES.industrial)) criticalHits.push('Industrial/fuel');
+      if (features.some(LAYER_MATCHES.facilities)) criticalHits.push('Hotel/public facility');
+      if (features.some(el => LAYER_MATCHES.roads(el) && ['motorway', 'trunk', 'primary'].includes(el.tags.highway))) {
+        criticalHits.push('Major highway');
+      }
+      if (criticalHits.length) {
+        return { tier: 2, label: `Critical infra · ${criticalHits[0]}`, detail: criticalHits.join(', ') };
+      }
+      if (features.some(el => LAYER_MATCHES.power(el) || LAYER_MATCHES.water(el) || LAYER_MATCHES.roads(el) || LAYER_MATCHES.buildings(el))) {
+        return { tier: 1, label: 'Local infra', detail: `${features.length} mapped feature(s)` };
+      }
+      return { tier: 0, label: '', detail: '' };
+    }
+
     function renderZoneList() {
       const selectedLayers = Object.keys(state.show).filter(key => state.show[key]);
       const allSelected = selectedLayers.length === Object.keys(state.show).length;
@@ -570,18 +610,26 @@
       document.getElementById('zoneCount').textContent = allSelected
         ? `${zones.length} zones` : `${zones.length} / ${RISK_ZONES.length} zones`;
       document.getElementById('zoneList').innerHTML = [...zones]
-        .sort((a, b) => RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level])
-        .map(zone => `
+        .sort((a, b) =>
+          (RISK_LEVEL_ORDER[a.level] - RISK_LEVEL_ORDER[b.level]) ||
+          (zoneExposure(b).tier - zoneExposure(a).tier) ||
+          (Math.abs(b.losRate || 0) - Math.abs(a.losRate || 0))
+        )
+        .map(zone => {
+          const exp = zoneExposure(zone);
+          return `
         <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
           style="--zone-color:${COLORS[zone.level]}" data-zone-id="${escapeHtml(zone.id)}" aria-pressed="${zone.id === state.selectedId}">
           <span class="zone-card-top">
             <span class="zone-title">${escapeHtml(zone.name)}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
+          ${exp.tier ? `<span class="exposure-pill" data-tier="${exp.tier === 2 ? 'critical' : 'moderate'}" title="${escapeHtml(exp.detail)}">${escapeHtml(exp.label)}</span>` : ''}
           <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${formatMeasurement(zoneAreaKm2(zone), 'km²')}</span></span>
           <span class="zone-coords">${coordRange(zone)}</span>
         </button>
-      `).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
+      `;
+        }).join('') || `<p class="empty-state">${!RISK_ZONES.length ? 'No zones to display.' : selectedLayers.length ? 'No loaded zones match the selected layers.' : 'Select a map layer to see matching zones.'}</p>`;
       document.querySelectorAll('[data-zone-id]').forEach(button => {
         button.addEventListener('click', () => selectZone(button.dataset.zoneId, true));
       });
@@ -1054,8 +1102,8 @@
       renderCachedOsmData();
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
+      renderZoneList();
       if (!Object.values(state.show).every(Boolean)) {
-        renderZoneList();
         drawRiskZones();
         updateRiskLabelMarkers();
       }

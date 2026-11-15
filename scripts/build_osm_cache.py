@@ -151,7 +151,7 @@ def _matches_supported_layer(element: dict) -> bool:
         return True
     if element["type"] == "way" and tags.get("bridge") and tags.get("bridge") != "no":
         return True
-    if tags.get("power") in ("line", "minor_line", "substation"):
+    if tags.get("power") in ("line", "minor_line", "substation", "plant", "generator"):
         return True
     if (
         tags.get("man_made") in ("pipeline", "water_well", "water_works", "water_tower", "wastewater_plant")
@@ -164,6 +164,23 @@ def _matches_supported_layer(element: dict) -> bool:
         or tags.get("amenity") in ("school", "kindergarten", "hospital", "clinic")
         or tags.get("building") in ("hotel", "school", "hospital")
     ):
+        return True
+    # Critical & sensitive infrastructure layers
+    if tags.get("waterway") == "dam" or tags.get("man_made") in ("dyke", "embankment"):
+        return True
+    if (
+        tags.get("landuse") in ("industrial", "salt_pond", "quarry")
+        or tags.get("man_made") in ("works", "storage_tank")
+        or tags.get("amenity") == "fuel"
+    ):
+        return True
+    if (
+        tags.get("amenity") in ("fire_station", "police")
+        or tags.get("aeroway") == "helipad"
+        or tags.get("man_made") in ("mast", "tower")
+    ):
+        return True
+    if tags.get("natural") == "sinkhole" or bool(tags.get("hazard")):
         return True
     return False
 
@@ -212,7 +229,7 @@ def fetch_overpass_query(query: str) -> list[dict]:
 
 def fetch_overpass(south: float, west: float, north: float, east: float) -> list[dict]:
     bbox = f"{south:.6f},{west:.6f},{north:.6f},{east:.6f}"
-    query = f"""[out:json][timeout:60];
+    base_query = f"""[out:json][timeout:60];
 (
   way["highway"]({bbox});
   way["building"]({bbox});
@@ -230,7 +247,23 @@ def fetch_overpass(south: float, west: float, north: float, east: float) -> list
   way["amenity"~"^(school|kindergarten|hospital|clinic)$"]({bbox});
 );
 out body geom;"""
-    return fetch_overpass_query(query)
+    critical_query = f"""[out:json][timeout:45];
+(
+  nw["man_made"~"^(dyke|embankment|works|storage_tank|mast|tower)$"]({bbox});
+  nw["waterway"="dam"]({bbox});
+  nw["power"~"^(plant|generator)$"]({bbox});
+  way["landuse"~"^(industrial|salt_pond|quarry)$"]({bbox});
+  nw["amenity"~"^(fire_station|police|fuel)$"]({bbox});
+  nw["aeroway"="helipad"]({bbox});
+  nw["natural"="sinkhole"]({bbox});
+  nw["hazard"]({bbox});
+);
+out body geom;"""
+    merged: dict[tuple[str, int], dict] = {}
+    for q in (base_query, critical_query):
+        for el in fetch_overpass_query(q):
+            merged[(el["type"], el["id"])] = el
+    return list(merged.values())
 
 
 def build_cache(zones_path: Path, out_path: Path) -> dict:
