@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
-const { parseZoneResponse } = require('../zone-api.js');
+const { parseZoneResponse, cachedOsmFeatures } = require('../zone-api.js');
 
 function example() {
   return structuredClone(spec.paths['/api/v1/zones'].get.responses['200'].content['application/json'].example);
@@ -51,4 +51,52 @@ test('rejects invalid measurements and unordered history', () => {
   payload.zones[0].summary.latest_pair_mean_coherence = 0.7;
   payload.zones[0].cumulative_series.reverse();
   assert.throws(() => parseZoneResponse(payload), /displacement point/);
+});
+
+test('only uses complete cache entries for the exact current geometry', () => {
+  const [zone] = parseZoneResponse(example());
+  const element = { type: 'node', id: 1, lat: 31.45, lon: 35.38, tags: {} };
+  const cache = {
+    schema_version: '2.0',
+    elements: { 'node/1': element },
+    zones: { [zone.id]: { geometry: structuredClone(zone.geometry), elements: ['node/1'] } }
+  };
+  assert.deepEqual(cachedOsmFeatures(cache, zone), [element]);
+  assert.deepEqual(cachedOsmFeatures(cache, { ...zone, name: 'Updated name' }), [element]);
+  const changed = structuredClone(zone);
+  changed.geometry.coordinates[0][0][0] += 0.001;
+  assert.throws(() => cachedOsmFeatures(cache, changed), /Outdated/);
+  assert.throws(() => cachedOsmFeatures(cache, { ...zone, id: 'new-zone' }), /Missing/);
+  cache.zones.removed = structuredClone(cache.zones[zone.id]);
+  assert.deepEqual(cachedOsmFeatures(cache, zone), [element]);
+  delete cache.elements['node/1'];
+  assert.throws(() => cachedOsmFeatures(cache, zone), /Missing infrastructure element/);
+  cache.elements['node/1'] = { ...element, lat: null };
+  assert.throws(() => cachedOsmFeatures(cache, zone), /Invalid infrastructure element/);
+  cache.zones[zone.id].elements = [];
+  assert.deepEqual(cachedOsmFeatures(cache, zone), []);
+  cache.schema_version = '1.0';
+  assert.throws(() => cachedOsmFeatures(cache, zone), /Unsupported/);
+});
+
+test('invalidates changes inside multipolygons and holes', () => {
+  const payload = example();
+  const outer = payload.zones[0].geometry.coordinates[0];
+  const hole = [[35.381, 31.451], [35.382, 31.451], [35.382, 31.452], [35.381, 31.451]];
+  payload.zones[0].geometry = { type: 'MultiPolygon', coordinates: [[outer, hole], [outer]] };
+  const [zone] = parseZoneResponse(payload);
+  const cache = {
+    schema_version: '2.0', elements: {},
+    zones: { [zone.id]: { geometry: structuredClone(zone.geometry), elements: [] } }
+  };
+  assert.deepEqual(cachedOsmFeatures(cache, zone), []);
+  cache.zones[zone.id].geometry.coordinates[0][1][0][0] += 0.001;
+  assert.throws(() => cachedOsmFeatures(cache, zone), /Outdated/);
+});
+
+test('the checked-in infrastructure cache covers the current zone export', () => {
+  const zones = parseZoneResponse(require('../data/api/zones.json'));
+  const cache = require('../data/api/osm-cache.json');
+  assert.ok(zones.length > 0);
+  for (const zone of zones) assert.ok(Array.isArray(cachedOsmFeatures(cache, zone)));
 });

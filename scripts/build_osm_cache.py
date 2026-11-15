@@ -26,6 +26,8 @@ OVERPASS_ENDPOINTS = [
 def _zone_polygons(zone: dict) -> list[list[list[tuple[float, float]]]]:
     """Return zone polygons as [(lat, lon), ...] rings, matching index.html."""
     geom = zone["geometry"]
+    if geom["type"] not in ("Polygon", "MultiPolygon"):
+        raise ValueError(f"Unsupported geometry for zone {zone['id']}")
     raw_polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
     return [
         [[(pt[1], pt[0]) for pt in ring] for ring in rings]
@@ -166,6 +168,12 @@ def _matches_supported_layer(element: dict) -> bool:
     return False
 
 
+def _overpass_elements(payload: dict) -> list[dict]:
+    if not isinstance(payload, dict) or payload.get("remark") or not isinstance(payload.get("elements"), list):
+        raise ValueError("Incomplete or invalid Overpass response")
+    return payload["elements"]
+
+
 def fetch_overpass(south: float, west: float, north: float, east: float) -> list[dict]:
     bbox = f"{south:.6f},{west:.6f},{north:.6f},{east:.6f}"
     query = f"""[out:json][timeout:60];
@@ -197,7 +205,7 @@ out body geom;"""
         try:
             with urllib.request.urlopen(req, timeout=75) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
-                return payload.get("elements", [])
+                return _overpass_elements(payload)
         except Exception as exc:
             print(f"Overpass urllib {endpoint} failed: {exc}", file=sys.stderr)
             last_err = exc
@@ -214,7 +222,7 @@ out body geom;"""
                 check=True,
             )
             payload = json.loads(proc.stdout)
-            return payload.get("elements", [])
+            return _overpass_elements(payload)
         except Exception as exc:
             print(f"Overpass curl {endpoint} failed: {exc}", file=sys.stderr)
             last_err = exc
@@ -226,7 +234,7 @@ def build_cache(zones_path: Path, out_path: Path) -> dict:
     zones = zones_payload["zones"]
     if not zones:
         cache = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "source": "OpenStreetMap (Overpass API precomputed cache)",
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "elements": {},
@@ -237,15 +245,19 @@ def build_cache(zones_path: Path, out_path: Path) -> dict:
         return cache
 
     parsed_zones = []
+    seen_ids = set()
     min_lat, min_lon, max_lat, max_lon = 90.0, 180.0, -90.0, -180.0
     for zone in zones:
+        if not isinstance(zone.get("id"), str) or not zone["id"].strip() or zone["id"] in seen_ids:
+            raise ValueError("Invalid or duplicate zone identifier")
+        seen_ids.add(zone["id"])
         polys = _zone_polygons(zone)
         zb = _zone_bbox(polys)
         min_lat = min(min_lat, zb[0])
         min_lon = min(min_lon, zb[1])
         max_lat = max(max_lat, zb[2])
         max_lon = max(max_lon, zb[3])
-        parsed_zones.append((zone["id"], polys, zb))
+        parsed_zones.append((zone["id"], zone["geometry"], polys, zb))
 
     pad = 0.002
     print(
@@ -280,18 +292,18 @@ def build_cache(zones_path: Path, out_path: Path) -> dict:
     print(f"Filtered to {len(filtered_elements)} layer-matching elements")
 
     used_elements: dict[str, dict] = {}
-    zone_map: dict[str, list[str]] = {}
-    for zone_id, polys, zb in parsed_zones:
+    zone_map: dict[str, dict] = {}
+    for zone_id, geometry, polys, zb in parsed_zones:
         keys = []
         for el in filtered_elements:
             if _feature_intersects_zone(el, polys, zb):
                 key = f"{el['type']}/{el['id']}"
                 used_elements[key] = el
                 keys.append(key)
-        zone_map[zone_id] = keys
+        zone_map[zone_id] = {"geometry": geometry, "elements": keys}
 
     cache = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "source": "OpenStreetMap (Overpass API precomputed cache)",
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "elements": used_elements,

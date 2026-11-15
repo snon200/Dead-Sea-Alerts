@@ -65,7 +65,7 @@ function parseZoneResponse(payload) {
     return {
       id: zone.id, name: `Zone ${zone.id}`, level,
       label: level === 'unknown' ? 'Unavailable' : level[0].toUpperCase() + level.slice(1),
-      polygons,
+      polygons, geometry,
       losRate: summary.los_velocity_mm_per_year, cumulative: summary.cumulative_shift_mm,
       acceleration: summary.acceleration_mm_per_year2, coherence: summary.latest_pair_mean_coherence,
       pairStart: summary.latest_pair_reference_time, pairEnd: summary.latest_pair_secondary_time,
@@ -74,4 +74,33 @@ function parseZoneResponse(payload) {
   });
 }
 
-if (typeof module !== 'undefined') module.exports = { parseZoneResponse };
+function cachedOsmFeatures(cache, zone) {
+  if (!cache || cache.schema_version !== '2.0' || !cache.elements || typeof cache.elements !== 'object' ||
+      Array.isArray(cache.elements) || !cache.zones || typeof cache.zones !== 'object' || Array.isArray(cache.zones)) {
+    throw new Error('Unsupported or invalid infrastructure cache');
+  }
+  if (!Object.hasOwn(cache.zones, zone.id)) throw new Error(`Missing infrastructure cache for zone ${zone.id}`);
+  const entry = cache.zones[zone.id];
+  if (!entry || !entry.geometry || entry.geometry.type !== zone.geometry.type ||
+      JSON.stringify(entry.geometry.coordinates) !== JSON.stringify(zone.geometry.coordinates)) {
+    throw new Error(`Outdated infrastructure cache for zone ${zone.id}`);
+  }
+  if (!Array.isArray(entry.elements)) throw new Error(`Invalid infrastructure cache for zone ${zone.id}`);
+  return entry.elements.map(key => {
+    if (typeof key !== 'string' || !Object.hasOwn(cache.elements, key)) {
+      throw new Error(`Missing infrastructure element for zone ${zone.id}`);
+    }
+    const element = cache.elements[key];
+    if (!element || !element.tags || typeof element.tags !== 'object' || Array.isArray(element.tags) ||
+        key !== `${element.type}/${element.id}` ||
+        (element.type === 'node' && (!Number.isFinite(element.lat) || !Number.isFinite(element.lon))) ||
+        (element.type === 'way' && (!Array.isArray(element.geometry) || element.geometry.length < 2 ||
+          !element.geometry.every(point => point && Number.isFinite(point.lat) && Number.isFinite(point.lon)))) ||
+        !['node', 'way'].includes(element.type)) {
+      throw new Error(`Invalid infrastructure element ${key}`);
+    }
+    return element;
+  });
+}
+
+if (typeof module !== 'undefined') module.exports = { parseZoneResponse, cachedOsmFeatures };

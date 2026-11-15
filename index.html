@@ -1034,24 +1034,30 @@
 
     async function loadOsmCache(generation) {
       try {
-        const response = await fetch('/data/api/osm-cache.json');
-        if (!response.ok) return 0;
+        const response = await fetch('/data/api/osm-cache.json', { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`Infrastructure cache returned HTTP ${response.status}`);
         const cache = await response.json();
         if (generation !== state.osm.generation) return 0;
-        if (!cache || !cache.elements || !cache.zones) return 0;
         let hits = 0;
         RISK_ZONES.forEach(zone => {
           if (state.osm.results[zone.id]) return;
-          const keys = cache.zones[zone.id];
-          if (Array.isArray(keys)) {
-            state.osm.results[zone.id] = keys.map(key => cache.elements[key]).filter(Boolean);
+          try {
+            state.osm.results[zone.id] = cachedOsmFeatures(cache, zone);
             hits++;
+          } catch (error) {
+            console.error(`Could not load cached infrastructure for ${zone.name}:`, error);
+            state.osm.errors[zone.id] = error.message;
           }
         });
-        if (hits) refreshOsmDisplay();
+        refreshOsmDisplay();
         return hits;
       } catch (error) {
-        console.warn('Precomputed OSM cache unavailable, falling back to live OSM:', error);
+        if (generation !== state.osm.generation) return 0;
+        console.error('Precomputed OSM cache unavailable:', error);
+        RISK_ZONES.filter(zone => !state.osm.results[zone.id]).forEach(zone => {
+          state.osm.errors[zone.id] = error.message;
+        });
+        refreshOsmDisplay();
         return 0;
       }
     }
@@ -1067,10 +1073,12 @@
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
       renderZoneList();
       try {
-        setOsmStatus('Loading cached infrastructure…', 'loading');
-        await loadOsmCache(generation);
+        if (!state.demo) {
+          setOsmStatus('Loading cached infrastructure…', 'loading');
+          await loadOsmCache(generation);
+        }
         if (generation !== state.osm.generation) return;
-        pending = RISK_ZONES.filter(zone => !state.osm.results[zone.id]);
+        pending = state.demo ? RISK_ZONES.filter(zone => !state.osm.results[zone.id]) : [];
         for (let index = 0; index < pending.length; index++) {
           if (generation !== state.osm.generation) return;
           const zone = pending[index];
@@ -1112,7 +1120,10 @@
       if (generation !== state.osm.generation) return;
       if (Object.keys(state.osm.errors).length) {
         if (!Object.keys(state.osm.results).length) updateLayerCounts([], 'Unavailable');
-        setOsmStatus('Some zones could not load infrastructure. Loaded zones remain available.', 'error', true);
+        setOsmStatus(state.demo
+          ? 'Some zones could not load infrastructure. Loaded zones remain available.'
+          : 'Infrastructure cache is unavailable or outdated for some zones. Contact the project maintainers.',
+          'error', true);
       } else {
         setOsmStatus('Infrastructure loaded for all risk zones.', 'ready');
       }
