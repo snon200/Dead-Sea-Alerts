@@ -1,5 +1,7 @@
 """Vercel HTTP endpoint for calculated zones."""
 
+from __future__ import annotations
+
 import json
 import logging
 from http.server import BaseHTTPRequestHandler

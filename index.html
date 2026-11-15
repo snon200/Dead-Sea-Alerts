@@ -47,17 +47,17 @@
     .brand-mark img { position: absolute; width: 181.5px; max-width: none; left: -15px; top: -24px; }
     .brand-wordmark { flex: 0 1 160px; min-width: 0; aspect-ratio: 1035 / 246; }
     .brand-wordmark img { position: absolute; width: 193.24%; max-width: none; left: -77.78%; top: -176.83%; }
-    .credits { max-width: 210px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: right; }
+    .credits { max-width: 210px; color: var(--muted); font-size: 13px; line-height: 1.4; text-align: right; }
     .credits a { color: #126782; }
     .icon-button, .refresh-button {
       border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 8px 10px;
       cursor: pointer; transition: background .15s, border-color .15s;
     }
     .icon-button:hover, .refresh-button:hover { background: #f4f8fb; border-color: #b7c8d8; }
-    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 17px; }
+    .icon-button { min-width: 36px; min-height: 34px; display: grid; place-items: center; font-size: 19px; }
     .workspace {
-      --left-width: 286px;
-      --right-width: 350px;
+      --left-width: 312px;
+      --right-width: 380px;
       position: relative; flex: 1; min-height: 0; display: grid;
       grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
       transition: grid-template-columns .22s ease;
@@ -85,16 +85,16 @@
     .sidebar-scroll { display: flex; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; padding: 16px; }
     .sidebar-heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; }
     h1, h2, h3, p { margin: 0; }
-    .eyebrow { color: #718096; font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-    .count { color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-    .compact-intro { margin: 7px 0 0; font-size: 10px; }
+    .eyebrow { color: #718096; font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .count { color: var(--muted); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .intro { margin: 9px 0 14px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .compact-intro { margin: 7px 0 0; font-size: 12px; }
     .source-line { margin-top: 8px; }
     .sidebar-scroll > .intro { flex: none; }
     .zone-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0;
       overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 2px 2px; }
-    .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 10px; line-height: 1.4; }
-    .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 10px; line-height: 1.5; }
+    .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 12px; line-height: 1.4; }
+    .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 12px; line-height: 1.5; }
     .zone-source-status[data-state="error"] { color: #a53443; }
     .zone-source-status[data-state="demo"] { color: #876622; }
     .loading-indicator { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
@@ -111,31 +111,31 @@
     .zone-card:hover { border-color: #b9c9d9; background: #f8fbfe; }
     .zone-card.selected { border-color: color-mix(in srgb, var(--zone-color), #fff 42%); box-shadow: inset 3px 0 var(--zone-color); background: color-mix(in srgb, var(--zone-color), #fff 95%); }
     .zone-card-top, .zone-card-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    .zone-title { color: #1c2a3d; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .zone-title { color: #1c2a3d; font-size: 14px; font-weight: 700; line-height: 1.4; }
     .level-pill { flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--zone-color), transparent 58%);
       border-radius: 999px; padding: 3px 6px; background: color-mix(in srgb, var(--zone-color), transparent 88%);
-      color: var(--zone-color); font-size: 9px; font-weight: 800; white-space: nowrap; }
-    .exposure-pill { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 2px 7px; font-size: 9px; font-weight: 750; }
+      color: var(--zone-color); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .exposure-pill { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 2px 7px; font-size: 12px; font-weight: 750; }
     .exposure-pill[data-tier="critical"] { border: 1px solid #f2b4bc; background: #fff1f3; color: #b42336; }
     .exposure-pill[data-tier="moderate"] { border: 1px solid #f0d7a7; background: #fff9eb; color: #8c5a08; }
-    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 10px; line-height: 1.5; }
+    .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 12px; line-height: 1.5; }
     .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
-      color: #66758a; font: 9px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      color: #66758a; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
     .layer-section { flex: none; margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border); }
     .layer-actions { display: flex; gap: 4px; }
     .layer-action { border: 1px solid var(--border); border-radius: 6px; background: #fff;
-      padding: 4px 5px; color: #126782; cursor: pointer; font-size: 9px; white-space: nowrap; }
+      padding: 4px 5px; color: #126782; cursor: pointer; font-size: 12px; white-space: nowrap; }
     .layer-action:hover { background: #f4f8fb; }
     .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
       max-height: min(45vh, 300px); overflow-y: auto; margin-top: 10px; }
     .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 3px;
-      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 5px; color: #43536a; font-size: 10px; }
+      border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 5px; color: #43536a; font-size: 12px; }
     .layer-control input { flex-shrink: 0; margin: 0; accent-color: var(--accent); }
-    .layer-count { display: block; margin: 2px 0 0; color: #75849a; font-size: 9px; }
+    .layer-count { display: block; margin: 2px 0 0; color: #75849a; font-size: 12px; }
     .layer-control .swatch { width: 7px; height: 7px; margin-right: 4px; }
     .swatch { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
     .panel-note { margin-top: 16px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0;
-      padding: 10px; color: #78653b; font-size: 10px; line-height: 1.55; }
+      padding: 10px; color: #78653b; font-size: 12px; line-height: 1.55; }
     .panel-note strong { color: #77530d; }
 
     .map-column { grid-column: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; background: #17212b; }
@@ -147,25 +147,25 @@
       border: 1px solid #dfe6ee; border-radius: 9px; background: rgb(255 255 255 / 94%);
       box-shadow: 0 3px 14px rgb(0 0 0 / 23%); padding: 8px 10px; backdrop-filter: blur(8px);
     }
-    .map-chip { color: #24344a; font-size: 11px; font-weight: 700; }
-    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 9px; font-weight: 500; }
-    .map-status { max-width: min(250px, calc(100% - 40px)); color: #53637a; font-size: 10px; line-height: 1.45; pointer-events: auto; }
+    .map-chip { color: #24344a; font-size: 13px; font-weight: 700; }
+    .map-chip small { display: block; margin-top: 3px; color: #75849a; font-size: 12px; font-weight: 500; }
+    .map-status { max-width: min(250px, calc(100% - 40px)); color: #53637a; font-size: 12px; line-height: 1.45; pointer-events: auto; }
     .map-status[data-state="error"] { border-color: #efc7cc; color: #a53443; }
     .map-status[data-state="loading"] { color: #876622; }
     .retry-osm { margin-top: 6px; border: 0; border-radius: 5px; background: #f5e5e7;
-      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 10px; }
+      color: #8d2935; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     #map { flex: 1; min-height: 0; width: 100%; z-index: 1; }
     .map-legend {
       position: absolute; z-index: 500; bottom: 34px; left: 12px; display: grid; gap: 6px;
       max-width: 220px; border: 1px solid #dfe6ee; border-radius: 10px; background: rgb(255 255 255 / 94%);
       padding: 9px 11px; box-shadow: 0 3px 14px rgb(25 42 61 / 12%); pointer-events: none;
     }
-    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 10px; font-weight: 750; }
-    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 9px; }
+    .legend-title { margin-bottom: 2px; color: #34445a; font-size: 12px; font-weight: 750; }
+    .legend-row { display: flex; align-items: center; gap: 7px; color: #66758a; font-size: 12px; }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--legend-color); }
     .source-link { color: #88d9ee; text-decoration: none; }
     .source-link:hover { text-decoration: underline; }
-    .leaflet-container { background: #d7e1e8; font: 11px Inter, ui-sans-serif, sans-serif; }
+    .leaflet-container { background: #d7e1e8; font: 13px Inter, ui-sans-serif, sans-serif; }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; color: #1c2a3d; }
     .leaflet-popup-content-wrapper { border: 1px solid #d7e0e9; }
     .leaflet-tooltip { border: 1px solid #d7e0e9; background: #fff; color: #1c2a3d; }
@@ -175,61 +175,61 @@
     .risk-map-label-text { position: absolute; top: 0; left: 8px; transform: translateY(-50%);
       border: 1px solid #d7e0e9; border-left: 3px solid var(--zone-color); border-radius: 5px;
       background: #fff; color: #1c2a3d; padding: 2px 5px; box-shadow: 0 1px 4px #0004;
-      font-size: 10px; font-weight: 700; line-height: 11px; white-space: nowrap; }
+      font-size: 12px; font-weight: 700; line-height: 11px; white-space: nowrap; }
     .risk-map-label-left .risk-map-label-text { right: 12px; left: auto; }
     .risk-map-label:focus-visible .risk-map-label-text { outline: 2px solid var(--accent); outline-offset: 2px; }
     .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #a9ddff;
-      border-radius: 50%; background: #12324b; color: white; font-size: 13px; box-shadow: 0 1px 5px #0008; }
+      border-radius: 50%; background: #12324b; color: white; font-size: 15px; box-shadow: 0 1px 5px #0008; }
     .poi-label { color: white; font-weight: 700; }
 
     .detail-header { padding: 16px; border-bottom: 1px solid var(--border); }
     .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .detail-risk { display: flex; align-items: center; }
-    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 17px; line-height: 1.28; }
+    .detail-title { margin-top: 6px; color: #1b2a3d; font-size: 19px; line-height: 1.28; }
     .detail-scroll { overflow: auto; min-height: 0; padding: 14px 16px 18px; }
-    .detail-description { color: #66758a; font-size: 11px; line-height: 1.6; }
+    .detail-description { color: #66758a; font-size: 13px; line-height: 1.6; }
     .detail-disclaimer { margin-top: 6px; }
-    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 10px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+    .section-title { margin: 17px 0 8px; color: #4a5a70; font-size: 12px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
     .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
     .metric { min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 10px; }
-    .metric-label { color: #718096; font-size: 9px; }
-    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .metric-unit { margin-left: 3px; color: #718096; font-size: 9px; font-weight: 500; }
+    .metric-label { color: #718096; font-size: 12px; }
+    .metric-value { margin-top: 6px; color: #1c2a3d; font: 700 17px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric-unit { margin-left: 3px; color: #718096; font-size: 12px; font-weight: 500; }
     .metric-help { display: inline-flex; margin-left: 4px; vertical-align: middle; }
     .metric-help-button { display: inline-grid; place-items: center; width: 15px; height: 15px; padding: 0;
       border: 1px solid #aebdcb; border-radius: 50%; background: #fff; color: #536b80;
-      font: 700 10px/1 ui-sans-serif, sans-serif; cursor: help; }
+      font: 700 12px/1 ui-sans-serif, sans-serif; cursor: help; }
     .metric-help-tooltip { position: fixed; z-index: 1000; visibility: hidden; width: min(230px, calc(100vw - 16px));
       border: 1px solid #d7e0e9; border-radius: 7px; background: #fff; padding: 8px 10px;
-      box-shadow: 0 3px 14px #0003; color: #34445a; font: 400 11px/1.45 ui-sans-serif, sans-serif;
+      box-shadow: 0 3px 14px #0003; color: #34445a; font: 400 13px/1.45 ui-sans-serif, sans-serif;
       letter-spacing: normal; text-transform: none; pointer-events: none; }
     .metric-help-tooltip.visible { visibility: visible; }
     .measurement-summary { display: block; margin-top: 5px; color: #66758a;
-      font: 400 11px/1.5 ui-sans-serif, sans-serif; letter-spacing: normal; text-transform: none; }
+      font: 400 13px/1.5 ui-sans-serif, sans-serif; letter-spacing: normal; text-transform: none; }
     .measurement-details summary { cursor: pointer; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .data-table th, .data-table td { border-bottom: 1px solid #edf1f5; padding: 8px 3px; text-align: left; vertical-align: top; }
     .data-table th { width: 48%; color: #718096; font-weight: 500; }
-    .data-table td { color: #34445a; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .data-table td { color: #34445a; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
     .chart-wrap { height: 96px; margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; background: #fff; padding: 7px; }
     .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
     .detail-callout { margin-top: 12px; border: 1px solid #f0dfb8; border-radius: 9px; background: #fffaf0; padding: 10px;
-      color: #78653b; font-size: 10px; line-height: 1.6; }
+      color: #78653b; font-size: 12px; line-height: 1.6; }
     .detail-callout strong { color: #77530d; }
     .method-card { border: 1px solid var(--border); border-radius: 9px; background: #f7f9fc; padding: 10px;
-      color: #66758a; font-size: 10px; line-height: 1.6; }
+      color: #66758a; font-size: 12px; line-height: 1.6; }
     .method-details { margin-top: 16px; }
-    .method-details summary { color: #53637a; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .method-details summary { color: #53637a; cursor: pointer; font-size: 12px; font-weight: 700; }
     .method-details .method-card { margin-top: 9px; }
     .infrastructure-section { margin-top: 16px; padding: 10px; border: 1px solid var(--border); border-radius: 9px; }
     .infrastructure-section .section-title { margin-top: 0; }
     .infrastructure-section.highlighted { border-color: #47a4bd; background: #edf8fb; }
     .feature-list { margin: 8px 0 0; padding: 0; list-style: none; }
     .feature-link { display: block; width: 100%; border: 0; background: transparent; padding: 5px 0;
-      text-align: left; color: #126782; cursor: pointer; font-size: 10px; }
+      text-align: left; color: #126782; cursor: pointer; font-size: 12px; }
     .feature-link:hover, .feature-link:focus-visible { text-decoration: underline; }
     .feature-coordinates { display: block; margin-top: 2px; color: #53637a; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .empty-state { padding: 16px 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .empty-state { padding: 16px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
     @media (max-width: 1100px) {
       .workspace { --left-width: 250px; --right-width: 310px; }
@@ -244,7 +244,7 @@
       .sidebar-toggle.left { left: max(0px, calc(var(--left-width) - 32px)); }
       .sidebar-toggle.right { right: max(0px, calc(var(--right-width) - 32px)); }
       .topbar { min-height: 58px; padding: 8px 10px; }
-      .credits { max-width: 150px; font-size: 10px; }
+      .credits { max-width: 150px; font-size: 12px; }
       .map-toolbar { top: 10px; left: 10px; right: 10px; }
       .map-status { max-width: 165px; }
     }
@@ -258,7 +258,7 @@
       .sidebar-scroll { padding: 8px; }
       .sidebar-scroll > .intro { display: none; }
       .layer-section { margin-top: 8px; padding-top: 8px; }
-      .layer-section .compact-intro { font-size: 9px; line-height: 1.3; }
+      .layer-section .compact-intro { font-size: 12px; line-height: 1.3; }
       .layer-list { gap: 3px; margin-top: 5px; }
       .layer-control { padding: 4px; }
     }
@@ -273,9 +273,162 @@
       .sidebar-scroll { overflow-y: auto; }
       .zone-list { flex: 0 0 44px; }
     }
+
+    /* Accessibility & SDG controls */
+    .skip-link {
+      position: absolute; left: -9999px; top: 8px; z-index: 2000;
+      background: #0b1220; color: #fff; padding: 8px 12px; border-radius: 7px; font-size: 14px; font-weight: 700; text-decoration: none;
+    }
+    .skip-link:focus { left: 10px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .topbar-actions { display: flex; align-items: center; gap: 6px; position: relative; }
+    .topbar-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; color: #1c2a3d;
+      padding: 6px 10px; font-size: 13px; font-weight: 650; cursor: pointer;
+    }
+    .topbar-btn:hover { background: #f4f8fb; border-color: #9bb8cc; }
+    .topbar-btn[aria-expanded="true"] { background: #eaf5f9; border-color: var(--accent); color: #0e5a73; }
+    .a11y-popover {
+      position: absolute; top: calc(100% + 8px); right: 0; z-index: 1100; width: 255px;
+      border: 1px solid #cfdbe6; border-radius: 11px; background: #fff; padding: 12px;
+      box-shadow: 0 10px 28px rgb(15 28 46 / 18%);
+    }
+    .a11y-popover[hidden] { display: none; }
+    .a11y-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #4a5a70; margin-bottom: 8px; }
+    .a11y-option {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 4px; border-radius: 6px; font-size: 14px; color: #1c2a3d; cursor: pointer;
+    }
+    .a11y-option:hover { background: #f4f8fb; }
+    .a11y-option input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+    .a11y-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #edf1f5; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .sdg-dialog {
+      max-width: 520px; width: calc(100vw - 32px); border: 1px solid #cfdbe6; border-radius: 14px;
+      padding: 0; box-shadow: 0 20px 50px rgb(15 28 46 / 28%); color: var(--text);
+    }
+    .sdg-dialog::backdrop { background: rgb(11 18 32 / 55%); backdrop-filter: blur(2px); }
+    .sdg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .sdg-head h2 { font-size: 17px; margin: 0; color: #172338; }
+    .sdg-body { padding: 14px 18px 18px; font-size: 14px; line-height: 1.55; color: #34445a; display: grid; gap: 10px; }
+    .sdg-card { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; background: #f8fafd; }
+    .sdg-card strong { display: block; color: #126782; margin-bottom: 3px; font-size: 14px; }
+
+    /* Blue "Universal Access" trigger: icon + visible label, >=44px target, AA contrast (white on #0b5cad = 6.9:1) */
+    .a11y-trigger {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid #0b5cad; border-radius: 8px; background: #0b5cad; color: #fff;
+      padding: 6px 10px; font-size: 13px; font-weight: 650; cursor: pointer; transition: background .15s;
+    }
+    .a11y-trigger:hover { background: #094a8c; border-color: #094a8c; }
+    .a11y-trigger[aria-expanded="true"] { background: #fff; color: #0b5cad; }
+    .a11y-trigger:focus-visible { outline: 3px solid #f9a24b; outline-offset: 2px; }
+    .a11y-trigger svg { width: 16px; height: 16px; flex: none; }
+    .a11y-option small { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .a11y-reset { margin-top: 8px; width: 100%; padding: 6px; border: 1px solid #b7c8d8; border-radius: 7px; background: #f4f8fb; font-size: 13px; font-weight: 650; color: #0b5cad; cursor: pointer; }
+
+    /* Legend / pattern swatches for colorblind & high-contrast */
+    .legend-line { display: inline-block; width: 26px; height: 8px; flex: none; }
+    .legend-line line { stroke-width: 3; }
+    .exposure-pill .sym { margin-right: 3px; font-size: 12px; }
+
+    /* Colorblind mode: shape-coded layer swatches (shape + color, never color alone) */
+    html.a11y-colorblind .swatch, html.a11y-high-contrast .swatch { width: 12px; height: 12px; border-radius: 0; }
+    html.a11y-colorblind .swatch[data-shape="circle"], html.a11y-high-contrast .swatch[data-shape="circle"] { border-radius: 50%; }
+    html.a11y-colorblind .swatch[data-shape="triangle"], html.a11y-high-contrast .swatch[data-shape="triangle"] { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+    html.a11y-colorblind .swatch[data-shape="diamond"], html.a11y-high-contrast .swatch[data-shape="diamond"] { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    html.a11y-colorblind .swatch[data-shape="hex"], html.a11y-high-contrast .swatch[data-shape="hex"] { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+    html.a11y-colorblind .swatch[data-shape="bar"], html.a11y-high-contrast .swatch[data-shape="bar"] { height: 5px; margin-bottom: 1px; }
+    html.a11y-colorblind .swatch[data-shape="cross"], html.a11y-high-contrast .swatch[data-shape="cross"] { clip-path: polygon(35% 0, 65% 0, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0 65%, 0 35%, 35% 35%); }
+    html.a11y-colorblind .swatch[data-shape="star"], html.a11y-high-contrast .swatch[data-shape="star"] { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+    html.a11y-colorblind .exposure-pill[data-tier="critical"] { background: #fff3e0; border-color: #d55e00; color: #7a3300; }
+    html.a11y-colorblind .exposure-pill[data-tier="moderate"] { background: #e6f1fa; border-color: #0072b2; color: #004a73; }
+
+    /* Large text mode */
+    html.a11y-large-text .intro,
+    html.a11y-large-text .detail-description,
+    html.a11y-large-text .method-card,
+    html.a11y-large-text .zone-source-status,
+    html.a11y-large-text .zone-filter-status { font-size: 16.5px; }
+    html.a11y-large-text .zone-title { font-size: 18px; }
+    html.a11y-large-text .zone-card-meta,
+    html.a11y-large-text .zone-coords,
+    html.a11y-large-text .layer-control,
+    html.a11y-large-text .data-table,
+    html.a11y-large-text .legend-row,
+    html.a11y-large-text .feature-link { font-size: 15.5px; }
+    html.a11y-large-text .metric-label,
+    html.a11y-large-text .eyebrow,
+    html.a11y-large-text .section-title,
+    html.a11y-large-text .level-pill,
+    html.a11y-large-text .exposure-pill { font-size: 14.5px; }
+    html.a11y-large-text .metric-value { font-size: 21px; }
+    html.a11y-large-text .detail-title { font-size: 23px; }
+
+    /* High contrast mode */
+    html.a11y-high-contrast {
+      --page: #ffffff;
+      --panel: #ffffff;
+      --panel-raised: #ffffff;
+      --border: #000000;
+      --muted: #000000;
+      --text: #000000;
+      --accent: #003a8c;
+      color-scheme: light;
+    }
+    html.a11y-high-contrast body { font-weight: 600; }
+    html.a11y-high-contrast .sidebar :where(p, span, small, td, th, summary, li, h1, h2, h3, label, div, button, i) { color: #000; }
+    html.a11y-high-contrast .topbar,
+    html.a11y-high-contrast .left-sidebar,
+    html.a11y-high-contrast .right-sidebar,
+    html.a11y-high-contrast .detail-header { border-color: #000; border-width: 2px; }
+    html.a11y-high-contrast a, html.a11y-high-contrast .credits a, html.a11y-high-contrast .source-link { color: #0000ee; text-decoration: underline; font-weight: 700; }
+    html.a11y-high-contrast .zone-card,
+    html.a11y-high-contrast .metric,
+    html.a11y-high-contrast .layer-control,
+    html.a11y-high-contrast .chart-wrap,
+    html.a11y-high-contrast .method-card,
+    html.a11y-high-contrast .infrastructure-section,
+    html.a11y-high-contrast .zone-source-status,
+    html.a11y-high-contrast .map-chip,
+    html.a11y-high-contrast .map-status,
+    html.a11y-high-contrast .map-legend,
+    html.a11y-high-contrast .topbar-btn,
+    html.a11y-high-contrast .layer-action { border: 2px solid #000; background: #fff; box-shadow: none; }
+    html.a11y-high-contrast .zone-card.selected { outline: 4px solid #000; outline-offset: -2px; background: #ffff99; }
+    html.a11y-high-contrast .zone-card:hover { background: #e8e8e8; }
+    html.a11y-high-contrast .level-pill { background: var(--zone-color); color: #fff !important; border: 2px solid #000; font-size: 12px; }
+    html.a11y-high-contrast .exposure-pill[data-tier="critical"] { background: #000; border-color: #000; color: #fff !important; }
+    html.a11y-high-contrast .exposure-pill[data-tier="moderate"] { background: #fff; border: 2px solid #000; color: #000 !important; }
+    html.a11y-high-contrast .a11y-trigger { background: #000; border-color: #000; color: #ffff00; }
+    html.a11y-high-contrast .a11y-trigger[aria-expanded="true"] { background: #ffff00; color: #000; }
+    html.a11y-high-contrast .a11y-popover, html.a11y-high-contrast .sdg-dialog { border: 3px solid #000; box-shadow: none; }
+    html.a11y-high-contrast .sdg-card { border: 2px solid #000; background: #fff; }
+    html.a11y-high-contrast .sdg-card strong { color: #000; }
+    html.a11y-high-contrast .leaflet-tile-pane { filter: grayscale(1) contrast(1.45) brightness(1.08); }
+    html.a11y-high-contrast .leaflet-container { background: #fff; }
+    html.a11y-high-contrast .metric-help-button { border: 2px solid #000; color: #000; }
+    html.a11y-high-contrast button:focus-visible,
+    html.a11y-high-contrast input:focus-visible,
+    html.a11y-high-contrast summary:focus-visible { outline: 4px solid #ff00ff; outline-offset: 2px; }
+    html.a11y-high-contrast input[type="checkbox"] { width: 18px; height: 18px; }
+
+    /* Reduced motion mode */
+    html.a11y-reduce-motion *,
+    html.a11y-reduce-motion *::before,
+    html.a11y-reduce-motion *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#mainWorkspace">Skip to main map &amp; zones</a>
   <div class="app">
     <header class="topbar">
       <div class="brand" role="img" aria-label="Dead Sea Alerts: SAR ground deformation detection">
@@ -286,10 +439,42 @@
           <img src="dead_sea_alerts_logo_full.jpeg" alt="">
         </div>
       </div>
-      <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
+      <div class="topbar-right">
+        <div class="topbar-actions">
+          <button type="button" class="topbar-btn" id="sdgButton" aria-haspopup="dialog">UN SDGs</button>
+          <button type="button" class="a11y-trigger" id="a11yButton" aria-expanded="false" aria-controls="a11yPanel" aria-label="Accessibility settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="6.4" r="1.9" fill="currentColor"/><path d="M6 9.4c2 .8 4 1.1 6 1.1s4-.3 6-1.1M12 10.5v3.2m0 0-2.6 5m2.6-5 2.6 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Accessibility</span>
+          </button>
+          <div class="a11y-popover" id="a11yPanel" role="region" aria-label="Accessibility settings" hidden>
+            <div class="a11y-title">Accessibility</div>
+            <label class="a11y-option"><span>Colorblind-safe mode<small>Safe palette, shapes &amp; line patterns</small></span><input type="checkbox" id="a11yColorblind"></label>
+            <label class="a11y-option"><span>Large text<small>Bigger text across the app</small></span><input type="checkbox" id="a11yLargeText"></label>
+            <label class="a11y-option"><span>High contrast<small>Black &amp; white, bold borders, grayscale map</small></span><input type="checkbox" id="a11yHighContrast"></label>
+            <label class="a11y-option"><span>Reduced motion<small>Turn off animations</small></span><input type="checkbox" id="a11yReduceMotion"></label>
+            <button type="button" class="a11y-reset" id="a11yReset">Reset to defaults</button>
+            <p class="a11y-note">Preferences are saved on this device. Risk levels are also shown by line pattern and exposure by symbols, never by color alone.</p>
+          </div>
+        </div>
+        <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
+      </div>
     </header>
 
-    <main class="workspace">
+    <dialog class="sdg-dialog" id="sdgDialog" aria-labelledby="sdgDialogTitle">
+      <div class="sdg-head">
+        <h2 id="sdgDialogTitle">UN Sustainable Development Goals (SDG) Alignment</h2>
+        <button type="button" class="topbar-btn" id="closeSdgDialog" aria-label="Close UN SDG dialog">Close</button>
+      </div>
+      <div class="sdg-body">
+        <p>Dead Sea Alerts uses NASA-ISRO NISAR L-band InSAR to detect ground subsidence early and show which infrastructure is exposed. It supports four UN SDG targets:</p>
+        <div class="sdg-card"><strong>SDG 11 · Target 11.2 — Safe &amp; sustainable transport</strong>Flags subsidence along Route 90 and bridges, helping keep the main transport corridor safe for everyone using it.</div>
+        <div class="sdg-card"><strong>SDG 11 · Target 11.5 — Reduce disaster losses</strong>Early detection of 100–1,000 m subsidence bowls before sinkhole collapse helps reduce casualties and economic losses.</div>
+        <div class="sdg-card"><strong>SDG 13 · Target 13.1 — Resilience to climate-related hazards</strong>Continuous radar monitoring strengthens adaptive capacity to water-level-driven geological hazards.</div>
+        <div class="sdg-card"><strong>SDG 13 · Target 13.3 — Awareness &amp; early warning</strong>An open, easy-to-read dashboard (with accessibility options) builds awareness and institutional capacity for early warning.</div>
+      </div>
+    </dialog>
+
+    <main class="workspace" id="mainWorkspace" tabindex="-1">
       <button class="sidebar-toggle left" id="toggleLeft" type="button" aria-controls="riskSidebar" aria-expanded="true" aria-label="Hide risk zones" title="Hide risk zones"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <button class="sidebar-toggle right" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true" aria-label="Hide zone details" title="Hide zone details"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
@@ -338,7 +523,7 @@
           </div>
         </div>
         <div id="map" aria-label="Interactive map"></div>
-        <div class="map-legend" aria-label="Risk-level legend">
+        <div class="map-legend" id="mapLegend" aria-label="Risk-level legend">
           <div class="legend-title">Risk level</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--red)"></i>High</div>
           <div class="legend-row"><i class="legend-dot" style="--legend-color:var(--orange)"></i>Elevated</div>
@@ -362,7 +547,22 @@
 
     const DEAD_SEA_BOUNDS = { south: 30.90, west: 35.25, north: 31.82, east: 35.65 };
     const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-    const COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
+    const DEFAULT_COLORS = { high: '#fb6473', elevated: '#f9a24b', watch: '#e9c85d', low: '#53c99a', unknown: '#718096' };
+    const COLORBLIND_COLORS = { high: '#d55e00', elevated: '#e69f00', watch: '#0072b2', low: '#009e73', unknown: '#52606d' };
+    // Dark enough for >=4.5:1 contrast on white (used by high-contrast mode).
+    const HIGH_CONTRAST_COLORS = { high: '#a40000', elevated: '#8a4b00', watch: '#00468c', low: '#005a32', unknown: '#1a1a1a' };
+    const COLORBLIND_HC_COLORS = { high: '#8f3a00', elevated: '#7a5200', watch: '#004a7c', low: '#006b4f', unknown: '#1a1a1a' };
+    const RISK_DASH = { high: null, elevated: '10 5', watch: '2 5', low: '1 9', unknown: '14 4 2 4' };
+    const RISK_LABELS = { high: 'High', elevated: 'Elevated', watch: 'Watch', low: 'Low', unknown: 'Unavailable' };
+    let COLORS = { ...DEFAULT_COLORS };
+    function a11yOn(name) { return document.documentElement.classList.contains(`a11y-${name}`); }
+    function currentPalette() {
+      if (a11yOn('colorblind') && a11yOn('high-contrast')) return COLORBLIND_HC_COLORS;
+      if (a11yOn('colorblind')) return COLORBLIND_COLORS;
+      if (a11yOn('high-contrast')) return HIGH_CONTRAST_COLORS;
+      return DEFAULT_COLORS;
+    }
+    function usePatterns() { return a11yOn('colorblind') || a11yOn('high-contrast'); }
     const RISK_LEVEL_ORDER = { high: 0, elevated: 1, watch: 2, low: 3, unknown: 4 };
     const DEMO_ZONE_NAMES = {
       'ein-gedi': 'Ein Gedi · Route 90', 'mineral-beach': 'Mineral Beach · North coast',
@@ -402,6 +602,33 @@
       buildings: element => !!(element.geometry && element.tags.building),
       ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.matches]))
     };
+
+    const LAYER_COLORS_DEFAULT = {
+      roads: '#fbbf24', pumps: '#67c9f2', buildings: '#b4a1ef',
+      ...Object.fromEntries(EXTRA_LAYERS.map(layer => [layer.key, layer.color]))
+    };
+    // Okabe-Ito / Tol colorblind-safe set; every layer also gets a distinct shape.
+    const LAYER_COLORS_CB = {
+      roads: '#e69f00', pumps: '#56b4e9', buildings: '#cc79a7', bridges: '#d55e00', power: '#0072b2',
+      water: '#44aa99', facilities: '#009e73', dams: '#117733', industrial: '#332288', emergency: '#882255', hazards: '#000000'
+    };
+    const LAYER_COLORS_HC = {
+      roads: '#000000', pumps: '#003a8c', buildings: '#555555', bridges: '#a40000', power: '#6a0080',
+      water: '#00468c', facilities: '#005a32', dams: '#00468c', industrial: '#6a0080', emergency: '#a40000', hazards: '#000000'
+    };
+    const LAYER_SHAPES = {
+      roads: 'bar', pumps: 'circle', buildings: 'square', bridges: 'bar', power: 'bar', water: 'bar',
+      facilities: 'diamond', dams: 'triangle', industrial: 'hex', emergency: 'cross', hazards: 'star'
+    };
+    function layerColor(key) {
+      if (a11yOn('high-contrast')) return LAYER_COLORS_HC[key];
+      if (a11yOn('colorblind')) return LAYER_COLORS_CB[key];
+      return LAYER_COLORS_DEFAULT[key];
+    }
+    function roadColor(highway) {
+      if (usePatterns()) return layerColor('roads');
+      return ['primary', 'trunk', 'motorway'].includes(highway) ? '#f5b942' : '#f2d690';
+    }
 
     let RISK_ZONES = [];
     const state = {
@@ -660,7 +887,7 @@
             <span class="zone-title">${escapeHtml(zone.name)}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
-          ${exp.tier ? `<span class="exposure-pill" data-tier="${exp.tier === 2 ? 'critical' : 'moderate'}" title="${escapeHtml(exp.detail)}">${escapeHtml(exp.label)}</span>` : ''}
+          ${exp.tier ? `<span class="exposure-pill" data-tier="${exp.tier === 2 ? 'critical' : 'moderate'}" title="${escapeHtml(exp.detail)}"><span class="sym" aria-hidden="true">${exp.tier === 2 ? '▲' : '●'}</span>${escapeHtml(exp.label)}</span>` : ''}
           <span class="zone-card-meta"><span>LOS ${formatMeasurement(zone.losRate, 'mm/yr')}</span><span>${formatMeasurement(zoneAreaKm2(zone), 'km²')}</span></span>
           <span class="zone-coords">${coordRange(zone)}</span>
         </button>
@@ -699,10 +926,10 @@
       return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${formatMeasurement(min)} to ${formatMeasurement(max)}">
         <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${width-pad}" y="9" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(max, 'mm')}</text>
-        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="8" text-anchor="end">${formatMeasurement(min, 'mm')}</text>
-        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="8">${firstLabel}</text>
-        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="8" text-anchor="end">${lastLabel}</text>
+        <text x="${width-pad}" y="9" fill="#718096" font-size="10" text-anchor="end">${formatMeasurement(max, 'mm')}</text>
+        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="10" text-anchor="end">${formatMeasurement(min, 'mm')}</text>
+        ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="10">${firstLabel}</text>
+        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="10" text-anchor="end">${lastLabel}</text>
       </svg>`;
     }
 
@@ -794,10 +1021,12 @@
         const selected = zone.id === state.selectedId;
         const color = COLORS[zone.level];
         L.polygon(zone.polygons, {
-          color, weight: selected ? 3 : 2,
-          opacity: selected ? 1 : .86,
+          color: a11yOn('high-contrast') ? '#000000' : color,
+          weight: selected ? 4 : (a11yOn('high-contrast') ? 3 : 2),
+          dashArray: usePatterns() ? RISK_DASH[zone.level] : null,
+          opacity: selected ? 1 : .9,
           fillColor: color,
-          fillOpacity: selected ? .29 : .17
+          fillOpacity: selected ? .38 : (a11yOn('high-contrast') ? .28 : .17)
         }).bindTooltip(`${escapeHtml(zone.name)} · ${zone.label}`, { sticky: true })
           .on('click', () => selectZone(zone.id, false))
           .addTo(riskLayer);
@@ -938,7 +1167,7 @@
         if (state.show.roads && LAYER_MATCHES.roads(element)) {
           const points = element.geometry.map(point => [point.lat, point.lon]);
           L.polyline(points, {
-            color: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? '#f5b942' : '#f2d690',
+            color: roadColor(tags.highway),
             weight: tags.highway === 'primary' || tags.highway === 'trunk' || tags.highway === 'motorway' ? 3 : 1.8,
             opacity: .9
           }).bindTooltip(escapeHtml(tags.name || `${tags.highway} road`), { sticky: true }).addTo(osmRoadLayer);
@@ -958,7 +1187,7 @@
         }
         if (state.show.buildings && LAYER_MATCHES.buildings(element)) {
           L.polygon(element.geometry.map(point => [point.lat, point.lon]), {
-            color: '#b4a1ef', weight: 1, fillColor: '#b4a1ef', fillOpacity: .3
+            color: layerColor('buildings'), weight: 1, fillColor: layerColor('buildings'), fillOpacity: .3
           }).bindTooltip(escapeHtml(tags.name || `Building: ${tags.building}`), { sticky: true }).addTo(osmBuildingLayer);
         }
         EXTRA_LAYERS.forEach(layer => {
@@ -967,13 +1196,13 @@
           const popup = `<strong>${escapeHtml(label)}</strong><br>OpenStreetMap feature` +
             `<br><a href="https://www.openstreetmap.org/${element.type}/${element.id}" target="_blank" rel="noopener noreferrer">View on OpenStreetMap</a>`;
           if (element.type === 'node') {
-            L.circleMarker([element.lat, element.lon], { radius: 6, color: '#fff', weight: 2, fillColor: layer.color, fillOpacity: 1 })
+            L.circleMarker([element.lat, element.lon], { radius: 6, color: '#fff', weight: 2, fillColor: layerColor(layer.key), fillOpacity: 1 })
               .bindTooltip(escapeHtml(label)).bindPopup(popup).addTo(extraOsmLayers[layer.key]);
           } else {
             const points = element.geometry.map(point => [point.lat, point.lon]);
             const closed = points.length >= 4 && points[0][0] === points[points.length - 1][0] &&
               points[0][1] === points[points.length - 1][1];
-            const options = { color: layer.color, weight: 3, opacity: .95, fillColor: layer.color, fillOpacity: .3 };
+            const options = { color: layerColor(layer.key), weight: 3, opacity: .95, fillColor: layerColor(layer.key), fillOpacity: .3 };
             const shape = closed && layer.key !== 'bridges' ? L.polygon(points, options) : L.polyline(points, options);
             shape.bindTooltip(escapeHtml(label), { sticky: true }).bindPopup(popup).addTo(extraOsmLayers[layer.key]);
           }
@@ -1333,6 +1562,112 @@
     document.getElementById('selectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, true));
     document.getElementById('deselectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, false));
     document.getElementById('retryOsm').addEventListener('click', requestOsm);
+
+    // Accessibility preferences & UN SDG modal
+    (function initAccessibilityAndSdg() {
+      const STORAGE_KEY = 'dsa_a11y_prefs_v1';
+      const prefs = (() => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+      })();
+      const toggles = [
+        { id: 'a11yColorblind', key: 'colorblind', cls: 'a11y-colorblind' },
+        { id: 'a11yLargeText', key: 'largeText', cls: 'a11y-large-text' },
+        { id: 'a11yHighContrast', key: 'highContrast', cls: 'a11y-high-contrast' },
+        { id: 'a11yReduceMotion', key: 'reduceMotion', cls: 'a11y-reduce-motion' }
+      ];
+      function renderLegend() {
+        const legend = document.getElementById('mapLegend');
+        const rows = Object.keys(RISK_LABELS).map(level => {
+          const color = COLORS[level];
+          const marker = usePatterns()
+            ? `<svg class="legend-line" viewBox="0 0 26 8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="${color}" ${RISK_DASH[level] ? `stroke-dasharray="${RISK_DASH[level]}"` : ''}/></svg>`
+            : `<i class="legend-dot" style="--legend-color:${color}"></i>`;
+          return `<div class="legend-row">${marker}${RISK_LABELS[level]}</div>`;
+        }).join('');
+        legend.innerHTML = `<div class="legend-title">Risk level</div>${rows}`;
+      }
+      function paintSwatches() {
+        layerControls.forEach(control => {
+          const swatch = document.getElementById(control.toggle).closest('label').querySelector('.swatch');
+          if (!swatch) return;
+          swatch.style.background = layerColor(control.key);
+          swatch.dataset.shape = LAYER_SHAPES[control.key];
+        });
+      }
+      function applyPalette() {
+        toggles.forEach(({ cls, key }) => document.documentElement.classList.toggle(cls, !!prefs[key]));
+        COLORS = { ...currentPalette() };
+        const root = document.documentElement.style;
+        root.setProperty('--red', COLORS.high);
+        root.setProperty('--orange', COLORS.elevated);
+        root.setProperty('--yellow', COLORS.watch);
+        root.setProperty('--green', COLORS.low);
+        renderLegend();
+        paintSwatches();
+      }
+      function applyA11y() {
+        applyPalette();
+        renderZoneList();
+        renderDetails();
+        drawRiskZones();
+        renderCachedOsmData();
+        riskLabelMarkers.forEach(({ zoneId, marker }) => {
+          const z = RISK_ZONES.find(item => item.id === zoneId);
+          const el = marker.getElement();
+          if (z && el) el.style.setProperty('--zone-color', COLORS[z.level]);
+        });
+        setTimeout(() => map.invalidateSize({ pan: false }), 50);
+      }
+      toggles.forEach(({ id, key }) => {
+        const input = document.getElementById(id);
+        input.checked = !!prefs[key];
+        input.addEventListener('change', () => {
+          prefs[key] = input.checked;
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)); } catch {}
+          applyA11y();
+        });
+      });
+      document.getElementById('a11yReset').addEventListener('click', () => {
+        toggles.forEach(({ id, key }) => { prefs[key] = false; document.getElementById(id).checked = false; });
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        applyA11y();
+      });
+      applyPalette();
+
+      const a11yButton = document.getElementById('a11yButton');
+      const a11yPanel = document.getElementById('a11yPanel');
+      a11yButton.addEventListener('click', () => {
+        const open = a11yPanel.hidden;
+        a11yPanel.hidden = !open;
+        a11yButton.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('pointerdown', event => {
+        if (!a11yPanel.hidden && !a11yPanel.contains(event.target) && !a11yButton.contains(event.target)) {
+          a11yPanel.hidden = true;
+          a11yButton.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !a11yPanel.hidden) {
+          a11yPanel.hidden = true;
+          a11yButton.setAttribute('aria-expanded', 'false');
+          a11yButton.focus();
+        }
+      });
+
+      const sdgDialog = document.getElementById('sdgDialog');
+      document.getElementById('sdgButton').addEventListener('click', () => {
+        if (typeof sdgDialog.showModal === 'function') sdgDialog.showModal();
+        else sdgDialog.setAttribute('open', '');
+      });
+      document.getElementById('closeSdgDialog').addEventListener('click', () => {
+        if (typeof sdgDialog.close === 'function') sdgDialog.close();
+        else sdgDialog.removeAttribute('open');
+      });
+      sdgDialog.addEventListener('click', event => {
+        if (event.target === sdgDialog && typeof sdgDialog.close === 'function') sdgDialog.close();
+      });
+    })();
 
     renderZoneList();
     renderDetails();
