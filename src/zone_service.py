@@ -11,8 +11,11 @@ Deploy the generated zones.json with the API and optionally set:
   NISAR_ZONES_FILE=path/to/zones.json
 
 The HTTP handler already calls get_zones(), which returns just list[Zone].
-All detections are exploratory. We deliberately do NOT map the Stage 3
-review priority to the API's risk levels; risk_level is always null.
+All detections are exploratory and unvalidated for safety decisions. We
+deliberately do NOT map the Stage 3 review priority to the API's risk levels;
+instead, `classify_risk_level` computes an exploratory base risk level from
+absolute LOS velocity magnitude, multi-date trend, coherence, and footprint
+size (without factoring in infrastructure, which the frontend adjusts).
 """
 from __future__ import annotations
 
@@ -77,6 +80,87 @@ def _read_json(path: Path) -> dict:
 
 def _finite_number(value: object) -> bool:
     return isinstance(value, (float, int)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+RISK_CLASSIFICATION_CONFIG = {
+    "min_coherence": 0.3,
+    "min_series_dates": 4,
+    "min_footprint_span_m": 200.0,
+    "min_trend_intervals": 3,
+    "high_velocity_mm_per_year": 100.0,
+    "elevated_velocity_mm_per_year": 40.0,
+    "watch_velocity_mm_per_year": 15.0,
+}
+
+
+def _footprint_span_meters(geometry: Polygon | MultiPolygon) -> float:
+    """Return the larger WGS84 bounding-box span (meters) of a zone polygon."""
+    if geometry["type"] == "Polygon":
+        rings = geometry["coordinates"]
+    else:
+        rings = [ring for poly in geometry["coordinates"] for ring in poly]
+    points = [pt for ring in rings for pt in ring]
+    if not points:
+        return 0.0
+    lons = [p[0] for p in points]
+    lats = [p[1] for p in points]
+    mid_lat = sum(lats) / len(lats)
+    dx_m = (max(lons) - min(lons)) * 111320.0 * math.cos(math.radians(mid_lat))
+    dy_m = (max(lats) - min(lats)) * 110540.0
+    return max(dx_m, dy_m)
+
+
+def _has_increasing_recent_speed(
+    series: list[CumulativePoint],
+    min_intervals: int,
+) -> bool:
+    """Return True when absolute interval LOS speed strictly increases over the last `min_intervals`."""
+    if len(series) < min_intervals + 1:
+        return False
+    speeds: list[float] = []
+    for prev_pt, curr_pt in zip(series, series[1:]):
+        t0 = datetime.fromisoformat(prev_pt["time"].replace("Z", "+00:00"))
+        t1 = datetime.fromisoformat(curr_pt["time"].replace("Z", "+00:00"))
+        dt_days = (t1 - t0).total_seconds() / 86400.0
+        if dt_days <= 0:
+            return False
+        speeds.append(abs(curr_pt["displacement_mm"] - prev_pt["displacement_mm"]) / dt_days * 365.25)
+    recent = speeds[-min_intervals:]
+    return all(a < b for a, b in zip(recent, recent[1:]))
+
+
+def classify_risk_level(
+    summary: ZoneSummary,
+    cumulative_series: list[CumulativePoint] | None,
+    geometry: Polygon | MultiPolygon,
+) -> Literal["high", "elevated", "watch", "low"] | None:
+    """Classify exploratory base risk level from LOS velocity, trend, coherence, and footprint.
+
+    Uses absolute LOS velocity magnitude (radar phase sign is unverified) and
+    excludes infrastructure overlap (handled separately in the frontend).
+    """
+    cfg = RISK_CLASSIFICATION_CONFIG
+    velocity = summary.get("los_velocity_mm_per_year")
+    coherence = summary.get("latest_pair_mean_coherence")
+    if not _finite_number(velocity) or not _finite_number(coherence):
+        return None
+    if coherence < cfg["min_coherence"]:
+        return None
+    if not cumulative_series or len(cumulative_series) < cfg["min_series_dates"]:
+        return None
+    if _footprint_span_meters(geometry) < cfg["min_footprint_span_m"]:
+        return None
+
+    abs_vel = abs(float(velocity))
+    if abs_vel > cfg["high_velocity_mm_per_year"]:
+        return "high"
+    if abs_vel >= cfg["elevated_velocity_mm_per_year"]:
+        if _has_increasing_recent_speed(cumulative_series, int(cfg["min_trend_intervals"])):
+            return "elevated"
+        return "watch"
+    if abs_vel > cfg["watch_velocity_mm_per_year"]:
+        return "watch"
+    return "low"
 
 
 def _validate_zone(zone: object) -> None:
@@ -449,18 +533,19 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
                         dt_mid = mid[-1] - mid[-2]
                         if dt_mid > 0:
                             acceleration = float((v[-1] - v[-2]) / dt_mid * YEAR_DAYS**2)
+        summary: ZoneSummary = {
+            "los_velocity_mm_per_year": speed,
+            "cumulative_shift_mm": shift,
+            "acceleration_mm_per_year2": acceleration,
+            "latest_pair_mean_coherence": pair_q,
+            "latest_pair_reference_time": latest_ref,
+            "latest_pair_secondary_time": latest_sec,
+        }
         zone: Zone = {
             "id": identifier,
             "geometry": geometry,
-            "risk_level": None,
-            "summary": {
-                "los_velocity_mm_per_year": speed,
-                "cumulative_shift_mm": shift,
-                "acceleration_mm_per_year2": acceleration,
-                "latest_pair_mean_coherence": pair_q,
-                "latest_pair_reference_time": latest_ref,
-                "latest_pair_secondary_time": latest_sec,
-            },
+            "risk_level": classify_risk_level(summary, series, geometry),
+            "summary": summary,
             "cumulative_series": series,
         }
         _validate_zone(zone)
