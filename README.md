@@ -1,3 +1,5 @@
+This solution was developed as part of NASA Space Apps Tel Aviv 2026. The event was led by the Space Engineering Center (SEC) and SpaceTAU at Tel Aviv University, in partnership with the Rakia Mission and Space Campus IL.
+
 # Dead Sea Alerts
 
 [Visit Dead Sea Alerts](https://deadsea-alerts.earth/)
