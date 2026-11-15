@@ -29,6 +29,18 @@ The challenge encourages a user-friendly, open-source solution that makes comple
 
 Line-of-sight movement is relative to the processing reference and is not automatically vertical subsidence. The reference, sign convention, classification methods and scientific interpretation require validation. Intersecting mapped infrastructure does not establish damage.
 
+## Features
+
+- **Satellite-derived deformation screening:** Process NISAR radar observations into cumulative displacement histories and identify candidate deformation zones for further investigation.
+- **Interactive zone exploration:** Navigate a Dead Sea map with selectable zone outlines and markers, a viewport-aware zone list, and filters for displayed risk levels.
+- **Detailed movement histories:** Explore each zone's line-of-sight velocity, cumulative shift, acceleration, area and displacement chart, alongside observation dates, coherence when available, and data provenance.
+- **Infrastructure and hazard layers:** Toggle mapped roads, buildings, bridges, pumping stations, power, pipelines, water facilities, dams, industrial sites, emergency services, telecoms and OSM-tagged sinkholes or hazards.
+- **Location-specific context:** Discover mapped features intersecting each zone, view counts and approximate coordinates, and select individual features to locate them on the map. Zone names use nearby available OpenStreetMap features and may be distant.
+- **Explainable screening:** Experimental risk categories combine the API's base classification with an infrastructure-intersection adjustment. The zone details explain the adjustment and flag incomplete map coverage.
+- **Accessible, responsive design:** Use light and dark themes, colorblind-safe symbols and patterns, larger text, high contrast and reduced motion. Collapsible panels adapt to desktop and mobile screens.
+- **Guided exploration:** Metric explanations, a sustainable-development-goals panel and browser-based question and zone-summary interfaces help users navigate the data. The question and summary responses are scripted demonstrations, not AI-generated analysis.
+- **Efficient data delivery:** Python APIs serve precomputed zones and paginated regional OpenStreetMap data on Vercel, without live OSM requests for each production visitor. A local demo mode provides synthetic zones for development.
+
 ## Official challenge and data resources
 
 ### NASA and NISAR
