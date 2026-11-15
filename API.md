@@ -35,6 +35,11 @@ the polygon. OSM generation is manual and independent of zone exports. Refresh
 both files periodically and after changing the polygon; see the
 [pipeline guide](./NISAR_PIPELINE_GUIDE.md).
 
+The place-name dataset has rectangular `bounds` and named points (`lat`, `lon`)
+or ways (`geometry` as `[latitude, longitude]` pairs). A way's optional `area`
+marks closed geometry whose interior is part of the feature. Names are chosen
+from the available regional data, not a worldwide search.
+
 Relevant files:
 
 - [`api/v1/zones.py`](./api/v1/zones.py): Vercel HTTP handler. It calls

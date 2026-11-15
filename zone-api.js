@@ -292,12 +292,49 @@ function assignZonePlaceNames(zones, dataset) {
   }
   const [south, west, north, east] = dataset.bounds;
   if (south < -90 || north > 90 || west < -180 || east > 180 || south >= north || west >= east ||
-      !dataset.places.every(place => place && typeof place.name === 'string' && place.name.trim() &&
-        Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.lat >= south && place.lat <= north &&
-        place.lon >= west && place.lon <= east)) {
+      !dataset.places.every(place => {
+        if (!place || typeof place.name !== 'string' || !place.name.trim()) return false;
+        if (place.geometry !== undefined) {
+          return (place.area === undefined || typeof place.area === 'boolean') &&
+            Array.isArray(place.geometry) && place.geometry.length >= 2 &&
+            place.geometry.every(point => Array.isArray(point) && point.length === 2 &&
+              point.every(Number.isFinite) && Math.abs(point[0]) <= 90 && Math.abs(point[1]) <= 180);
+        }
+        return Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.lat >= south &&
+          place.lat <= north && place.lon >= west && place.lon <= east;
+      })) {
     throw new Error('Invalid OSM place-name bounds or places');
   }
-  const maxDistanceKm = 10;
+  const distanceKm = (lat, lon, targetLat, targetLon) => {
+    const dLat = (targetLat - lat) * Math.PI / 180;
+    const dLon = (targetLon - lon) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) *
+      Math.cos(targetLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+  };
+  const placeDistance = (lat, lon, place) => {
+    if (!place.geometry) return distanceKm(lat, lon, place.lat, place.lon);
+    const geometry = place.geometry;
+    const first = geometry[0], last = geometry[geometry.length - 1];
+    if (place.area && geometry.length >= 4 && first[0] === last[0] && first[1] === last[1] &&
+        pointInPolygon([lat, lon], geometry)) return 0;
+    const lonScale = Math.cos(lat * Math.PI / 180);
+    let nearestSquared = Infinity, nearestLat, nearestLon;
+    for (let i = 1; i < geometry.length; i++) {
+      const start = geometry[i - 1], end = geometry[i];
+      const x = (start[1] - lon) * lonScale, y = start[0] - lat;
+      const dx = (end[1] - start[1]) * lonScale, dy = end[0] - start[0];
+      const lengthSquared = dx * dx + dy * dy;
+      const t = lengthSquared ? Math.max(0, Math.min(1, -(x * dx + y * dy) / lengthSquared)) : 0;
+      const squared = (x + t * dx) ** 2 + (y + t * dy) ** 2;
+      if (squared < nearestSquared) {
+        nearestSquared = squared;
+        nearestLat = start[0] + t * (end[0] - start[0]);
+        nearestLon = start[1] + t * (end[1] - start[1]);
+      }
+    }
+    return distanceKm(lat, lon, nearestLat, nearestLon);
+  };
   const groups = new Map();
   let outsideCoverage = false;
   for (const zone of zones) {
@@ -308,25 +345,18 @@ function assignZonePlaceNames(zones, dataset) {
     ], [Infinity, Infinity, -Infinity, -Infinity]);
     const lat = (bounds[0] + bounds[2]) / 2;
     const lon = (bounds[1] + bounds[3]) / 2;
-    const latRadius = maxDistanceKm / 111;
-    const lonRadius = maxDistanceKm / (111 * Math.cos(lat * Math.PI / 180));
-    if (lat - latRadius < south || lat + latRadius > north ||
-        lon - lonRadius < west || lon + lonRadius > east) {
-      outsideCoverage = true;
-      continue;
-    }
-    let nearest = null, nearestDistance = maxDistanceKm;
+    let nearest = null, nearestDistance = Infinity;
     for (const place of dataset.places) {
-      const dLat = (place.lat - lat) * Math.PI / 180;
-      const dLon = (place.lon - lon) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) *
-        Math.cos(place.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-      const distance = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+      const distance = placeDistance(lat, lon, place);
       if (distance < nearestDistance) {
         nearest = place.name.trim();
         nearestDistance = distance;
       }
     }
+    const latRadius = nearestDistance / 111;
+    const lonRadius = nearestDistance / (111 * Math.cos(lat * Math.PI / 180));
+    if (lat - latRadius < south || lat + latRadius > north ||
+        lon - lonRadius < west || lon + lonRadius > east) outsideCoverage = true;
     if (nearest) {
       if (!groups.has(nearest)) groups.set(nearest, []);
       groups.get(nearest).push(zone);

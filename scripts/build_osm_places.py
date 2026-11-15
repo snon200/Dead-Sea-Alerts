@@ -11,6 +11,19 @@ if __package__:
 else:
     from build_osm_cache import _zone_bbox, _zone_polygons, fetch_overpass_query, load_study_area
 
+PLACE_TYPES = ("city", "town", "village", "hamlet", "suburb", "neighbourhood", "quarter", "locality", "island", "islet")
+WATERWAY_TYPES = ("river", "stream", "canal", "drain", "wadi")
+NATURAL_TYPES = ("peak", "hill", "valley", "wadi", "ridge", "cliff", "spring", "beach", "bay",
+                 "water", "strait", "cape", "saddle", "wetland", "cave_entrance", "sinkhole")
+
+
+def is_named_feature(tags: dict) -> bool:
+    return bool(tags.get("name:en") or tags.get("int_name") or tags.get("name")) and (
+        tags.get("place") in PLACE_TYPES
+        or tags.get("waterway") in WATERWAY_TYPES
+        or tags.get("natural") in NATURAL_TYPES
+    )
+
 
 def read_extract_places(paths: list[Path], bounds: list[float]) -> list[dict]:
     try:
@@ -30,14 +43,29 @@ def read_extract_places(paths: list[Path], bounds: list[float]) -> list[dict]:
             if not (bounds[0] <= lat <= bounds[2] and bounds[1] <= lon <= bounds[3]):
                 return
             tags = dict(node.tags)
-            if tags.get("place") not in ("city", "town", "village", "hamlet", "suburb", "neighbourhood", "quarter", "locality"):
+            if not is_named_feature(tags):
                 return
-            self.places[node.id] = {"type": "node", "id": node.id, "lat": lat, "lon": lon, "tags": tags}
+            self.places[("node", node.id)] = {"type": "node", "id": node.id, "lat": lat, "lon": lon, "tags": tags}
+
+        def way(self, way):
+            tags = dict(way.tags)
+            if not is_named_feature(tags):
+                return
+            points = [{"lat": node.location.lat, "lon": node.location.lon}
+                      for node in way.nodes if node.location.valid()]
+            if not points:
+                return
+            box = _zone_bbox([[[(point["lat"], point["lon"]) for point in points]]])
+            if box[2] < bounds[0] or box[0] > bounds[2] or box[3] < bounds[1] or box[1] > bounds[3]:
+                return
+            if len(points) != len(way.nodes):
+                raise ValueError(f"Extract has missing node locations for named way {way.id} near the study area")
+            self.places[("way", way.id)] = {"type": "way", "id": way.id, "geometry": points, "tags": tags}
 
     reader = PlaceHandler()
     for path in paths:
         print(f"Reading OSM place names from {path}...")
-        reader.apply_file(str(path))
+        reader.apply_file(str(path), locations=True)
     return list(reader.places.values())
 
 
@@ -51,21 +79,31 @@ def build_places(area_path: Path, out_path: Path, pbf_paths: list[Path] | None =
         math.ceil((box[3] + 0.12) * 1e6) / 1e6,
     ]
     bbox = ",".join(f"{coordinate:.6f}" for coordinate in bounds)
-    query = (
-        '[out:json][timeout:60];'
-        f'node["place"~"^(city|town|village|hamlet|suburb|neighbourhood|quarter|locality)$"]'
-        f'["name"]({bbox});out body;'
-    )
+    selectors = (("place", PLACE_TYPES), ("waterway", WATERWAY_TYPES), ("natural", NATURAL_TYPES))
+    query = '[out:json][timeout:60];(' + ''.join(
+        f'nw["{key}"~"^({"|".join(values)})$"]["name"]({bbox});' for key, values in selectors
+    ) + ');out body geom;'
     elements = read_extract_places(pbf_paths, bounds) if pbf_paths else fetch_overpass_query(query)
     places = []
     for element in elements:
         tags = element.get("tags", {})
         name = tags.get("name:en") or tags.get("int_name") or tags.get("name")
-        if element.get("type") == "node" and isinstance(name, str) and name.strip():
+        if not is_named_feature(tags) or not isinstance(name, str) or not name.strip():
+            continue
+        if element.get("type") == "node":
             places.append({"id": element["id"], "name": name.strip(), "lat": element["lat"], "lon": element["lon"]})
+        elif element.get("type") == "way":
+            geometry = element.get("geometry")
+            if not isinstance(geometry, list) or len(geometry) < 2:
+                raise ValueError(f"Named way {element['id']} has missing geometry")
+            place = {"id": element["id"], "name": name.strip(),
+                     "geometry": [[point["lat"], point["lon"]] for point in geometry]}
+            if tags.get("place") in PLACE_TYPES or tags.get("natural") in NATURAL_TYPES:
+                place["area"] = tags.get("area") != "no"
+            places.append(place)
     if not places:
         raise ValueError("Overpass returned no named places")
-    places.sort(key=lambda place: place["id"])
+    places.sort(key=lambda place: (place["id"], "geometry" in place))
     result = {
         "schema_version": "1.0",
         "source": "OpenStreetMap",

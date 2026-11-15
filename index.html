@@ -202,6 +202,8 @@
     .map-status { max-width: min(250px, calc(100% - 40px)); color: var(--muted); font-size: 12px; line-height: 1.45; pointer-events: auto; }
     .map-status[data-state="error"] { border-color: var(--red); color: var(--red); }
     .map-status[data-state="loading"] { color: var(--note-text); }
+    .map-status.is-faded { opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity .8s ease, visibility 0s linear .8s; }
     .retry-osm { margin-top: 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel-raised);
       color: var(--red); padding: 4px 8px; cursor: pointer; font-size: 12px; }
     #map { flex: 1; min-height: 0; width: 100%; z-index: 1; }
@@ -757,7 +759,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="zone-api.js?v=smoothed-zones"></script>
+  <script src="zone-api.js?v=geographic-names-1"></script>
   <script>
     'use strict';
 
@@ -944,7 +946,7 @@
         setOsmStatus('Loading zone data…', 'loading');
       } else {
         updateLayerCounts([], 'No zones');
-        setOsmStatus('No zones available for infrastructure lookup.', 'ready');
+        setOsmStatus('No zones available for infrastructure lookup.', 'info');
       }
     }
 
@@ -976,7 +978,7 @@
         const { outsideCoverage } = assignZonePlaceNames(RISK_ZONES, dataset);
         state.placeNamesStatus = 'ready';
         setZoneSourceStatus(outsideCoverage
-          ? 'Some zones are outside the area-name dataset; their IDs are shown instead.' : '',
+          ? 'Some zones may have closer names outside the area-name dataset.' : '',
           outsideCoverage ? 'error' : 'ready');
       } catch (error) {
         console.error('Could not load OSM area names:', error);
@@ -1325,7 +1327,7 @@
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
         <p class="detail-description" id="riskAdjustment">${escapeHtml(riskAdjustmentDescription(zone))}</p>
-        ${state.demo ? '' : '<p class="detail-description">Area names are approximate and refer to nearby OpenStreetMap places.</p>'}
+        ${state.demo ? '' : '<p class="detail-description">Area names refer to the nearest available named OpenStreetMap feature and may be distant.</p>'}
         <div class="metric-grid">
           <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
           <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${formatMeasurement(zone.cumulative)}${zone.cumulative === null ? '' : '<span class="metric-unit">mm</span>'}</div></div>
@@ -1442,7 +1444,7 @@
     function layoutRiskLabels() {
       if (!map.hasLayer(riskLabelLayer) || map.getZoom() < 11) return;
       const mapBounds = map.getContainer().getBoundingClientRect();
-      const occupied = [...document.querySelectorAll('.map-chip, .map-status, .map-legend, .leaflet-control-zoom')]
+      const occupied = [...document.querySelectorAll('.map-chip, .map-status:not(.is-faded), .map-legend, .leaflet-control-zoom')]
         .map(element => element.getBoundingClientRect()).filter(rect => rect.width && rect.height);
       const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
         Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
@@ -1500,14 +1502,23 @@
       }
     }
 
+    let osmStatusFadeTimer;
     function setOsmStatus(message, status, retry = false) {
       const element = document.getElementById('osmStatus');
+      clearTimeout(osmStatusFadeTimer);
+      element.classList.remove('is-faded');
       document.getElementById('osmStatusText').textContent = message;
       document.getElementById('retryOsm').hidden = !retry;
       document.getElementById('sidebarOsmLoading').hidden = status !== 'loading' || state.zonesLoading;
       document.getElementById('layerList').hidden = status === 'loading';
       element.dataset.state = status;
       layoutRiskLabels();
+      if (status === 'ready') {
+        osmStatusFadeTimer = setTimeout(() => {
+          element.classList.add('is-faded');
+          layoutRiskLabels();
+        }, 2000);
+      }
     }
 
     function clearOsmLayers() {
@@ -1829,7 +1840,7 @@
           'error', true);
       } else {
         setOsmStatus(state.zonesFailed ? 'Regional infrastructure loaded; zone data unavailable.'
-          : 'Regional infrastructure loaded.', 'ready');
+          : 'Regional infrastructure loaded.', state.zonesFailed ? 'warning' : 'ready');
       }
     }
 

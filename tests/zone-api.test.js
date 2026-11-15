@@ -167,26 +167,47 @@ test('names zones from nearby places, with stable distinct labels', () => {
   dataset.places.shift();
   dataset.places[0].lat += 0.2;
   assignZonePlaceNames([first], dataset);
-  assert.equal(first.name, 'Zone a');
+  assert.equal(first.name, 'Ein Gedi');
 });
 
-test('keeps IDs for incomplete coverage and rejects invalid datasets', () => {
+test('names zones after the nearest point on a waterway or an enclosing natural feature', () => {
+  const [zone] = parseZoneResponse(example());
+  const dataset = {
+    schema_version: '1.0', bounds: [30, 34, 33, 37],
+    places: [
+      { name: 'Settlement', lat: 31.46, lon: 35.39 },
+      { name: 'Canal', geometry: [[31.454, 35.2], [31.454, 35.6]] }
+    ]
+  };
+  assignZonePlaceNames([zone], dataset);
+  assert.equal(zone.name, 'Canal');
+  dataset.places.push({ name: 'Lake', area: true, geometry: [[31.44, 35.37], [31.44, 35.4],
+    [31.47, 35.4], [31.47, 35.37], [31.44, 35.37]] });
+  assignZonePlaceNames([zone], dataset);
+  assert.equal(zone.name, 'Lake');
+});
+
+test('reports incomplete coverage but still assigns the closest available name', () => {
   const [zone] = parseZoneResponse(example());
   const dataset = {
     schema_version: '1.0', bounds: [31.44, 35.37, 31.46, 35.39],
     places: [{ name: 'Example', lat: 31.45, lon: 35.38 }]
   };
   assert.equal(assignZonePlaceNames([zone], dataset).outsideCoverage, true);
-  assert.equal(zone.name, `Zone ${zone.id}`);
+  assert.equal(zone.name, 'Example');
   dataset.places[0].lat = null;
+  assert.throws(() => assignZonePlaceNames([zone], dataset), /Invalid/);
+  dataset.places[0] = { name: 'Bad way', geometry: [[31, 35], [null, 35]] };
   assert.throws(() => assignZonePlaceNames([zone], dataset), /Invalid/);
 });
 
 test('the checked-in place dataset names current zones without duplicate labels', () => {
   const zones = parseZoneResponse(require('../data/api/zones.json'));
-  const result = assignZonePlaceNames(zones, require('../data/api/osm-places.json'));
+  const places = require('../data/api/osm-places.json');
+  assert.ok(places.places.some(place => place.geometry && !place.area));
+  const result = assignZonePlaceNames(zones, places);
   assert.equal(result.outsideCoverage, false);
-  assert.ok(zones.some(zone => zone.name !== `Zone ${zone.id}`));
+  assert.ok(zones.every(zone => zone.name !== `Zone ${zone.id}`));
   assert.equal(new Set(zones.map(zone => zone.name)).size, zones.length);
 });
 
