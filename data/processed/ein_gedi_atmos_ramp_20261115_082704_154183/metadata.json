@@ -1,0 +1,172 @@
+{
+  "schema_version": 2,
+  "stage": "geophysical_processing_cumulative_stack",
+  "created_utc": "2026-11-15T08:27:04.156862+00:00",
+  "files": {
+    "displacement": "displacement.npy",
+    "coherence": "coherence.npy"
+  },
+  "array_shape": [
+    3,
+    101,
+    122
+  ],
+  "axis_order": [
+    "acquisition_date",
+    "row",
+    "column"
+  ],
+  "dates": [
+    "2026-06-21",
+    "2026-07-03",
+    "2026-07-15"
+  ],
+  "pairs": [
+    {
+      "granule_id": "G4248968510-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_023_100_A_017_024_2000_SH_20260621T025941_20260621T030016_20260703T025940_20260703T030015_P05023_N_F_J_001",
+      "reference_time_utc": "2026-06-21T02:59:41+00:00",
+      "secondary_time_utc": "2026-07-03T02:59:40+00:00",
+      "baseline_days": 11.999988425925926,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "scene_metadata",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": 11.200485482811928,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5688,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen",
+        "wetTroposphericPhaseScreen",
+        "hydrostaticTroposphericPhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": "constant_ellipsoid_height_not_dem",
+      "east_slope_mm_per_km": -1.6732731288240201,
+      "north_slope_mm_per_km": 0.740534501626091,
+      "n_ramp_pixels": 4616,
+      "background_rms_before_mm": 4.504077980699086,
+      "background_rms_after_mm": 3.6429294152949248,
+      "pair_index": 0,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4248968510-ASF_6f1688a7f41f\\manifest.json"
+    },
+    {
+      "granule_id": "G4254189752-ASF",
+      "granule_name": "NISAR_L2_PR_GUNW_024_100_A_017_025_2000_SH_20260703T025940_20260703T030015_20260715T025940_20260715T030014_P05023_N_F_J_001",
+      "reference_time_utc": "2026-07-03T02:59:40+00:00",
+      "secondary_time_utc": "2026-07-15T02:59:40+00:00",
+      "baseline_days": 12.0,
+      "center_frequency_hz": 1229000000.0,
+      "frequency_source": "scene_metadata",
+      "frequency_mode": "2000",
+      "wavelength_m": 0.24393202441008952,
+      "reference_phase_rad": -14.666884861886501,
+      "reference_component": 1,
+      "reference_valid_pixels": 120,
+      "valid_displacement_pixels": 5623,
+      "valid_coherence_pixels": 11516,
+      "corrections_applied": [
+        "ionospherePhaseScreen",
+        "wetTroposphericPhaseScreen",
+        "hydrostaticTroposphericPhaseScreen"
+      ],
+      "incidence_source": null,
+      "troposphere_height_assumption": "constant_ellipsoid_height_not_dem",
+      "east_slope_mm_per_km": 1.3776179586402064,
+      "north_slope_mm_per_km": -0.9490944876527173,
+      "n_ramp_pixels": 4361,
+      "background_rms_before_mm": 4.848595889799705,
+      "background_rms_after_mm": 3.993960677728148,
+      "pair_index": 1,
+      "source_manifest": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\raw\\G4254189752-ASF_7008657fe881\\manifest.json"
+    }
+  ],
+  "displacement": {
+    "unit": "mm",
+    "component": "los",
+    "reference_date": "2026-06-21",
+    "reference_bbox_wsen": [
+      35.377,
+      31.449,
+      35.388,
+      31.4555
+    ],
+    "phase_sign": -1,
+    "positive_los_direction": "toward",
+    "phase_sign_verified_for_provisional_products": false,
+    "meaning": "Cumulative reference-relative LOS displacement; atmospheric and planar-ramp corrected",
+    "coherence_minimum_for_displacement": 0.3
+  },
+  "coherence": {
+    "unit": "dimensionless",
+    "meaning": "Mean supporting-pair coherence quality proxy"
+  },
+  "grid": {
+    "crs": "EPSG:32636",
+    "transform_affine": [
+      80.0,
+      0.0,
+      723120.0,
+      0.0,
+      -80.0,
+      3487680.0
+    ],
+    "width": 122,
+    "height": 101,
+    "pixel_size_m": 80.0,
+    "requested_bbox_wsen": [
+      35.35,
+      31.43,
+      35.45,
+      31.5
+    ],
+    "bounds_projected": [
+      723120.0,
+      3479600.0,
+      732880.0,
+      3487680.0
+    ]
+  },
+  "acquisition_family": {
+    "track": 100,
+    "frame": 17,
+    "direction": "A",
+    "mode": "2000",
+    "polarization": "HH",
+    "release": "provisional",
+    "crid": "P05023"
+  },
+  "inversion": {
+    "method": "pixelwise coherence-weighted least squares, first date anchored",
+    "edge_indices": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  "correction_policy": {
+    "ionosphere": true,
+    "troposphere": true,
+    "troposphere_height_model": "constant ellipsoid height from Stage 1 metadata",
+    "planar_ramp": true,
+    "solid_earth_tides": false
+  },
+  "experiment": {
+    "ramp_fit_coherence_min": 0.65,
+    "ramp_fit_bbox": null,
+    "excluded_bbox_wsen": []
+  },
+  "scientific_warnings": [
+    "Reference ground stability and LOS sign not independently verified",
+    "Tropospheric phase screens sampled at one ellipsoidal height, not a terrain DEM",
+    "Planar ramp fitting can remove genuine regional deformation",
+    "No solid Earth tide correction or unwrapping failure repair performed"
+  ]
+}

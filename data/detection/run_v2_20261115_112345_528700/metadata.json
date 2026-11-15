@@ -1,0 +1,237 @@
+{
+  "stage": "subsidence_detection",
+  "schema_version": 2,
+  "source_processing_directory": "C:\\Users\\snon2\\OneDrive\\Desktop\\project-hail-miriam\\data\\processed\\run_v2_20261115_112345_528700",
+  "files": {
+    "velocity": "velocity.npy",
+    "acceleration": "acceleration.npy",
+    "candidate_mask": "candidate_mask.npy",
+    "polygons": "anomalies.geojson"
+  },
+  "dates": [
+    "2026-06-21",
+    "2026-07-03",
+    "2026-07-15",
+    "2026-07-27",
+    "2026-08-20",
+    "2026-09-01",
+    "2026-09-13",
+    "2026-10-07",
+    "2026-10-19"
+  ],
+  "velocity_units": "mm/day",
+  "acceleration_units": "mm/day^2",
+  "velocity_shape": [
+    8,
+    1238,
+    287
+  ],
+  "acceleration_shape": [
+    7,
+    1238,
+    287
+  ],
+  "candidate_mask_shape": [
+    9,
+    1238,
+    287
+  ],
+  "detection_config": {
+    "coherence_min": 0.35,
+    "local_sigma_m": 100.0,
+    "background_sigma_m": 900.0,
+    "minimum_filter_support": 0.35,
+    "minimum_movement_mm": 3.0,
+    "minimum_rate_mm_day": 0.0,
+    "minimum_snr": 2.5,
+    "noise_floor_mm": 1.5,
+    "minimum_pixels": 4,
+    "persistence_overlap_fraction": 0.2,
+    "matching_dilation_pixels": 1
+  },
+  "cumulative_spatial_detection_enabled": true,
+  "risk_scheme": {
+    "low": "0 to <10 mm/year",
+    "watch": "10 to <40 mm/year OR 40 to 100 without three-interval acceleration",
+    "elevated": "40 to 100 mm/year with three-interval acceleration",
+    "high": ">100 mm/year",
+    "speed_direction": "negative LOS (away from satellite)",
+    "rate_window": "latest observation interval for all polygons, even if last detected earlier",
+    "acceleration_window": "last three complete intervals; consecutive increases >=5 mm/year",
+    "source": "user_specified_experimental_not_paper_calibrated"
+  },
+  "intervals": [
+    {
+      "interval_index": 1,
+      "start": "2026-06-21",
+      "end": "2026-07-03",
+      "duration_days": 12.0,
+      "regions": 34,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 1.6494610595582873,
+        "threshold_mm": 4.123652648895718,
+        "valid_pixels": 44411,
+        "median_local_residual_mm": -0.01779130103996973
+      },
+      "cumulative_screening": null
+    },
+    {
+      "interval_index": 2,
+      "start": "2026-07-03",
+      "end": "2026-07-15",
+      "duration_days": 12.0,
+      "regions": 43,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 2.699078029529348,
+        "threshold_mm": 6.74769507382337,
+        "valid_pixels": 41776,
+        "median_local_residual_mm": 0.021330151875991854
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.1614664034741873,
+        "threshold_mm": 5.403666008685468,
+        "valid_pixels": 41776,
+        "median_local_residual_mm": 0.039206667152370756
+      }
+    },
+    {
+      "interval_index": 3,
+      "start": "2026-07-15",
+      "end": "2026-07-27",
+      "duration_days": 12.0,
+      "regions": 65,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 2.591045649030479,
+        "threshold_mm": 6.477614122576197,
+        "valid_pixels": 41496,
+        "median_local_residual_mm": 0.19888581958085005
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 1.9800338456540298,
+        "threshold_mm": 4.950084614135075,
+        "valid_pixels": 41496,
+        "median_local_residual_mm": 0.11736211970449695
+      }
+    },
+    {
+      "interval_index": 4,
+      "start": "2026-07-27",
+      "end": "2026-08-20",
+      "duration_days": 24.0,
+      "regions": 54,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 2.3581971361912832,
+        "threshold_mm": 5.895492840478208,
+        "valid_pixels": 40292,
+        "median_local_residual_mm": -0.07287330116258595
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.1013458327637844,
+        "threshold_mm": 5.2533645819094605,
+        "valid_pixels": 40292,
+        "median_local_residual_mm": 0.15866115421093063
+      }
+    },
+    {
+      "interval_index": 5,
+      "start": "2026-08-20",
+      "end": "2026-09-01",
+      "duration_days": 12.0,
+      "regions": 71,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 1.7683908227884595,
+        "threshold_mm": 4.420977056971148,
+        "valid_pixels": 39546,
+        "median_local_residual_mm": 0.05292153671756239
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.3125846211629706,
+        "threshold_mm": 5.781461552907427,
+        "valid_pixels": 39546,
+        "median_local_residual_mm": 0.21091136514697656
+      }
+    },
+    {
+      "interval_index": 6,
+      "start": "2026-09-01",
+      "end": "2026-09-13",
+      "duration_days": 12.0,
+      "regions": 82,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 1.6438241296497649,
+        "threshold_mm": 4.109560324124412,
+        "valid_pixels": 39192,
+        "median_local_residual_mm": 0.03581627475438165
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.3419495509052064,
+        "threshold_mm": 5.854873877263016,
+        "valid_pixels": 39192,
+        "median_local_residual_mm": 0.2884914368067122
+      }
+    },
+    {
+      "interval_index": 7,
+      "start": "2026-09-13",
+      "end": "2026-10-07",
+      "duration_days": 24.0,
+      "regions": 85,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 1.603092056142564,
+        "threshold_mm": 4.00773014035641,
+        "valid_pixels": 38991,
+        "median_local_residual_mm": 0.003114580997488847
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.5216881166448073,
+        "threshold_mm": 6.304220291612018,
+        "valid_pixels": 38991,
+        "median_local_residual_mm": 0.33358164073403174
+      }
+    },
+    {
+      "interval_index": 8,
+      "start": "2026-10-07",
+      "end": "2026-10-19",
+      "duration_days": 12.0,
+      "regions": 79,
+      "screening": {
+        "status": "ok",
+        "noise_mm": 1.5,
+        "threshold_mm": 3.75,
+        "valid_pixels": 38810,
+        "median_local_residual_mm": 0.0034931588334845554
+      },
+      "cumulative_screening": {
+        "status": "ok",
+        "noise_mm": 2.30493999020245,
+        "threshold_mm": 5.762349975506124,
+        "valid_pixels": 38810,
+        "median_local_residual_mm": 0.3579553354981897
+      }
+    }
+  ],
+  "n_tracked_anomalies": 258,
+  "warnings": [
+    "This is exploratory deformation screening, not a validated sinkhole warning system.",
+    "Nof et al. (2019) supports monitoring localized subsidence and acceleration, but does NOT validate these numerical 10/40/100 mm/year bins.",
+    "Per-date coherence is an incident-pair quality proxy from Stage 2.",
+    "Acceleration is a noisy finite-difference estimate, not a fitted significance test.",
+    "Atmospheric trends and reference errors may cause false positives.",
+    "Physical LOS sign and stable ground reference require independent validation.",
+    "Risk labels are exploratory LOS screening categories, not operational safety or true vertical rates."
+  ]
+}

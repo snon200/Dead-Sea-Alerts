@@ -12,7 +12,9 @@ Deploy the generated zones.json with the API and optionally set:
 
 The HTTP handler already calls get_zones(), which returns just list[Zone].
 All detections are exploratory. We deliberately do NOT map the Stage 3
-review priority to the API's risk levels; risk_level is always null.
+review priority to the API's risk levels unless the v2 detector explicitly assigns a
+user-defined experimental screening category. Those categories are not
+validated hazard levels.
 """
 from __future__ import annotations
 
@@ -342,8 +344,8 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
         raise ValueError("Stage 2 map grid metadata inconsistent with arrays")
 
     # LOS values only if the input declares the contract's orientation and
-    # an explicit land reference. Unverified physical convention still means
-    # risk classifications must not be assigned.
+    # an explicit land reference. The provisional phase sign still needs
+    # independent scientific validation: risk fields are EXPERIMENTAL bins.
     disp_info = meta.get("displacement", {})
     compatible_los = (
         disp_info.get("component") == "los"
@@ -362,7 +364,12 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
     zones: list[Zone] = []
     used_geometry_by_id: dict[str, str] = {}
     duplicate_features = 0
-    for feature in geojson["features"]:
+    # When duplicate geographic footprints exist, retain the most recently
+    # observed track so the exported screening category is not stale.
+    features = sorted(geojson["features"],
+                      key=lambda f: str((f.get("properties") or {}).get("last_observed", "")),
+                      reverse=True)
+    for feature in features:
         if not isinstance(feature, dict) or feature.get("type") != "Feature":
             raise ValueError("Invalid GeoJSON feature")
         geometry = feature.get("geometry")
@@ -437,10 +444,19 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
                         dt_mid = mid[-1] - mid[-2]
                         if dt_mid > 0:
                             acceleration = float((v[-1] - v[-2]) / dt_mid * YEAR_DAYS**2)
+        # Only the v2 detector's explicit rate screening labels can populate
+        # the dashboard. Never promote old 'priority' review categories to risk.
+        screening_level = props.get("risk_level")
+        if props.get("risk_method") != "user_defined_los_rate_bins_v1":
+            screening_level = None
+        if screening_level not in (None, "high", "elevated", "watch", "low"):
+            raise ValueError(f"Invalid Stage 3 risk screening level: {screening_level}")
+        if not compatible_los:
+            screening_level = None
         zone: Zone = {
             "id": identifier,
             "geometry": geometry,
-            "risk_level": None,
+            "risk_level": screening_level,
             "summary": {
                 "los_velocity_mm_per_year": speed,
                 "cumulative_shift_mm": shift,
