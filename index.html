@@ -462,6 +462,32 @@
       }
     }
 
+    async function loadPlaceNames(generation) {
+      try {
+        const response = await fetch('/data/api/osm-places.json', { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`OSM place names returned HTTP ${response.status}`);
+        const dataset = await response.json();
+        if (generation !== state.osm.generation) return;
+        const { outsideCoverage } = assignZonePlaceNames(RISK_ZONES, dataset);
+        if (outsideCoverage) {
+          setZoneSourceStatus('Some zones are outside the area-name dataset; their IDs are shown instead.', 'error');
+        }
+        renderZoneList();
+        const title = document.querySelector('#detailHeader .detail-title');
+        if (title && selectedZone()) title.textContent = selectedZone().name;
+        drawRiskZones();
+        riskLabelLayer.clearLayers();
+        riskLabelMarkers.length = 0;
+        drawRiskLabels();
+        updateRiskLabelMarkers();
+        updateRiskLabelVisibility();
+      } catch (error) {
+        if (generation !== state.osm.generation) return;
+        console.error('Could not load OSM area names:', error);
+        setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
+      }
+    }
+
     async function loadZones() {
       if (zoneRequest) zoneRequest.abort();
       const controller = new AbortController();
@@ -479,6 +505,7 @@
         if (state.demo) zones.forEach(zone => { zone.name = DEMO_ZONE_NAMES[zone.id] || zone.name; });
         setZoneSourceStatus(state.demo ? 'Illustrative demo: zones and measurements are synthetic.' : '', state.demo ? 'demo' : 'ready');
         replaceZones(zones);
+        if (!state.demo && zones.length) loadPlaceNames(state.osm.generation);
       } catch (error) {
         if (zoneRequest !== controller) return;
         console.error('Could not load zone data:', error);
@@ -640,6 +667,7 @@
       document.getElementById('detailContent').innerHTML = `
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
+        ${state.demo ? '' : '<p class="detail-description">Area names are approximate and refer to nearby OpenStreetMap places.</p>'}
         <div class="metric-grid">
           <div class="metric"><div class="metric-label">LOS velocity${metricHelp('los', 'LOS velocity', 'How fast the ground moves toward or away from the satellite each year (line of sight).')}</div><div class="metric-value">${formatMeasurement(zone.losRate)}${zone.losRate === null ? '' : '<span class="metric-unit">mm/yr</span>'}</div></div>
           <div class="metric"><div class="metric-label">Cumulative shift${metricHelp('shift', 'cumulative shift', 'Total movement toward or away from the satellite since the first observation.')}</div><div class="metric-value">${formatMeasurement(zone.cumulative)}${zone.cumulative === null ? '' : '<span class="metric-unit">mm</span>'}</div></div>
@@ -651,6 +679,7 @@
             <span class="measurement-summary">Context for the displayed values: location, radar observations and nearby infrastructure.</span>
           </summary>
           <table class="data-table"><tbody>
+            <tr><th>Zone ID</th><td>${escapeHtml(zone.id)}</td></tr>
             <tr><th>Coordinate range${metricHelp('coordinates', 'coordinate range', 'The latitude and longitude limits of the zone.')}</th><td>${coordRange(zone)}</td></tr>
             <tr><th>Coherence${metricHelp('coherence', 'coherence', 'How similar the radar signals are between observations. Higher values generally mean more reliable measurements.')}</th><td>${formatMeasurement(zone.coherence)}</td></tr>
             <tr><th>Coherence pair</th><td>${zone.pairStart && zone.pairEnd ? `${escapeHtml(zone.pairStart)} – ${escapeHtml(zone.pairEnd)}` : 'Unavailable'}</td></tr>

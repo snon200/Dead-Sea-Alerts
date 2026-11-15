@@ -103,4 +103,61 @@ function cachedOsmFeatures(cache, zone) {
   });
 }
 
-if (typeof module !== 'undefined') module.exports = { parseZoneResponse, cachedOsmFeatures };
+function assignZonePlaceNames(zones, dataset) {
+  if (!dataset || dataset.schema_version !== '1.0' || !Array.isArray(dataset.bounds) ||
+      dataset.bounds.length !== 4 ||       !dataset.bounds.every(Number.isFinite) ||
+      !Array.isArray(dataset.places) || !dataset.places.length) {
+    throw new Error('Invalid OSM place-name dataset');
+  }
+  const [south, west, north, east] = dataset.bounds;
+  if (south < -90 || north > 90 || west < -180 || east > 180 || south >= north || west >= east ||
+      !dataset.places.every(place => place && typeof place.name === 'string' && place.name.trim() &&
+        Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.lat >= south && place.lat <= north &&
+        place.lon >= west && place.lon <= east)) {
+    throw new Error('Invalid OSM place-name bounds or places');
+  }
+  const maxDistanceKm = 10;
+  const groups = new Map();
+  let outsideCoverage = false;
+  for (const zone of zones) {
+    zone.name = `Zone ${zone.id}`;
+    const points = zone.polygons.flat(2);
+    const bounds = points.reduce((result, [lat, lon]) => [
+      Math.min(result[0], lat), Math.min(result[1], lon), Math.max(result[2], lat), Math.max(result[3], lon)
+    ], [Infinity, Infinity, -Infinity, -Infinity]);
+    const lat = (bounds[0] + bounds[2]) / 2;
+    const lon = (bounds[1] + bounds[3]) / 2;
+    const latRadius = maxDistanceKm / 111;
+    const lonRadius = maxDistanceKm / (111 * Math.cos(lat * Math.PI / 180));
+    if (lat - latRadius < south || lat + latRadius > north ||
+        lon - lonRadius < west || lon + lonRadius > east) {
+      outsideCoverage = true;
+      continue;
+    }
+    let nearest = null, nearestDistance = maxDistanceKm;
+    for (const place of dataset.places) {
+      const dLat = (place.lat - lat) * Math.PI / 180;
+      const dLon = (place.lon - lon) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) *
+        Math.cos(place.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+      const distance = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+      if (distance < nearestDistance) {
+        nearest = place.name.trim();
+        nearestDistance = distance;
+      }
+    }
+    if (nearest) {
+      if (!groups.has(nearest)) groups.set(nearest, []);
+      groups.get(nearest).push(zone);
+    }
+  }
+  for (const [name, group] of groups) {
+    group.sort((a, b) => a.id.localeCompare(b.id));
+    group.forEach((zone, index) => {
+      zone.name = `Near ${name}${group.length > 1 ? ` · ${index + 1}` : ''}`;
+    });
+  }
+  return { outsideCoverage };
+}
+
+if (typeof module !== 'undefined') module.exports = { parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames };

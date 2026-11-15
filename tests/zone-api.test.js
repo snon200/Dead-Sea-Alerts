@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
-const { parseZoneResponse, cachedOsmFeatures } = require('../zone-api.js');
+const { parseZoneResponse, cachedOsmFeatures, assignZonePlaceNames } = require('../zone-api.js');
 
 function example() {
   return structuredClone(spec.paths['/api/v1/zones'].get.responses['200'].content['application/json'].example);
@@ -99,4 +99,44 @@ test('the checked-in infrastructure cache covers the current zone export', () =>
   const cache = require('../data/api/osm-cache.json');
   assert.ok(zones.length > 0);
   for (const zone of zones) assert.ok(Array.isArray(cachedOsmFeatures(cache, zone)));
+});
+
+test('names zones from nearby places, with stable distinct labels', () => {
+  const [base] = parseZoneResponse(example());
+  const first = { ...base, id: 'a' }, second = { ...base, id: 'b' };
+  const center = base.polygons[0][0][0];
+  const dataset = {
+    schema_version: '1.0', bounds: [30, 34, 33, 37],
+    places: [
+      { name: 'Far away', lat: center[0] + 0.2, lon: center[1] },
+      { name: 'Ein Gedi', lat: center[0], lon: center[1] }
+    ]
+  };
+  assert.deepEqual(assignZonePlaceNames([second, first], dataset), { outsideCoverage: false });
+  assert.equal(first.name, 'Near Ein Gedi · 1');
+  assert.equal(second.name, 'Near Ein Gedi · 2');
+  dataset.places.shift();
+  dataset.places[0].lat += 0.2;
+  assignZonePlaceNames([first], dataset);
+  assert.equal(first.name, 'Zone a');
+});
+
+test('keeps IDs for incomplete coverage and rejects invalid datasets', () => {
+  const [zone] = parseZoneResponse(example());
+  const dataset = {
+    schema_version: '1.0', bounds: [31.44, 35.37, 31.46, 35.39],
+    places: [{ name: 'Example', lat: 31.45, lon: 35.38 }]
+  };
+  assert.equal(assignZonePlaceNames([zone], dataset).outsideCoverage, true);
+  assert.equal(zone.name, `Zone ${zone.id}`);
+  dataset.places[0].lat = null;
+  assert.throws(() => assignZonePlaceNames([zone], dataset), /Invalid/);
+});
+
+test('the checked-in place dataset names current zones without duplicate labels', () => {
+  const zones = parseZoneResponse(require('../data/api/zones.json'));
+  const result = assignZonePlaceNames(zones, require('../data/api/osm-places.json'));
+  assert.equal(result.outsideCoverage, false);
+  assert.ok(zones.some(zone => zone.name.startsWith('Near ')));
+  assert.equal(new Set(zones.map(zone => zone.name)).size, zones.length);
 });

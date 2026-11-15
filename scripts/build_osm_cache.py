@@ -174,26 +174,7 @@ def _overpass_elements(payload: dict) -> list[dict]:
     return payload["elements"]
 
 
-def fetch_overpass(south: float, west: float, north: float, east: float) -> list[dict]:
-    bbox = f"{south:.6f},{west:.6f},{north:.6f},{east:.6f}"
-    query = f"""[out:json][timeout:60];
-(
-  way["highway"]({bbox});
-  way["building"]({bbox});
-  way["bridge"]["bridge"!="no"]({bbox});
-  node["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
-  way["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
-  node["power"~"^(line|minor_line|substation)$"]({bbox});
-  way["power"~"^(line|minor_line|substation)$"]({bbox});
-  node["water"="reservoir"]({bbox});
-  way["water"="reservoir"]({bbox});
-  way["landuse"="reservoir"]({bbox});
-  node["tourism"~"^(hotel|guest_house)$"]({bbox});
-  way["tourism"~"^(hotel|guest_house)$"]({bbox});
-  node["amenity"~"^(school|kindergarten|hospital|clinic)$"]({bbox});
-  way["amenity"~"^(school|kindergarten|hospital|clinic)$"]({bbox});
-);
-out body geom;"""
+def fetch_overpass_query(query: str) -> list[dict]:
     data = urllib.parse.urlencode({"data": query}).encode("utf-8")
     last_err = None
     for endpoint in OVERPASS_ENDPOINTS:
@@ -227,6 +208,29 @@ out body geom;"""
             print(f"Overpass curl {endpoint} failed: {exc}", file=sys.stderr)
             last_err = exc
     raise RuntimeError(f"All Overpass endpoints failed: {last_err}")
+
+
+def fetch_overpass(south: float, west: float, north: float, east: float) -> list[dict]:
+    bbox = f"{south:.6f},{west:.6f},{north:.6f},{east:.6f}"
+    query = f"""[out:json][timeout:60];
+(
+  way["highway"]({bbox});
+  way["building"]({bbox});
+  way["bridge"]["bridge"!="no"]({bbox});
+  node["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
+  way["man_made"~"^(pumping_station|pipeline|water_well|water_works|water_tower|wastewater_plant)$"]({bbox});
+  node["power"~"^(line|minor_line|substation)$"]({bbox});
+  way["power"~"^(line|minor_line|substation)$"]({bbox});
+  node["water"="reservoir"]({bbox});
+  way["water"="reservoir"]({bbox});
+  way["landuse"="reservoir"]({bbox});
+  node["tourism"~"^(hotel|guest_house)$"]({bbox});
+  way["tourism"~"^(hotel|guest_house)$"]({bbox});
+  node["amenity"~"^(school|kindergarten|hospital|clinic)$"]({bbox});
+  way["amenity"~"^(school|kindergarten|hospital|clinic)$"]({bbox});
+);
+out body geom;"""
+    return fetch_overpass_query(query)
 
 
 def build_cache(zones_path: Path, out_path: Path) -> dict:
