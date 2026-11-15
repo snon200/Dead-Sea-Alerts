@@ -1,5 +1,30 @@
 'use strict';
 
+function smoothZonePolygons(polygons) {
+  return polygons.map(rings => rings.map(ring => {
+    const points = ring.filter((point, index) => index === 0 ||
+      point[0] !== ring[index - 1][0] || point[1] !== ring[index - 1][1]);
+    if (points.length > 1 && points[0][0] === points[points.length - 1][0] &&
+        points[0][1] === points[points.length - 1][1]) points.pop();
+    if (points.length < 3) return ring;
+
+    return points.flatMap((point, index) => {
+      const previous = points[(index + points.length - 1) % points.length];
+      const next = points[(index + 1) % points.length];
+      const previousLength = Math.hypot(previous[0] - point[0], previous[1] - point[1]);
+      const nextLength = Math.hypot(next[0] - point[0], next[1] - point[1]);
+      const radius = Math.min(previousLength, nextLength) * 0.4;
+      const start = point.map((value, axis) => value + (previous[axis] - value) * radius / previousLength);
+      const end = point.map((value, axis) => value + (next[axis] - value) * radius / nextLength);
+      return Array.from({ length: 5 }, (_, step) => {
+        const t = step / 4;
+        return point.map((value, axis) =>
+          (1 - t) ** 2 * start[axis] + 2 * (1 - t) * t * value + t ** 2 * end[axis]);
+      });
+    });
+  }));
+}
+
 function parseZoneResponse(payload) {
   if (!payload || payload.schema_version !== '1.0' || !Array.isArray(payload.zones)) {
     throw new Error('Unsupported or invalid zone response');
@@ -317,6 +342,6 @@ function assignZonePlaceNames(zones, dataset) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames,
+  smoothZonePolygons, parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames,
   osmInfrastructureQuery, osmInfrastructureElements, featureIntersectsZone, zoneWithinOsmCoverage
 };

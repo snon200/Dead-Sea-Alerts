@@ -4,13 +4,36 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const spec = require('../openapi.json');
 const {
-  parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames, zoneWithinOsmCoverage,
+  smoothZonePolygons, parseZoneResponse, adjustRiskLevel, regionalOsmData, assignZonePlaceNames, zoneWithinOsmCoverage,
   osmInfrastructureQuery, osmInfrastructureElements
 } = require('../zone-api.js');
 
 function example() {
   return structuredClone(spec.paths['/api/v1/zones'].get.responses['200'].content['application/json'].example);
 }
+
+test('smooths display corners without changing the source geometry, including holes and multipolygons', () => {
+  const outer = [[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]];
+  const hole = [[2, 2], [2, 4], [4, 4], [4, 2], [2, 2]];
+  const polygons = [[outer, hole], [outer]];
+  const original = structuredClone(polygons);
+  const result = smoothZonePolygons(polygons);
+  assert.deepEqual(polygons, original);
+  assert.deepEqual(result.map(rings => rings.length), [2, 1]);
+  assert.equal(result[0][0].length, 20);
+  assert.deepEqual(result[0][0][0], [4, 0]);
+  assert.deepEqual(result[0][0][4], [0, 4]);
+  assert.deepEqual(result[0][0][2], [1, 1]);
+  assert.deepEqual(result[0][1][0], [2.8, 2]);
+});
+
+test('handles duplicate vertices and unclosed display rings without invalid coordinates', () => {
+  const ring = [[0, 0], [0, 0], [0, 2], [2, 0]];
+  const [smoothed] = smoothZonePolygons([[ring]])[0];
+  assert.equal(smoothed.length, 15);
+  assert.ok(smoothed.flat().every(Number.isFinite));
+  assert.deepEqual(smoothZonePolygons([[[[0, 0], [0, 0]]]]), [[[[0, 0], [0, 0]]]]);
+});
 
 test('adapts the documented response and converts longitude/latitude', () => {
   const [zone] = parseZoneResponse(example());

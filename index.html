@@ -245,6 +245,8 @@
       font-size: 12px; font-weight: 700; line-height: 11px; white-space: nowrap; }
     .risk-map-label-left .risk-map-label-text { right: 12px; left: auto; }
     .risk-map-label:focus-visible .risk-map-label-text { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .risk-map-label:focus-visible::before { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .risk-labels-hidden .risk-map-label-text { display: none; }
     .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--border-strong);
       border-radius: 50%; background: #4a3520; color: white; font-size: 15px; box-shadow: 0 1px 5px #0008; }
     .poi-label { color: white; font-weight: 700; }
@@ -755,7 +757,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="zone-api.js"></script>
+  <script src="zone-api.js?v=smoothed-zones"></script>
   <script>
     'use strict';
 
@@ -1342,6 +1344,7 @@
         <details class="method-details">
           <summary>Data provenance &amp; method</summary>
           <div class="method-card">${state.demo ? 'Demo values and dates are synthetic, not NISAR observations.' : 'Measurements are relative line-of-sight observations; positive values are toward the satellite. The phase sign and reference need validation.'} This is not an operational hazard assessment. Model features and thresholds require validation against the paper and measured data.
+            Map outlines are smoothed for display; measurements and infrastructure intersections use the original geometry.
             <p class="source-line"><a class="source-link" href="https://doi.org/10.3390/rs11010089" target="_blank" rel="noopener noreferrer">Nof et al. (2019) · Remote Sensing</a></p>
           </div>
         </details>
@@ -1359,8 +1362,9 @@
       filteredRiskZones().forEach(zone => {
         const selected = zone.id === state.selectedId;
         const color = COLORS[zone.level];
-        L.polygon(zone.polygons, {
+        L.polygon(smoothZonePolygons(zone.polygons), {
           color: a11yOn('high-contrast') ? '#000000' : color,
+          smoothFactor: 0,
           weight: selected ? 4 : (a11yOn('high-contrast') ? 3 : 2),
           dashArray: usePatterns() ? RISK_DASH[zone.level] : null,
           opacity: selected ? 1 : .9,
@@ -1427,7 +1431,7 @@
     }
 
     function layoutRiskLabels() {
-      if (!map.hasLayer(riskLabelLayer)) return;
+      if (!map.hasLayer(riskLabelLayer) || map.getZoom() < 11) return;
       const mapBounds = map.getContainer().getBoundingClientRect();
       const occupied = [...document.querySelectorAll('.map-chip, .map-status, .map-legend, .leaflet-control-zoom')]
         .map(element => element.getBoundingClientRect()).filter(rect => rect.width && rect.height);
@@ -1450,11 +1454,9 @@
     }
 
     function updateRiskLabelVisibility() {
-      if (map.getZoom() <= 12) {
-        riskLabelLayer.addTo(map);
-        layoutRiskLabels();
-      }
-      else riskLabelLayer.remove();
+      map.getContainer().classList.toggle('risk-labels-hidden', map.getZoom() < 11);
+      riskLabelLayer.addTo(map);
+      layoutRiskLabels();
     }
 
     updateRiskLabelVisibility();
