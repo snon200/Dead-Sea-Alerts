@@ -10,8 +10,6 @@ Dead Sea Alerts is an interactive map for exploring ground deformation around th
 
 Built by [Team Project Hail Miriam](https://www.spaceappschallenge.org/2026/find-a-team/project-hail-miriam/) for the 2026 NASA Space Apps Challenge, **Dancing with the SARs**.
 
-> **Important:** Dashboard zones and measurements are exploratory. This project is not a validated hazard assessment or a safety warning system.
-
 The team brings together builders, data enthusiasts and storytellers to make NISAR observations accessible. Team listing: Tel Aviv, Israel; languages: English and Hebrew.
 
 ## Challenge: Dancing with the SARs
