@@ -933,7 +933,7 @@
 
     function renderChart(zone) {
       if (!zone.series || !zone.series.length) return '<p class="empty-state">Displacement history unavailable.</p>';
-      const width = 300, height = 88, pad = 12;
+      const width = 300, height = 88, pad = 12, plotTop = 20, plotBottom = height - pad - 4;
       const values = zone.series.map(point => point.value);
       const min = Math.min(...values, 0), max = Math.max(...values, 0);
       const span = (max - min) || 1;
@@ -942,7 +942,7 @@
       const points = values.map((value, index) => {
         const time = Date.parse(zone.series[index].time);
         const x = pad + (lastTime === firstTime ? 0 : (time - firstTime) / (lastTime - firstTime)) * (width - pad * 2);
-        const y = pad + (max - value) * (height - pad * 2) / span;
+        const y = plotTop + (max - value) * (plotBottom - plotTop) / span;
         return [x, y];
       });
       const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
@@ -953,12 +953,12 @@
       const firstLabel = zone.series[0].time.slice(0, 10);
       const lastLabel = zone.series[zone.series.length - 1].time.slice(0, 10);
       return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Cumulative line-of-sight displacement in millimetres, ${formatMeasurement(min)} to ${formatMeasurement(max)}">
-        <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8ef"/>
+        <line x1="${pad}" y1="${plotBottom}" x2="${width-pad}" y2="${plotBottom}" stroke="#e2e8ef"/>
         <polyline points="${line}" fill="none" stroke="${COLORS[zone.level]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${width-pad}" y="9" fill="#718096" font-size="10" text-anchor="end">${formatMeasurement(max, 'mm')}</text>
-        <text x="${width-pad}" y="${height-pad-2}" fill="#718096" font-size="10" text-anchor="end">${formatMeasurement(min, 'mm')}</text>
+        <text x="${pad}" y="9" fill="#718096" font-size="10">Min ${formatMeasurement(min, 'mm')}</text>
+        <text x="${width-pad}" y="9" fill="#718096" font-size="10" text-anchor="end">Max ${formatMeasurement(max, 'mm')}</text>
         ${dots}<text x="${pad}" y="${height-1}" fill="#718096" font-size="10">${firstLabel}</text>
-        <text x="${width-pad}" y="${height-1}" fill="#718096" font-size="10" text-anchor="end">${lastLabel}</text>
+        ${firstLabel === lastLabel ? '' : `<text x="${width-pad}" y="${height-1}" fill="#718096" font-size="10" text-anchor="end">${lastLabel}</text>`}
       </svg>`;
     }
 
