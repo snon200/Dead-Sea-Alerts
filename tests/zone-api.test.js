@@ -20,17 +20,17 @@ test('smooths display corners without changing the source geometry, including ho
   const result = smoothZonePolygons(polygons);
   assert.deepEqual(polygons, original);
   assert.deepEqual(result.map(rings => rings.length), [2, 1]);
-  assert.equal(result[0][0].length, 20);
-  assert.deepEqual(result[0][0][0], [4, 0]);
-  assert.deepEqual(result[0][0][4], [0, 4]);
-  assert.deepEqual(result[0][0][2], [1, 1]);
-  assert.deepEqual(result[0][1][0], [2.8, 2]);
+  assert.equal(result[0][0].length, 32);
+  assert.deepEqual(result[0][0][0], [5, 0]);
+  assert.deepEqual(result[0][0][4], [1.25, 1.25]);
+  assert.deepEqual(result[0][0][8], [0, 5]);
+  assert.deepEqual(result[0][1][0], [3, 2]);
 });
 
 test('handles duplicate vertices and unclosed display rings without invalid coordinates', () => {
   const ring = [[0, 0], [0, 0], [0, 2], [2, 0]];
   const [smoothed] = smoothZonePolygons([[ring]])[0];
-  assert.equal(smoothed.length, 15);
+  assert.equal(smoothed.length, 24);
   assert.ok(smoothed.flat().every(Number.isFinite));
   assert.deepEqual(smoothZonePolygons([[[[0, 0], [0, 0]]]]), [[[[0, 0], [0, 0]]]]);
 });

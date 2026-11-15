@@ -11,13 +11,10 @@ function smoothZonePolygons(polygons) {
     return points.flatMap((point, index) => {
       const previous = points[(index + points.length - 1) % points.length];
       const next = points[(index + 1) % points.length];
-      const previousLength = Math.hypot(previous[0] - point[0], previous[1] - point[1]);
-      const nextLength = Math.hypot(next[0] - point[0], next[1] - point[1]);
-      const radius = Math.min(previousLength, nextLength) * 0.4;
-      const start = point.map((value, axis) => value + (previous[axis] - value) * radius / previousLength);
-      const end = point.map((value, axis) => value + (next[axis] - value) * radius / nextLength);
-      return Array.from({ length: 5 }, (_, step) => {
-        const t = step / 4;
+      const start = point.map((value, axis) => (previous[axis] + value) / 2);
+      const end = point.map((value, axis) => (next[axis] + value) / 2);
+      return Array.from({ length: 8 }, (_, step) => {
+        const t = step / 8;
         return point.map((value, axis) =>
           (1 - t) ** 2 * start[axis] + 2 * (1 - t) * t * value + t ** 2 * end[axis]);
       });

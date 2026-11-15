@@ -21,7 +21,7 @@ On load, the dashboard requests `GET /api/v1/zones` and displays a loading indic
 
 Zone names show “Loading risk zone...” while place names load; if the place-name data is unavailable, zone IDs are shown instead.
 
-Measurements and coordinates are rounded to two decimal places for display. Coordinates marked with `~` are approximate. Zone outlines are smoothed for display; measurements, filtering and infrastructure intersections use the original geometry. Feature locations retain their original precision.
+Measurements and coordinates are rounded to two decimal places for display. Coordinates marked with `~` are approximate. Zone outlines are drawn with curves between edge midpoints for display; measurements, filtering and infrastructure intersections use the original geometry. Feature locations retain their original precision.
 
 The dashboard derives its displayed risk from the API's base risk: a mapped infrastructure intersection raises it one level, while confirmed absence within the regional dataset lowers it one level. The scale is low → watch → elevated → high and is capped at both ends. This uses all supported infrastructure categories regardless of layer visibility; the separate known-hazards layer is not infrastructure. A known intersection can raise risk even with partial coverage, but incomplete or unavailable OSM data cannot establish absence, so the base is retained. An unavailable API risk remains unavailable. The selected-zone panel explains the base and adjustment. These are experimental heuristics, not validated safety guidance.
 
