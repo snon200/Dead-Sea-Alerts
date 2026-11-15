@@ -24,9 +24,10 @@ The challenge encourages a user-friendly, open-source solution that makes comple
 
 ## How it works
 
-- **Dashboard:** A Leaflet map displays zones, displacement indicators, trends and nearby OpenStreetMap infrastructure.
-- **NISAR processing:** Python scripts acquire GUNW products and build a cumulative line-of-sight displacement stack. A separate detector screens for exploratory deformation anomalies.
-- **API:** A Python endpoint defines the interface for zone geometry, measurements and displacement histories. See the [API guide](./API.md) and [OpenAPI specification](./openapi.json).
+- **Satellite data to insights:** An offline Python pipeline processes NASA-ISRO NISAR GUNW radar observations into cumulative line-of-sight displacement time series, then screens them for potential deformation zones. The latest detections are exported with their measurement histories.
+- **Geographic context:** Precomputed OpenStreetMap data adds place names and infrastructure such as roads, buildings and utilities. The frontend intersects mapped features with zone geometry and applies an experimental infrastructure-based risk adjustment.
+- **Interactive frontend:** Built with vanilla JavaScript and Leaflet, the dashboard brings the data together in a map with selectable zones, layer filters, displacement trends and infrastructure details.
+- **Python backend and Vercel hosting:** Python API endpoints serve the precomputed zone and OpenStreetMap datasets to the frontend. Vercel hosts the dashboard and API together; radar processing is performed offline rather than on each request. See the [pipeline guide](./NISAR_PIPELINE_GUIDE.md), [API guide](./API.md) and [OpenAPI specification](./openapi.json).
 
 Line-of-sight movement is relative to the processing reference and is not automatically vertical subsidence. The reference, sign convention, classification methods and scientific interpretation require validation. Intersecting mapped infrastructure does not establish damage.
 
