@@ -428,9 +428,11 @@
     .sdg-body { padding: 14px 18px 18px; font-size: 14px; line-height: 1.55; color: var(--text); display: grid; gap: 10px; }
     .sdg-card { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; background: var(--panel-raised); }
     .sdg-card strong { display: block; color: var(--accent); margin-bottom: 3px; font-size: 14px; }
-    .ai-dialog { border-color: #3c617d; color: #e4f1f7;
-      background: radial-gradient(ellipse at 100% 0, #273c67, transparent 52%), #112437; }
-    .ai-dialog[open] { animation: ai-dialog-in .3s ease-out both; }
+    .ai-dialog { position: fixed; z-index: 1100; width: min(380px, calc(100vw - 16px)); overflow-y: auto;
+      border: 1px solid #3c617d; border-radius: 14px; color: #e4f1f7;
+      background: radial-gradient(ellipse at 100% 0, #273c67, transparent 52%), #112437;
+      box-shadow: 0 14px 36px rgb(15 10 4 / 32%); animation: ai-dialog-in .3s ease-out both; }
+    .ai-dialog[hidden] { display: none; }
     .ai-dialog .sdg-head { border-color: #35566d; }
     .ai-dialog .sdg-head h2 { display: flex; align-items: center; gap: 9px; color: #f2f9ff; }
     .ai-dialog .sdg-head .topbar-btn:not(.ai-trigger) { color: #e4f1f7; border-color: #54758a; background: #1c344b; }
@@ -573,7 +575,7 @@
     html.a11y-high-contrast .a11y-trigger { background: #000; border-color: #000; color: #ffff00; }
     html.a11y-high-contrast .a11y-trigger[aria-expanded="true"] { background: #ffff00; color: #000; }
     html.a11y-high-contrast .a11y-popover, html.a11y-high-contrast .sdg-dialog { border: 3px solid #000; box-shadow: none; }
-    html.a11y-high-contrast .ai-dialog { color: #000; background: #fff; }
+    html.a11y-high-contrast .ai-dialog { color: #000; border: 3px solid #000; background: #fff; box-shadow: none; }
     html.a11y-high-contrast .ai-dialog :where(p, label, h2, strong) { color: #000; }
     html.a11y-high-contrast .ai-dialog .sdg-head h2, html.a11y-high-contrast .ai-dialog .ai-note { color: #000; }
     html.a11y-high-contrast .ai-dialog .sdg-head .topbar-btn:not(.ai-trigger) { color: #000; border-color: #000; background: #fff; }
@@ -620,7 +622,25 @@
       </div>
       <div class="topbar-right">
         <div class="topbar-actions">
-          <button type="button" class="topbar-btn ai-trigger" id="askAiButton" aria-haspopup="dialog" data-tooltip="Ask AI about Dead Sea zones"><span aria-hidden="true">✦</span> Ask AI</button>
+          <button type="button" class="topbar-btn ai-trigger" id="askAiButton" aria-haspopup="dialog" aria-controls="askAiDialog" aria-expanded="false" data-tooltip="Ask AI about Dead Sea zones"><span aria-hidden="true">✦</span> Ask AI</button>
+          <div class="ai-dialog" id="askAiDialog" role="dialog" aria-labelledby="askAiTitle" hidden>
+            <div class="sdg-head">
+              <h2 id="askAiTitle"><span class="ai-orb" aria-hidden="true">✦</span> Ask AI</h2>
+              <button type="button" class="topbar-btn" id="closeAskAi" aria-label="Close Ask AI">Close</button>
+            </div>
+            <form class="ai-dialog-body" id="askAiForm">
+              <p>Ask about the dashboard's data, risk levels, and infrastructure.</p>
+              <p class="ai-note">Questions stay in your browser. Not for safety decisions.</p>
+              <label for="aiQuestion">Your question</label>
+              <textarea class="ai-question" id="aiQuestion" maxlength="1000" required placeholder="For example: How is zone risk determined?"></textarea>
+              <button class="topbar-btn ai-trigger ai-submit" id="askAiSubmit" type="submit"><span aria-hidden="true">✦</span> Ask question</button>
+              <p class="loading-indicator ai-loading" id="askAiLoading" role="status" hidden>Preparing response…</p>
+              <div class="ai-answer" id="askAiAnswer" aria-live="polite" hidden>
+                <strong>Response</strong>
+                <p id="askAiAnswerText"></p>
+              </div>
+            </form>
+          </div>
           <button type="button" class="theme-switch" id="themeToggle" role="switch" aria-checked="false" aria-label="Toggle light / dark mode" data-tooltip="Switch light / dark mode">
             <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -652,25 +672,6 @@
         <div class="credits">Created for the NASA 2026 Space Apps Challenge<br><a href="https://github.com/snon200/Project-Hail-Miriam">GitHub repository</a></div>
       </div>
     </header>
-
-    <dialog class="sdg-dialog ai-dialog" id="askAiDialog" aria-labelledby="askAiTitle">
-      <div class="sdg-head">
-        <h2 id="askAiTitle"><span class="ai-orb" aria-hidden="true">✦</span> Ask AI</h2>
-        <button type="button" class="topbar-btn" id="closeAskAi" aria-label="Close Ask AI dialog">Close</button>
-      </div>
-      <form class="ai-dialog-body" id="askAiForm">
-        <p>Ask about the dashboard's data, risk levels, and infrastructure.</p>
-        <p class="ai-note">Questions stay in your browser. Not for safety decisions.</p>
-        <label for="aiQuestion">Your question</label>
-        <textarea class="ai-question" id="aiQuestion" maxlength="1000" required placeholder="For example: How is zone risk determined?"></textarea>
-        <button class="topbar-btn ai-trigger ai-submit" id="askAiSubmit" type="submit"><span aria-hidden="true">✦</span> Ask question</button>
-        <p class="loading-indicator ai-loading" id="askAiLoading" role="status" hidden>Preparing response…</p>
-        <div class="ai-answer" id="askAiAnswer" aria-live="polite" hidden>
-          <strong>Response</strong>
-          <p id="askAiAnswerText"></p>
-        </div>
-      </form>
-    </dialog>
 
     <dialog class="sdg-dialog" id="sdgDialog" aria-labelledby="sdgDialogTitle">
       <div class="sdg-head">
@@ -1986,6 +1987,7 @@
     document.getElementById('deselectAllLayers').addEventListener('click', () => setLayerVisibility(layerControls, false));
     document.getElementById('retryOsm').addEventListener('click', requestOsm);
 
+    const askAiButton = document.getElementById('askAiButton');
     const askAiDialog = document.getElementById('askAiDialog');
     const askAiForm = document.getElementById('askAiForm');
     const aiQuestion = document.getElementById('aiQuestion');
@@ -2000,17 +2002,42 @@
       askAiLoading.hidden = true;
       askAiForm.setAttribute('aria-busy', 'false');
     }
-    document.getElementById('askAiButton').addEventListener('click', () => {
-      if (typeof askAiDialog.showModal === 'function') askAiDialog.showModal();
-      else askAiDialog.setAttribute('open', '');
+    function positionAskAi() {
+      const button = askAiButton.getBoundingClientRect();
+      const top = button.bottom + 8;
+      const left = Math.max(8, Math.min(button.right - askAiDialog.offsetWidth, window.innerWidth - askAiDialog.offsetWidth - 8));
+      askAiDialog.style.top = `${top}px`;
+      askAiDialog.style.left = `${left}px`;
+      askAiDialog.style.maxHeight = `${Math.max(0, window.innerHeight - top - 8)}px`;
+    }
+    function closeAskAi(restoreFocus = false) {
+      resetAskAiLoading();
+      askAiDialog.hidden = true;
+      askAiButton.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) askAiButton.focus();
+    }
+    askAiButton.addEventListener('click', () => {
+      if (!askAiDialog.hidden) {
+        closeAskAi();
+        return;
+      }
+      askAiDialog.hidden = false;
+      askAiButton.setAttribute('aria-expanded', 'true');
+      positionAskAi();
       aiQuestion.focus();
     });
-    document.getElementById('closeAskAi').addEventListener('click', () => {
-      resetAskAiLoading();
-      if (typeof askAiDialog.close === 'function') askAiDialog.close();
-      else askAiDialog.removeAttribute('open');
+    document.getElementById('closeAskAi').addEventListener('click', () => closeAskAi(true));
+    document.addEventListener('pointerdown', event => {
+      if (!askAiDialog.hidden && !askAiDialog.contains(event.target) && !askAiButton.contains(event.target)) {
+        closeAskAi();
+      }
     });
-    askAiDialog.addEventListener('close', resetAskAiLoading);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !askAiDialog.hidden) closeAskAi(true);
+    });
+    window.addEventListener('resize', () => {
+      if (!askAiDialog.hidden) positionAskAi();
+    });
     aiQuestion.addEventListener('input', () => aiQuestion.setCustomValidity(''));
     askAiForm.addEventListener('submit', event => {
       event.preventDefault();
