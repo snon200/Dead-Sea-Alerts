@@ -177,6 +177,7 @@
       padding: 4px 5px; color: var(--link); cursor: pointer; font-size: 12px; white-space: nowrap; }
     .layer-action:hover { background: var(--surface-hover); }
     .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+    .layer-list[hidden] { display: none; }
     .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 3px;
       border: 1px solid var(--border); border-radius: 9px; background: var(--panel); padding: 5px; color: var(--text); font-size: 12px; }
     .layer-control input { flex-shrink: 0; margin: 0; accent-color: var(--accent); }
@@ -253,8 +254,6 @@
       border: 1px solid #60cbd8; border-radius: 10px; color: #bbf7ff;
       background: linear-gradient(135deg, #176b7e, #534d91); box-shadow: 0 0 16px rgb(73 218 231 / 22%);
       font-size: 18px; animation: ai-glow 3s ease-in-out infinite; }
-    .ai-badge { border: 1px solid #50728d; border-radius: 999px; padding: 3px 7px;
-      color: #d3edf7; background: #1d3850; font-size: 11px; font-weight: 700; white-space: nowrap; }
     .ai-summary { color: #e0edf5; font-size: 13px; line-height: 1.6; white-space: pre-line; }
     .ai-summary[aria-busy="false"] { animation: ai-reveal .4s ease-out both; }
     .ai-note { margin-top: 9px; color: #536b80; font-size: 12px; line-height: 1.45; }
@@ -536,7 +535,7 @@
     html.a11y-high-contrast .ai-dialog .sdg-head .topbar-btn:not(.ai-trigger) { color: #000; border-color: #000; background: #fff; }
     html.a11y-high-contrast .ai-question { color: #000; border: 2px solid #000; background: #fff; }
     html.a11y-high-contrast .ai-question::placeholder { color: #333; }
-    html.a11y-high-contrast .ai-badge, html.a11y-high-contrast .ai-orb { color: #000; border-color: #000; background: #fff; box-shadow: none; }
+    html.a11y-high-contrast .ai-orb { color: #000; border-color: #000; background: #fff; box-shadow: none; }
     html.a11y-high-contrast .ai-card::before { display: none; }
     html.a11y-high-contrast .sdg-card { border: 2px solid #000; background: #fff; }
     html.a11y-high-contrast .sdg-card strong { color: #000; }
@@ -602,18 +601,18 @@
 
     <dialog class="sdg-dialog ai-dialog" id="askAiDialog" aria-labelledby="askAiTitle">
       <div class="sdg-head">
-        <h2 id="askAiTitle"><span class="ai-orb" aria-hidden="true">✦</span> Ask AI <span class="ai-badge">Demo</span></h2>
+        <h2 id="askAiTitle"><span class="ai-orb" aria-hidden="true">✦</span> Ask AI</h2>
         <button type="button" class="topbar-btn" id="closeAskAi" aria-label="Close Ask AI dialog">Close</button>
       </div>
       <form class="ai-dialog-body" id="askAiForm">
-        <p>Explore an example of how questions about this dashboard might be answered.</p>
-        <p class="ai-note">Scripted responses only—not AI-generated. Questions stay in your browser. Not for safety decisions.</p>
+        <p>Ask about the dashboard's data, risk levels, and infrastructure.</p>
+        <p class="ai-note">Questions stay in your browser. Not for safety decisions.</p>
         <label for="aiQuestion">Your question</label>
         <textarea class="ai-question" id="aiQuestion" maxlength="1000" required placeholder="For example: How is zone risk determined?"></textarea>
         <button class="topbar-btn ai-trigger ai-submit" id="askAiSubmit" type="submit"><span aria-hidden="true">✦</span> Ask question</button>
-        <p class="loading-indicator ai-loading" id="askAiLoading" role="status" hidden>Preparing a demo response…</p>
+        <p class="loading-indicator ai-loading" id="askAiLoading" role="status" hidden>Preparing response…</p>
         <div class="ai-answer" id="askAiAnswer" aria-live="polite" hidden>
-          <strong>Example response</strong>
+          <strong>Response</strong>
           <p id="askAiAnswerText"></p>
         </div>
       </form>
@@ -658,7 +657,7 @@
             </div>
             <p class="intro compact-intro">Overlays cover the study area. The basemap stays visible.</p>
             <p class="loading-indicator" id="sidebarOsmLoading" role="status" hidden>Loading infrastructure…</p>
-            <div class="layer-list">
+            <div class="layer-list" id="layerList" hidden>
               <label class="layer-control"><span><i class="swatch" style="background:#fbbf24"></i>Roads<small class="layer-count" id="roadCount">Loading...</small></span><input id="toggleRoads" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#67c9f2"></i>Pumping stations<small class="layer-count" id="pumpCount">Loading...</small></span><input id="togglePumps" type="checkbox" checked></label>
               <label class="layer-control"><span><i class="swatch" style="background:#b4a1ef"></i>Houses & buildings<small class="layer-count" id="buildingCount">Loading...</small></span><input id="toggleBuildings" type="checkbox" checked></label>
@@ -1196,10 +1195,9 @@
         <section class="ai-card" aria-labelledby="aiZoneHeading">
           <div class="ai-card-heading">
             <div class="ai-title-group"><span class="ai-orb" aria-hidden="true">✦</span><div><h3 id="aiZoneHeading">AI explanation</h3><span class="ai-kicker">Zone insights</span></div></div>
-            <span class="ai-badge">Demo</span>
           </div>
-          <div class="ai-summary" id="aiZoneSummary" role="status" aria-live="polite" aria-busy="true"><span class="loading-indicator ai-loading">Preparing an example summary…</span></div>
-          <p class="ai-note">Template-based preview, not AI-generated or safety guidance.</p>
+          <div class="ai-summary" id="aiZoneSummary" role="status" aria-live="polite" aria-busy="true"><span class="loading-indicator ai-loading">Preparing summary…</span></div>
+          <p class="ai-note">Experimental information; not for safety decisions.</p>
         </section>
         <p class="detail-description">${state.demo ? 'Illustrative demo zone; values and outlines are synthetic.' : 'Experimental zone from the processing API.'}</p>
         <p class="detail-description detail-disclaimer">${state.demo ? 'Illustrative' : 'Experimental'} measurements and classifications; not for safety decisions.</p>
@@ -1382,6 +1380,7 @@
       document.getElementById('osmStatusText').textContent = message;
       document.getElementById('retryOsm').hidden = !retry;
       document.getElementById('sidebarOsmLoading').hidden = status !== 'loading' || state.zonesLoading;
+      document.getElementById('layerList').hidden = status === 'loading';
       element.dataset.state = status;
       layoutRiskLabels();
     }
