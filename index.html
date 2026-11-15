@@ -798,6 +798,7 @@
       demo: false,
       zonesLoading: false,
       zonesFailed: false,
+      placeNamesStatus: 'ready',
       show: { roads: true, pumps: true, buildings: true, bridges: true, power: true, water: true, facilities: true, dams: true, industrial: true, emergency: true, hazards: true },
       sidebar: { left: true, right: false },
       rightPinned: false,
@@ -900,26 +901,32 @@
       return response.json();
     }
 
+    function refreshZoneNames() {
+      renderZoneList();
+      const title = document.querySelector('#detailHeader .detail-title');
+      if (title && selectedZone()) title.textContent = zoneDisplayName(selectedZone());
+      updateMockZoneExplanation();
+      drawRiskZones();
+      riskLabelLayer.clearLayers();
+      riskLabelMarkers.length = 0;
+      drawRiskLabels();
+      updateRiskLabelMarkers();
+      updateRiskLabelVisibility();
+    }
+
     function loadPlaceNames(dataset) {
       try {
         const { outsideCoverage } = assignZonePlaceNames(RISK_ZONES, dataset);
+        state.placeNamesStatus = 'ready';
         setZoneSourceStatus(outsideCoverage
           ? 'Some zones are outside the area-name dataset; their IDs are shown instead.' : '',
           outsideCoverage ? 'error' : 'ready');
-        renderZoneList();
-        const title = document.querySelector('#detailHeader .detail-title');
-        if (title && selectedZone()) title.textContent = selectedZone().name;
-        updateMockZoneExplanation();
-        drawRiskZones();
-        riskLabelLayer.clearLayers();
-        riskLabelMarkers.length = 0;
-        drawRiskLabels();
-        updateRiskLabelMarkers();
-        updateRiskLabelVisibility();
       } catch (error) {
         console.error('Could not load OSM area names:', error);
+        state.placeNamesStatus = 'error';
         setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
       }
+      refreshZoneNames();
     }
 
     async function loadZones() {
@@ -939,6 +946,7 @@
         if (zoneRequest !== controller) return;
         state.zonesLoading = false;
         state.demo = response.headers.get('X-Zone-Source') === 'demo';
+        state.placeNamesStatus = state.demo ? 'ready' : 'loading';
         if (state.demo) zones.forEach(zone => { zone.name = DEMO_ZONE_NAMES[zone.id] || zone.name; });
         setZoneSourceStatus(state.demo ? 'Illustrative demo: zones and measurements are synthetic.' : '', state.demo ? 'demo' : 'ready');
         replaceZones(zones);
@@ -960,6 +968,10 @@
 
     function selectedZone() {
       return RISK_ZONES.find(zone => zone.id === state.selectedId) || null;
+    }
+
+    function zoneDisplayName(zone) {
+      return state.placeNamesStatus === 'loading' ? 'Loading risk zone...' : zone.name;
     }
 
     function polygonBounds(zone) {
@@ -1084,7 +1096,7 @@
         <button type="button" class="zone-card ${zone.id === state.selectedId ? 'selected' : ''}"
           style="--zone-color:${COLORS[zone.level]}" data-zone-id="${escapeHtml(zone.id)}" aria-pressed="${zone.id === state.selectedId}">
           <span class="zone-card-top">
-            <span class="zone-title">${escapeHtml(zone.name)}</span>
+            <span class="zone-title">${escapeHtml(zoneDisplayName(zone))}</span>
             <span class="level-pill">${zone.label}</span>
           </span>
           ${exp.tier ? `<span class="exposure-pill" data-tier="${exp.tier === 2 ? 'critical' : 'moderate'}" title="${escapeHtml(exp.detail)}"><span class="sym" aria-hidden="true">${exp.tier === 2 ? '▲' : '●'}</span>${escapeHtml(exp.label)}</span>` : ''}
@@ -1168,7 +1180,7 @@
           ? `The available history records ${formatMeasurement(zone.series[0].value, 'mm')} on ${zone.series[0].time.slice(0, 10)}.`
           : `From ${zone.series[0].time.slice(0, 10)} to ${zone.series[zone.series.length - 1].time.slice(0, 10)}, cumulative line-of-sight displacement changed from ${formatMeasurement(zone.series[0].value, 'mm')} to ${formatMeasurement(zone.series[zone.series.length - 1].value, 'mm')}.`
         : 'Displacement history is unavailable for this zone.';
-      summary.textContent = `${zone.name} · Displayed risk: ${zone.label}. ${riskAdjustmentDescription(zone)}\n\n${history}`;
+      summary.textContent = `${zoneDisplayName(zone)} · Displayed risk: ${zone.label}. ${riskAdjustmentDescription(zone)}\n\n${history}`;
     }
 
     function renderDetails() {
@@ -1187,7 +1199,7 @@
       }
       header.innerHTML = `
         <div class="detail-title-row">
-          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${escapeHtml(zone.name)}</h2></div>
+          <div><div class="eyebrow">Selected risk zone</div><h2 class="detail-title">${escapeHtml(zoneDisplayName(zone))}</h2></div>
           <div class="detail-risk"><span class="level-pill" style="--zone-color:${COLORS[zone.level]}">${zone.label}</span></div>
         </div>
       `;
@@ -1254,7 +1266,7 @@
           opacity: selected ? 1 : .9,
           fillColor: color,
           fillOpacity: selected ? .38 : (a11yOn('high-contrast') ? .28 : .17)
-        }).bindTooltip(`${escapeHtml(zone.name)} · ${zone.label}`, { sticky: true })
+        }).bindTooltip(`${escapeHtml(zoneDisplayName(zone))} · ${zone.label}`, { sticky: true })
           .on('click', () => selectZone(zone.id, false))
           .addTo(riskLayer);
       });
@@ -1266,18 +1278,18 @@
         .forEach(({ zone, center }, index) => {
           const text = document.createElement('span');
           text.className = 'risk-map-label-text';
-          text.textContent = zone.name;
+          text.textContent = zoneDisplayName(zone);
           const marker = L.marker(center, {
             icon: L.divIcon({
               className: `risk-map-label ${index % 2 ? 'risk-map-label-left' : ''}`,
               html: text, iconSize: [0, 0], iconAnchor: [0, 0]
             }),
-            title: `${zone.name} · ${zone.label}`
+            title: `${zoneDisplayName(zone)} · ${zone.label}`
           });
           marker.on('add', () => {
             const icon = marker.getElement();
             icon.style.setProperty('--zone-color', COLORS[zone.level]);
-            icon.setAttribute('aria-label', `${zone.name}, ${zone.label} risk`);
+            icon.setAttribute('aria-label', `${zoneDisplayName(zone)}, ${zone.label} risk`);
             icon.onkeydown = event => {
               if (event.key !== 'Enter' && event.key !== ' ') return;
               event.preventDefault();
@@ -1303,13 +1315,13 @@
     function updateRiskLabelStyles() {
       riskLabelMarkers.forEach(({ zoneId, marker }) => {
         const zone = RISK_ZONES.find(item => item.id === zoneId);
-        const title = `${zone.name} · ${zone.label}`;
+        const title = `${zoneDisplayName(zone)} · ${zone.label}`;
         marker.options.title = title;
         const icon = marker.getElement();
         if (icon) {
           icon.title = title;
           icon.style.setProperty('--zone-color', COLORS[zone.level]);
-          icon.setAttribute('aria-label', `${zone.name}, ${zone.label} risk`);
+          icon.setAttribute('aria-label', `${zoneDisplayName(zone)}, ${zone.label} risk`);
         }
       });
     }
@@ -1618,7 +1630,11 @@
       } catch (error) {
         if (generation !== state.osm.generation) return 0;
         console.error('Precomputed OSM cache unavailable:', error);
-        if (!state.zonesFailed && !placesAttempted) setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
+        if (!state.zonesFailed && !placesAttempted) {
+          state.placeNamesStatus = 'error';
+          setZoneSourceStatus('Area names unavailable; showing zone IDs.', 'error');
+          refreshZoneNames();
+        }
         state.osm.regionalLoaded = false;
         state.osm.elements = [];
         state.osm.results = Object.create(null);
@@ -1640,6 +1656,10 @@
       if (!pending.length && (state.demo || state.osm.regionalLoaded)) return;
       const generation = state.osm.generation;
       state.osm.loading = true;
+      if (!state.demo && state.placeNamesStatus === 'error') {
+        state.placeNamesStatus = 'loading';
+        refreshZoneNames();
+      }
       pending.forEach(zone => delete state.osm.errors[zone.id]);
       const infrastructure = document.getElementById('zoneInfrastructure');
       if (infrastructure && selectedZone()) infrastructure.innerHTML = renderInfrastructure(selectedZone());
@@ -1919,7 +1939,7 @@
           : state.zonesFailed ? 'Zone data is unavailable.'
             : `Loaded ${state.demo ? 'demo ' : ''}zones: ${RISK_ZONES.length}.`;
         const zone = selectedZone();
-        if (zone) context += ` Selected zone: ${zone.name}; displayed risk: ${zone.label}.`;
+        if (zone) context += ` Selected zone: ${zoneDisplayName(zone)}; displayed risk: ${zone.label}.`;
         answer += `\n\n${context}`;
         askAiAnswer.hidden = false;
         document.getElementById('askAiAnswerText').textContent = answer;
