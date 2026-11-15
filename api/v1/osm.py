@@ -1,4 +1,5 @@
 """Serve precomputed OpenStreetMap infrastructure and place names."""
+from __future__ import annotations
 
 import hashlib
 import json

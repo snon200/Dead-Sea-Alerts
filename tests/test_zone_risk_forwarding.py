@@ -11,7 +11,7 @@ from subsidence_detection_v2 import DetectionConfig, main_process
 from zone_service import build_zones, export_cache
 
 class ForwardingTests(unittest.TestCase):
-    def test_risk_in_api(self):
+    def test_upstream_quality_gate_prevents_unverified_stage3_risk(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)/'data'; proc=root/'processed'/'run_v2_test'; proc.mkdir(parents=True)
             n,h,w=5,48,48
@@ -33,12 +33,15 @@ class ForwardingTests(unittest.TestCase):
             (proc/'metadata.json').write_text(json.dumps(meta))
             cfg=DetectionConfig(coherence_min=.35,minimum_movement_mm=3,minimum_rate_mm_day=0,minimum_snr=2.5,noise_floor_mm=1,minimum_filter_support=.2)
             main_process(proc,root/'detection',cfg)
+            detections=json.loads((root/'detection'/'run_v2_test'/'anomalies.geojson').read_text())
+            self.assertTrue(any(f['properties'].get('risk_level')=='high' for f in detections['features']))
             zones=build_zones(run_name='run_v2_test',data_root=root)
             self.assertTrue(zones)
-            self.assertTrue(any(z['risk_level']=='high' for z in zones), zones)
+            self.assertTrue(all(z['summary']['latest_pair_mean_coherence'] is None for z in zones))
+            self.assertTrue(all(z['risk_level'] is None for z in zones))
             path=export_cache(run_name='run_v2_test',data_root=root,output=root/'api'/'zones.json')
             payload=json.loads(path.read_text())
             self.assertEqual(payload['schema_version'],'1.0')
-            self.assertTrue(any(z['risk_level']=='high' for z in payload['zones']))
+            self.assertTrue(all(z['risk_level'] is None for z in payload['zones']))
 
 if __name__=='__main__': unittest.main()
