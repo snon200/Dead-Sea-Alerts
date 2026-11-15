@@ -1,10 +1,8 @@
 __pycache__/
 .pytest_cache/
-data/*
-!data/processed/
-!data/processed/**
-!data/detection/
-!data/detection/**
+/data/*
+/data/processed/
+/data/detection/
 !data/api/
 !data/api/**
 *.pyc
