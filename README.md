@@ -4,7 +4,7 @@ This solution was developed as part of NASA Space Apps Tel Aviv 2026. The event 
 
 [Visit Dead Sea Alerts](https://deadsea-alerts.earth/)
 
-<img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/3ef2dacb-0954-46cb-a59e-2a3e749b3fd2" />
+<img width="1914" height="914" alt="image" src="https://github.com/user-attachments/assets/480c3ec0-cdd2-495e-95b5-a78e187b72c9" />
 
 Dead Sea Alerts is an interactive map for exploring ground deformation around the Dead Sea and its relationship to nearby infrastructure. The project aims to use NASA-ISRO Synthetic Aperture Radar (NISAR) observations to help people explore changes over time.
 
