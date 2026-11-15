@@ -113,7 +113,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 86.411810528449,
         "cumulative_shift_mm": -20.19117487450035,
@@ -276,7 +276,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -190.38474749817573,
         "cumulative_shift_mm": -37.267352309881474,
@@ -473,7 +473,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -161.81790606263192,
         "cumulative_shift_mm": -10.363617434185379,
@@ -646,7 +646,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 65.25034072733035,
         "cumulative_shift_mm": 1.7164180322929665,
@@ -1465,7 +1465,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 4514.4896978923525,
         "cumulative_shift_mm": -79.08649579842252,
@@ -1934,7 +1934,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -116.03803130542559,
         "cumulative_shift_mm": -25.326375949649496,
@@ -2059,7 +2059,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -163.2684022237857,
         "cumulative_shift_mm": -29.811852402157253,
@@ -2296,7 +2296,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -46.01423442452711,
         "cumulative_shift_mm": -29.930871821161528,
@@ -2485,7 +2485,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -157.48107991435313,
         "cumulative_shift_mm": -34.201310417868875,
@@ -2610,7 +2610,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -39.91401913291538,
         "cumulative_shift_mm": -33.77215003967285,
@@ -2727,7 +2727,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -259.83817955851555,
         "cumulative_shift_mm": -40.99117592402867,
@@ -2852,7 +2852,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 25.581748293793716,
         "cumulative_shift_mm": -14.642326671144236,
@@ -2977,7 +2977,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -49.72661390725304,
         "cumulative_shift_mm": 0.7633704998913933,
@@ -3110,7 +3110,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -212.03991400964878,
         "cumulative_shift_mm": -6.40817129611969,
@@ -3371,7 +3371,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -15.779421612305521,
         "cumulative_shift_mm": -15.211761297474444,
@@ -3496,7 +3496,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -83.36456897551264,
         "cumulative_shift_mm": 10.772653151441503,
@@ -3685,7 +3685,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 23.374233938659096,
         "cumulative_shift_mm": -14.493364273853924,
@@ -3938,7 +3938,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 48.44211436378538,
         "cumulative_shift_mm": -5.340625554323196,
@@ -4215,7 +4215,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -69.00736480812692,
         "cumulative_shift_mm": -22.323571626530136,
@@ -4332,7 +4332,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -134.1115035822518,
         "cumulative_shift_mm": -38.47001768413343,
@@ -4529,7 +4529,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -66.49351916472116,
         "cumulative_shift_mm": -23.922837498982748,
@@ -4646,7 +4646,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 7.821548594669784,
         "cumulative_shift_mm": -34.587940432808615,
@@ -4975,7 +4975,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -220.28082749466984,
         "cumulative_shift_mm": -30.307318889931455,
@@ -5068,7 +5068,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 58.38548290904146,
         "cumulative_shift_mm": -6.642168819904327,
@@ -5153,7 +5153,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -175.16979569652017,
         "cumulative_shift_mm": -10.040134092171987,
@@ -5262,7 +5262,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -190.83868505166578,
         "cumulative_shift_mm": -5.785234465186174,
@@ -5379,7 +5379,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 14.59761057879469,
         "cumulative_shift_mm": 9.302419607837995,
@@ -5526,7 +5526,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 27.585976626475667,
         "cumulative_shift_mm": 5.465611020723979,
@@ -5855,7 +5855,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 52.67413644170861,
         "cumulative_shift_mm": 8.807119960116374,
@@ -5948,7 +5948,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 24.05245617777109,
         "cumulative_shift_mm": 4.949687093496323,
@@ -6081,7 +6081,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": -1.0792857227551094,
         "cumulative_shift_mm": -12.981815395233307,
@@ -6342,7 +6342,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 39.8008231172833,
         "cumulative_shift_mm": -11.554508735414128,
@@ -6467,7 +6467,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -150.7749701096461,
         "cumulative_shift_mm": -37.15046779926006,
@@ -6576,7 +6576,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -106.32701858282087,
         "cumulative_shift_mm": -34.97962894439697,
@@ -6653,7 +6653,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -81.72630887726946,
         "cumulative_shift_mm": -12.762922366460165,
@@ -6794,7 +6794,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 1.7833099035279782,
         "cumulative_shift_mm": -10.173187749726432,
@@ -6911,7 +6911,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 85.97534550918388,
         "cumulative_shift_mm": 6.658203904821466,
@@ -6996,7 +6996,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -84.44494065940381,
         "cumulative_shift_mm": -10.387009286880494,
@@ -7081,7 +7081,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 271.95060233734546,
         "cumulative_shift_mm": -2.577710580825806,
@@ -7174,7 +7174,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -109.97824821207249,
         "cumulative_shift_mm": -32.63647821214464,
@@ -7729,7 +7729,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -282.94149295649686,
         "cumulative_shift_mm": -78.8089458056223,
@@ -7822,7 +7822,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -87.28873579999588,
         "cumulative_shift_mm": -10.267502129077911,
@@ -7931,7 +7931,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -129.37330356375736,
         "cumulative_shift_mm": -0.7145783467726274,
@@ -8048,7 +8048,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 87.90018240575279,
         "cumulative_shift_mm": 6.770533714975629,
@@ -8229,7 +8229,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 15.94874569597213,
         "cumulative_shift_mm": -12.112143017743763,
@@ -8354,7 +8354,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -124.59955047369,
         "cumulative_shift_mm": -22.589488220214843,
@@ -8479,7 +8479,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -105.47664118309812,
         "cumulative_shift_mm": -31.22623332341512,
@@ -8564,7 +8564,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -138.70662415027618,
         "cumulative_shift_mm": -31.512982845306396,
@@ -8649,7 +8649,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -146.069521164894,
         "cumulative_shift_mm": -35.24206809997558,
@@ -8750,7 +8750,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -158.20359873274967,
         "cumulative_shift_mm": -22.904226700464886,
@@ -8843,7 +8843,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -67.15252247452736,
         "cumulative_shift_mm": -38.87402629852295,
@@ -8944,7 +8944,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -61.336901562554374,
         "cumulative_shift_mm": -43.921734946114675,
@@ -9061,7 +9061,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -106.21949505805969,
         "cumulative_shift_mm": -22.781063153193546,
@@ -9170,7 +9170,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 34.4901892038492,
         "cumulative_shift_mm": -9.689866781234741,
@@ -9263,7 +9263,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -254.55488303489983,
         "cumulative_shift_mm": -5.62517112493515,
@@ -9372,7 +9372,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 67.45961125195026,
         "cumulative_shift_mm": -4.951204627752304,
@@ -9465,7 +9465,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 92.64077135953787,
         "cumulative_shift_mm": 9.765393379543509,
@@ -9558,7 +9558,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -102.03268808281672,
         "cumulative_shift_mm": -8.87088979780674,
@@ -9899,7 +9899,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 275.6022976337538,
         "cumulative_shift_mm": 10.114051536442233,
@@ -9984,7 +9984,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 91.30689429817721,
         "cumulative_shift_mm": 10.000900723040104,
@@ -10077,7 +10077,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 49.84902457543649,
         "cumulative_shift_mm": 13.902877926826477,
@@ -10162,7 +10162,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -177.1753794451555,
         "cumulative_shift_mm": 9.045583671993679,
@@ -10239,7 +10239,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 93.6111085191369,
         "cumulative_shift_mm": 6.506261229515076,
@@ -10428,7 +10428,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "low",
       "summary": {
         "los_velocity_mm_per_year": 21.751268553118656,
         "cumulative_shift_mm": 4.8755400480800555,
@@ -10545,7 +10545,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -98.03706716001034,
         "cumulative_shift_mm": -14.489635801315307,
@@ -10758,7 +10758,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -315.14645417058387,
         "cumulative_shift_mm": -12.614406332677724,
@@ -10835,7 +10835,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -180.53116208314896,
         "cumulative_shift_mm": -39.12405776977539,
@@ -10928,7 +10928,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -170.5052024920782,
         "cumulative_shift_mm": -44.6563606262207,
@@ -11021,7 +11021,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -68.24311324954033,
         "cumulative_shift_mm": -50.00518846511841,
@@ -11098,7 +11098,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -194.17385272930065,
         "cumulative_shift_mm": -20.444669087727863,
@@ -11175,7 +11175,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -189.19233628362417,
         "cumulative_shift_mm": -17.036187410354614,
@@ -11316,7 +11316,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -271.8739596440224,
         "cumulative_shift_mm": 1.8939806079119443,
@@ -11433,7 +11433,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -273.1472360235841,
         "cumulative_shift_mm": 9.923175651094187,
@@ -11526,7 +11526,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -385.77981764078135,
         "cumulative_shift_mm": 14.701797621590751,
@@ -11627,7 +11627,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -374.5565120100975,
         "cumulative_shift_mm": 12.326946449279784,
@@ -11744,7 +11744,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -370.8022487234059,
         "cumulative_shift_mm": 13.421980261093093,
@@ -11853,7 +11853,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -138.4068508116262,
         "cumulative_shift_mm": 5.036955305508205,
@@ -11938,7 +11938,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "high",
       "summary": {
         "los_velocity_mm_per_year": -156.17486276105046,
         "cumulative_shift_mm": -4.089675277471542,
@@ -12023,7 +12023,7 @@
           ]
         ]
       },
-      "risk_level": null,
+      "risk_level": "watch",
       "summary": {
         "los_velocity_mm_per_year": -33.74415462613105,
         "cumulative_shift_mm": 2.6174560546875,
@@ -12071,5 +12071,6 @@
         }
       ]
     }
-  ]
+  ],
+  "risk_classification_note": "Experimental LOS-away displacement-rate bins applied to the fixed-footprint cumulative_series; not validated hazards. Rate based on latest interval; acceleration requires last three intervals with successive sinking-rate increases >=5 mm/year."
 }

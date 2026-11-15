@@ -11,11 +11,10 @@ Deploy the generated zones.json with the API and optionally set:
   NISAR_ZONES_FILE=path/to/zones.json
 
 The HTTP handler already calls get_zones(), which returns just list[Zone].
-All detections are exploratory and unvalidated for safety decisions. We
-deliberately do NOT map the Stage 3 review priority to the API's risk levels;
-instead, `classify_risk_level` computes an exploratory base risk level from
-absolute LOS velocity magnitude, multi-date trend, coherence, and footprint
-size (without factoring in infrastructure, which the frontend adjusts).
+All detections are exploratory. We deliberately do NOT map the Stage 3
+review priority to the API's risk levels unless the v2 detector explicitly assigns a
+user-defined experimental screening category. Those categories are not
+validated hazard levels.
 """
 from __future__ import annotations
 
@@ -67,6 +66,7 @@ class ZoneCalculationUnavailable(Exception):
 
 
 YEAR_DAYS = 365.25
+ACCEL_MIN_STEP_MM_YEAR = 5.0  # Experimental last-three-interval screening rule
 
 
 def _project_root() -> Path:
@@ -80,87 +80,6 @@ def _read_json(path: Path) -> dict:
 
 def _finite_number(value: object) -> bool:
     return isinstance(value, (float, int)) and not isinstance(value, bool) and math.isfinite(value)
-
-
-RISK_CLASSIFICATION_CONFIG = {
-    "min_coherence": 0.3,
-    "min_series_dates": 4,
-    "min_footprint_span_m": 200.0,
-    "min_trend_intervals": 3,
-    "high_velocity_mm_per_year": 100.0,
-    "elevated_velocity_mm_per_year": 40.0,
-    "watch_velocity_mm_per_year": 15.0,
-}
-
-
-def _footprint_span_meters(geometry: Polygon | MultiPolygon) -> float:
-    """Return the larger WGS84 bounding-box span (meters) of a zone polygon."""
-    if geometry["type"] == "Polygon":
-        rings = geometry["coordinates"]
-    else:
-        rings = [ring for poly in geometry["coordinates"] for ring in poly]
-    points = [pt for ring in rings for pt in ring]
-    if not points:
-        return 0.0
-    lons = [p[0] for p in points]
-    lats = [p[1] for p in points]
-    mid_lat = sum(lats) / len(lats)
-    dx_m = (max(lons) - min(lons)) * 111320.0 * math.cos(math.radians(mid_lat))
-    dy_m = (max(lats) - min(lats)) * 110540.0
-    return max(dx_m, dy_m)
-
-
-def _has_increasing_recent_speed(
-    series: list[CumulativePoint],
-    min_intervals: int,
-) -> bool:
-    """Return True when absolute interval LOS speed strictly increases over the last `min_intervals`."""
-    if len(series) < min_intervals + 1:
-        return False
-    speeds: list[float] = []
-    for prev_pt, curr_pt in zip(series, series[1:]):
-        t0 = datetime.fromisoformat(prev_pt["time"].replace("Z", "+00:00"))
-        t1 = datetime.fromisoformat(curr_pt["time"].replace("Z", "+00:00"))
-        dt_days = (t1 - t0).total_seconds() / 86400.0
-        if dt_days <= 0:
-            return False
-        speeds.append(abs(curr_pt["displacement_mm"] - prev_pt["displacement_mm"]) / dt_days * 365.25)
-    recent = speeds[-min_intervals:]
-    return all(a < b for a, b in zip(recent, recent[1:]))
-
-
-def classify_risk_level(
-    summary: ZoneSummary,
-    cumulative_series: list[CumulativePoint] | None,
-    geometry: Polygon | MultiPolygon,
-) -> Literal["high", "elevated", "watch", "low"] | None:
-    """Classify exploratory base risk level from LOS velocity, trend, coherence, and footprint.
-
-    Uses absolute LOS velocity magnitude (radar phase sign is unverified) and
-    excludes infrastructure overlap (handled separately in the frontend).
-    """
-    cfg = RISK_CLASSIFICATION_CONFIG
-    velocity = summary.get("los_velocity_mm_per_year")
-    coherence = summary.get("latest_pair_mean_coherence")
-    if not _finite_number(velocity) or not _finite_number(coherence):
-        return None
-    if coherence < cfg["min_coherence"]:
-        return None
-    if not cumulative_series or len(cumulative_series) < cfg["min_series_dates"]:
-        return None
-    if _footprint_span_meters(geometry) < cfg["min_footprint_span_m"]:
-        return None
-
-    abs_vel = abs(float(velocity))
-    if abs_vel > cfg["high_velocity_mm_per_year"]:
-        return "high"
-    if abs_vel >= cfg["elevated_velocity_mm_per_year"]:
-        if _has_increasing_recent_speed(cumulative_series, int(cfg["min_trend_intervals"])):
-            return "elevated"
-        return "watch"
-    if abs_vel > cfg["watch_velocity_mm_per_year"]:
-        return "watch"
-    return "low"
 
 
 def _validate_zone(zone: object) -> None:
@@ -221,6 +140,39 @@ def get_zones() -> list[Zone]:
     # Avoid invalid JSON even if a future builder accidentally writes NaN.
     json.dumps(zones, allow_nan=False)
     return zones
+
+
+def risk_from_history(series):
+    """Classify most recent LOS-away annualized rate and 3-interval acceleration.
+
+    Returns None on missing, non-finite or unordered data.
+    """
+    if not isinstance(series, list) or len(series) < 2:
+        return None
+    try:
+        times = [datetime.fromisoformat(p["time"].replace("Z", "+00:00")) for p in series]
+        values = [float(p["displacement_mm"]) for p in series]
+        if not all(math.isfinite(x) for x in values):
+            return None
+        dts = [(b-a).total_seconds() / 86400. for a,b in zip(times,times[1:])]
+        if not all(dt > 0 for dt in dts):
+            return None
+        subsidence_rates = [-(b-a)/dt*YEAR_DAYS for a,b,dt in zip(values,values[1:],dts)]
+    except (TypeError, ValueError, KeyError, AttributeError):
+        return None
+
+    speed = max(0.0, subsidence_rates[-1])
+    if speed > 100.0:
+        return "high"
+    accelerating = (len(subsidence_rates) >= 3
+                    and subsidence_rates[-3] > 0
+                    and subsidence_rates[-2] - subsidence_rates[-3] >= ACCEL_MIN_STEP_MM_YEAR
+                    and subsidence_rates[-1] - subsidence_rates[-2] >= ACCEL_MIN_STEP_MM_YEAR)
+    if speed >= 40.0 and accelerating:
+        return "elevated"
+    if speed >= 10.0:
+        return "watch"
+    return "low"
 
 
 def _validate_geometry(geom: object) -> None:
@@ -369,7 +321,7 @@ def _latest_pair_quality(meta: dict, raw_root: Path, shape: tuple[int,int]):
 
 
 def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pixels: int = 1) -> list[Zone]:
-    """Offline adapter: export latest-date Stage 3 polygons and Stage 2 data.
+    """Offline adapter: read Stage 3 polygons and Stage 2 arrays for SAME run.
 
     Pixel time histories use the intersection of finite pixels across ALL
     acquisition dates within the LAST polygon geometry. This fixed footprint
@@ -417,16 +369,8 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
             or tuple(meta.get("array_shape", [])) != displacement.shape):
         raise ValueError("Stage 2 arrays are not aligned or have unexpected shape")
     dates = meta.get("dates", [])
-    if not isinstance(dates, list) or not dates or len(dates) != displacement.shape[0]:
+    if len(dates) != displacement.shape[0]:
         raise ValueError("Stage 2 date axis does not match data")
-    try:
-        parsed_dates = [datetime.strptime(day, "%Y-%m-%d").date() for day in dates]
-    except (TypeError, ValueError) as exc:
-        raise ValueError("Invalid Stage 2 acquisition dates") from exc
-    if any(day.isoformat() != original for day, original in zip(parsed_dates, dates)) or any(
-        later <= earlier for earlier, later in zip(parsed_dates, parsed_dates[1:])
-    ):
-        raise ValueError("Stage 2 acquisition dates must be ordered ISO dates")
     grid = meta["grid"]
     if (not grid.get("crs") or len(grid.get("transform_affine", [])) != 6
             or grid.get("width") != displacement.shape[2]
@@ -467,10 +411,6 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
         props = feature.get("properties") or {}
         if props.get("source_run", run_name) != run_name:
             raise ValueError("Feature belongs to a different processing run")
-        if props.get("last_observed") not in dates:
-            raise ValueError("Feature has a missing or invalid last_observed date")
-        if props["last_observed"] != dates[-1]:
-            continue
         stable_id = props.get("stable_id")
         family = meta.get("acquisition_family", {})
         identifier = _zone_id(geometry, family, stable_id)
@@ -538,19 +478,32 @@ def build_zones(*, run_name: str, data_root: str | Path = "data", min_common_pix
                         dt_mid = mid[-1] - mid[-2]
                         if dt_mid > 0:
                             acceleration = float((v[-1] - v[-2]) / dt_mid * YEAR_DAYS**2)
-        summary: ZoneSummary = {
-            "los_velocity_mm_per_year": speed,
-            "cumulative_shift_mm": shift,
-            "acceleration_mm_per_year2": acceleration,
-            "latest_pair_mean_coherence": pair_q,
-            "latest_pair_reference_time": latest_ref,
-            "latest_pair_secondary_time": latest_sec,
-        }
+        # Only the v2 detector's explicit rate screening labels can populate
+        # the dashboard. Never promote old 'priority' review categories to risk.
+        screening_level = props.get("risk_level")
+        if props.get("risk_method") != "user_defined_los_rate_bins_v1":
+            screening_level = None
+        if screening_level not in (None, "high", "elevated", "watch", "low"):
+            raise ValueError(f"Invalid Stage 3 risk screening level: {screening_level}")
+        if not compatible_los:
+            screening_level = None
+        elif screening_level is None and series is not None:
+            # Legacy Stage 3 outputs contain no risk_method/risk_level.
+            # Reconstruct a screen from the same fixed-footprint history shown
+            # on the dashboard; do not change measurement results or rate signs.
+            screening_level = risk_from_history(series)
         zone: Zone = {
             "id": identifier,
             "geometry": geometry,
-            "risk_level": classify_risk_level(summary, series, geometry),
-            "summary": summary,
+            "risk_level": screening_level,
+            "summary": {
+                "los_velocity_mm_per_year": speed,
+                "cumulative_shift_mm": shift,
+                "acceleration_mm_per_year2": acceleration,
+                "latest_pair_mean_coherence": pair_q,
+                "latest_pair_reference_time": latest_ref,
+                "latest_pair_secondary_time": latest_sec,
+            },
             "cumulative_series": series,
         }
         _validate_zone(zone)
