@@ -310,7 +310,7 @@ function assignZonePlaceNames(zones, dataset) {
   for (const [name, group] of groups) {
     group.sort((a, b) => a.id.localeCompare(b.id));
     group.forEach((zone, index) => {
-      zone.name = `Near ${name}${group.length > 1 ? ` · ${index + 1}` : ''}`;
+      zone.name = `${name}${group.length > 1 ? ` · ${index + 1}` : ''}`;
     });
   }
   return { outsideCoverage };

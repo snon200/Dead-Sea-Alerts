@@ -137,8 +137,10 @@ test('names zones from nearby places, with stable distinct labels', () => {
     ]
   };
   assert.deepEqual(assignZonePlaceNames([second, first], dataset), { outsideCoverage: false });
-  assert.equal(first.name, 'Near Ein Gedi · 1');
-  assert.equal(second.name, 'Near Ein Gedi · 2');
+  assert.equal(first.name, 'Ein Gedi · 1');
+  assert.equal(second.name, 'Ein Gedi · 2');
+  assignZonePlaceNames([first], dataset);
+  assert.equal(first.name, 'Ein Gedi');
   dataset.places.shift();
   dataset.places[0].lat += 0.2;
   assignZonePlaceNames([first], dataset);
@@ -161,7 +163,7 @@ test('the checked-in place dataset names current zones without duplicate labels'
   const zones = parseZoneResponse(require('../data/api/zones.json'));
   const result = assignZonePlaceNames(zones, require('../data/api/osm-places.json'));
   assert.equal(result.outsideCoverage, false);
-  assert.ok(zones.some(zone => zone.name.startsWith('Near ')));
+  assert.ok(zones.some(zone => zone.name !== `Zone ${zone.id}`));
   assert.equal(new Set(zones.map(zone => zone.name)).size, zones.length);
 });
 

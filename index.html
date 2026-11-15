@@ -82,7 +82,8 @@
     .left-sidebar { grid-column: 1; border-right: 1px solid var(--border); }
     .right-sidebar { grid-column: 3; border-left: 1px solid var(--border); }
     .sidebar.collapsed { display: none; }
-    .sidebar-scroll { display: flex; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; padding: 16px; }
+    .sidebar-scroll { display: grid; flex: 1; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      overflow: hidden; min-height: 0; padding: 16px; }
     .sidebar-heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; }
     h1, h2, h3, p { margin: 0; }
     .eyebrow { color: #718096; font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
@@ -90,9 +91,9 @@
     .intro { margin: 9px 0 14px; color: var(--muted); font-size: 14px; line-height: 1.55; }
     .compact-intro { margin: 7px 0 0; font-size: 12px; }
     .source-line { margin-top: 8px; }
-    .sidebar-scroll > .intro { flex: none; }
-    .zone-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0;
-      overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 2px 2px; }
+    .zone-section, .layer-section { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+    .zone-section { padding-bottom: 8px; }
+    .zone-list { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 2px 2px; }
     .zone-filter-status { flex: none; margin-bottom: 8px; color: #876622; font-size: 12px; line-height: 1.4; }
     .zone-source-status { flex: none; margin-bottom: 8px; color: #53637a; font-size: 12px; line-height: 1.5; }
     .zone-source-status[data-state="error"] { color: #a53443; }
@@ -121,13 +122,12 @@
     .zone-card-meta { margin-top: 8px; color: #66758a; font-size: 12px; line-height: 1.5; }
     .zone-coords { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #edf1f5;
       color: #66758a; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .layer-section { flex: none; margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--border); }
+    .layer-section { padding-top: 15px; border-top: 1px solid var(--border); }
     .layer-actions { display: flex; gap: 4px; }
     .layer-action { border: 1px solid var(--border); border-radius: 6px; background: #fff;
       padding: 4px 5px; color: #126782; cursor: pointer; font-size: 12px; white-space: nowrap; }
     .layer-action:hover { background: #f4f8fb; }
-    .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
-      max-height: min(45vh, 300px); overflow-y: auto; margin-top: 10px; }
+    .layer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
     .layer-control { display: flex; align-items: center; justify-content: space-between; gap: 3px;
       border: 1px solid #e8edf3; border-radius: 9px; background: #fff; padding: 5px; color: #43536a; font-size: 12px; }
     .layer-control input { flex-shrink: 0; margin: 0; accent-color: var(--accent); }
@@ -175,7 +175,7 @@
     .risk-map-label-text { position: absolute; top: 0; left: 8px; transform: translateY(-50%);
       border: 1px solid #d7e0e9; border-left: 3px solid var(--zone-color); border-radius: 5px;
       background: #fff; color: #1c2a3d; padding: 2px 5px; box-shadow: 0 1px 4px #0004;
-      font-size: 12px; font-weight: 700; line-height: 11px; white-space: nowrap; }
+      font-size: 11px; font-weight: 700; line-height: 11px; white-space: nowrap; }
     .risk-map-label-left .risk-map-label-text { right: 12px; left: auto; }
     .risk-map-label:focus-visible .risk-map-label-text { outline: 2px solid var(--accent); outline-offset: 2px; }
     .pump-marker { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #a9ddff;
@@ -256,8 +256,8 @@
     }
     @media (max-height: 500px) {
       .sidebar-scroll { padding: 8px; }
-      .sidebar-scroll > .intro { display: none; }
-      .layer-section { margin-top: 8px; padding-top: 8px; }
+      .zone-section > .intro { display: none; }
+      .layer-section { padding-top: 8px; }
       .layer-section .compact-intro { font-size: 12px; line-height: 1.3; }
       .layer-list { gap: 3px; margin-top: 5px; }
       .layer-control { padding: 4px; }
@@ -269,11 +269,6 @@
       .legend-title { margin: 0; white-space: nowrap; }
       .legend-row { gap: 3px; white-space: nowrap; }
     }
-    @media (max-height: 285px) {
-      .sidebar-scroll { overflow-y: auto; }
-      .zone-list { flex: 0 0 44px; }
-    }
-
     /* Accessibility & SDG controls */
     .skip-link {
       position: absolute; left: -9999px; top: 8px; z-index: 2000;
@@ -479,15 +474,17 @@
       <button class="sidebar-toggle right" id="toggleRight" type="button" aria-controls="detailSidebar" aria-expanded="true" aria-label="Hide zone details" title="Hide zone details"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
       <aside class="sidebar left-sidebar" id="riskSidebar" aria-label="Risk zones and map layers">
         <div class="sidebar-scroll">
-          <div class="sidebar-heading">
-            <h1 class="eyebrow">Risk zones</h1>
-            <span class="count" id="zoneCount" aria-live="polite"></span>
-          </div>
-          <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
-          <p class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">Loading zone data…</p>
-          <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
-          <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones" tabindex="0"></div>
-          <section class="layer-section" aria-labelledby="osmLayersHeading">
+          <section class="zone-section" aria-labelledby="riskZonesHeading" tabindex="0">
+            <div class="sidebar-heading">
+              <h1 class="eyebrow" id="riskZonesHeading">Risk zones</h1>
+              <span class="count" id="zoneCount" aria-live="polite"></span>
+            </div>
+            <p class="intro">Select a zone to view its risk indicators. The list matches any selected map layer.</p>
+            <p class="zone-source-status" id="zoneSourceStatus" role="status" aria-live="polite" data-state="loading">Loading zone data…</p>
+            <p class="zone-filter-status" id="zoneFilterStatus" role="status" hidden></p>
+            <div class="zone-list" id="zoneList" role="region" aria-label="Risk zones"></div>
+          </section>
+          <section class="layer-section" aria-labelledby="osmLayersHeading" tabindex="0">
             <div class="sidebar-heading">
               <h2 class="eyebrow" id="osmLayersHeading">Map layers</h2>
               <div class="layer-actions">
