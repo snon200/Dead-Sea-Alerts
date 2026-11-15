@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Build an OSM place-name dataset around the fixed regional study area."""
+from __future__ import annotations
+
 import argparse
 import json
 import math
@@ -15,6 +17,89 @@ PLACE_TYPES = ("city", "town", "village", "hamlet", "suburb", "neighbourhood", "
 WATERWAY_TYPES = ("river", "stream", "canal", "drain", "wadi")
 NATURAL_TYPES = ("peak", "hill", "valley", "wadi", "ridge", "cliff", "spring", "beach", "bay",
                  "water", "strait", "cape", "saddle", "wetland", "cave_entrance", "sinkhole")
+
+ENGLISH_PLACE_OVERRIDES = {
+    "תקוע ב": "Tekoa B",
+    "מקור ברוך": "Mekor Baruch",
+    "מצפה חגית": "Mitzpe Hagit",
+    "תקוע ד": "Tekoa D",
+    "חוות העיטם": "Havat HaEitam",
+    "חוות הדיה": "Havat HaDaya",
+    "חוות חנינה": "Havat Hanina",
+    "משכנות הראל": "Mishkenot Harel",
+    "תקוע ו": "Tekoa F",
+    "חוות הראל": "Havat Harel",
+    "שכונת ברקאי": "Barkai Neighborhood",
+    "יחיש ציון": "Yahish Zion",
+    "כוכב יהודה": "Kochav Yehuda",
+    "נחל מורג": "Nahal Morag",
+    "חוף עין בוקק": "Ein Bokek Beach",
+    "נחל מצפה ארנון": "Nahal Mitzpe Arnon",
+    "נחל צנין": "Nahal Tznin",
+    "נחל חצצון": "Nahal Hatzatzon",
+    "נחל פ'שחה": "Nahal Fashkha",
+    "ואדי ג'ופת זבן": "Wadi Juft Zaban",
+    "שיעב א-דיר": "Shi'ab Al-Dir",
+    '"הנחל החם"': "HaNahal HaHam",
+    "הנחל החם": "HaNahal HaHam",
+    "מלחת סדום": "Sodom Salt Marsh",
+    "נחל המלט": "Nahal HaMelet",
+    "נחל בולען": "Nahal Bolan",
+    "תעלת ההזנה": "Feeder Canal",
+    "נחל קינמון": "Nahal Kinamon",
+    "מערת האמוניט": "Ammonite Cave",
+    "בריכת מים מתוקים": "Freshwater Pool",
+    "נחל יוריק": "Nahal Yorik",
+    "מערת בקתה": "Bikta Cave",
+    "בריכות נווית": "Nevit Pools",
+}
+
+_HEBREW_WORDS = {
+    "נחל": "Nahal", "עין": "Ein", "ואדי": "Wadi", "הר": "Har", "חוף": "Beach",
+    "מצפה": "Mitzpe", "גבעת": "Givat", "רמת": "Ramat", "בקעת": "Bikat",
+    "מעלה": "Ma'ale", "חורבת": "Horvat", "מערת": "Me'arat", "באר": "Be'er",
+    "מעיין": "Ma'ayan", "גשר": "Gesher", "מפלי": "Mapalei", "מפל": "Mapal",
+    "שמורת": "Shmurat", "צומת": "Tzomet", "חניון": "Hanyon", "חוות": "Havat",
+}
+
+_HEBREW_MAP = {
+    "א": "a", "ב": "b", "ג": "g", "ד": "d", "ה": "h", "ו": "v", "ז": "z", "ח": "h",
+    "ט": "t", "י": "y", "כ": "k", "ך": "k", "ל": "l", "מ": "m", "ם": "m", "נ": "n",
+    "ן": "n", "ס": "s", "ע": "a", "פ": "p", "ף": "f", "צ": "tz", "ץ": "tz", "ק": "k",
+    "ר": "r", "ש": "sh", "ת": "t",
+}
+_ARABIC_MAP = {
+    "ا": "a", "أ": "a", "إ": "i", "آ": "a", "ب": "b", "ت": "t", "ث": "th", "ج": "j",
+    "ح": "h", "خ": "kh", "د": "d", "ذ": "dh", "ر": "r", "ز": "z", "س": "s",
+    "ش": "sh", "ص": "s", "ض": "d", "ط": "t", "ظ": "z", "ع": "a", "غ": "gh", "ف": "f",
+    "ق": "q", "ك": "k", "ل": "l", "م": "m", "ن": "n", "ه": "h", "ة": "a", "و": "w",
+    "ي": "y", "ى": "a", "ؤ": "u", "ئ": "i", "ء": "'",
+}
+
+
+def to_english_place_name(name: str) -> str:
+    """Return an English/Latin place name, translating or transliterating Hebrew/Arabic."""
+    if name in ENGLISH_PLACE_OVERRIDES:
+        return ENGLISH_PLACE_OVERRIDES[name]
+    if all(ord(ch) < 0x0590 for ch in name):
+        return name
+    words = []
+    for word in name.split():
+        if word in _HEBREW_WORDS:
+            words.append(_HEBREW_WORDS[word])
+            continue
+        out = []
+        for ch in word:
+            if ch in _HEBREW_MAP:
+                out.append(_HEBREW_MAP[ch])
+            elif ch in _ARABIC_MAP:
+                out.append(_ARABIC_MAP[ch])
+            elif "\u0591" <= ch <= "\u05C7" or "\u064B" <= ch <= "\u065F":
+                continue
+            else:
+                out.append(ch)
+        words.append("".join(out).capitalize())
+    return " ".join(w for w in words if w)
 
 
 def is_named_feature(tags: dict) -> bool:
@@ -90,13 +175,14 @@ def build_places(area_path: Path, out_path: Path, pbf_paths: list[Path] | None =
         name = tags.get("name:en") or tags.get("int_name") or tags.get("name")
         if not is_named_feature(tags) or not isinstance(name, str) or not name.strip():
             continue
+        english_name = to_english_place_name(name.strip())
         if element.get("type") == "node":
-            places.append({"id": element["id"], "name": name.strip(), "lat": element["lat"], "lon": element["lon"]})
+            places.append({"id": element["id"], "name": english_name, "lat": element["lat"], "lon": element["lon"]})
         elif element.get("type") == "way":
             geometry = element.get("geometry")
             if not isinstance(geometry, list) or len(geometry) < 2:
                 raise ValueError(f"Named way {element['id']} has missing geometry")
-            place = {"id": element["id"], "name": name.strip(),
+            place = {"id": element["id"], "name": english_name,
                      "geometry": [[point["lat"], point["lon"]] for point in geometry]}
             if tags.get("place") in PLACE_TYPES or tags.get("natural") in NATURAL_TYPES:
                 place["area"] = tags.get("area") != "no"
